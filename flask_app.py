@@ -188,8 +188,8 @@ def async_route(f):
             finally:
                 loop.close()
         else:
-            future = thread_executor.submit(f, *args, **kwargs)
-            return future.result(timeout=30)
+            # For now, just run synchronously to avoid context issues
+            return f(*args, **kwargs)
     return wrapper
 
 

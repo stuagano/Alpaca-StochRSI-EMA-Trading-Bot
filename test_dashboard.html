@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Trading Dashboard Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #1a1a1a; color: #fff; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .card { background: #2a2a2a; padding: 20px; margin: 10px 0; border-radius: 8px; }
+        .status { display: inline-block; padding: 5px 10px; border-radius: 4px; }
+        .status.active { background: #4CAF50; }
+        .status.error { background: #f44336; }
+        .price { font-size: 24px; font-weight: bold; color: #4CAF50; }
+        .positions { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .position-card { background: #333; padding: 15px; border-radius: 6px; }
+        .profit { color: #4CAF50; }
+        .loss { color: #f44336; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Alpaca Trading Dashboard</h1>
+        
+        <div class="card">
+            <h2>API Status</h2>
+            <div id="api-status">Checking...</div>
+        </div>
+
+        <div class="card">
+            <h2>Account Info</h2>
+            <div id="account-info">Loading...</div>
+        </div>
+
+        <div class="card">
+            <h2>Current Positions</h2>
+            <div id="positions" class="positions">Loading...</div>
+        </div>
+
+        <div class="card">
+            <h2>Market Data - SPY</h2>
+            <div id="market-data">Loading...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8765';
+
+        async function checkStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/bot/status`);
+                const data = await response.json();
+                document.getElementById('api-status').innerHTML = `
+                    <span class="status active">✅ API Connected</span>
+                    <br>Bot Running: ${data.running ? '✅ Yes' : '❌ No'}
+                    <br>Streaming: ${data.streaming ? '✅ Active' : '⏸️ Paused'}
+                `;
+            } catch (error) {
+                document.getElementById('api-status').innerHTML = `
+                    <span class="status error">❌ API Connection Failed</span>
+                `;
+            }
+        }
+
+        async function loadAccount() {
+            try {
+                const response = await fetch(`${API_BASE}/api/account`);
+                const data = await response.json();
+                if (data.success) {
+                    const acc = data.account;
+                    document.getElementById('account-info').innerHTML = `
+                        <div>💰 Buying Power: $${acc.buying_power.toLocaleString()}</div>
+                        <div>📊 Portfolio Value: $${acc.portfolio_value.toLocaleString()}</div>
+                        <div>💵 Cash: $${acc.cash.toLocaleString()}</div>
+                        <div>📈 Equity: $${acc.equity.toLocaleString()}</div>
+                        <div>Status: <span class="status active">${acc.status}</span></div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('account-info').innerHTML = '❌ Failed to load account data';
+            }
+        }
+
+        async function loadPositions() {
+            try {
+                const response = await fetch(`${API_BASE}/api/positions`);
+                const data = await response.json();
+                if (data.success && data.positions.length > 0) {
+                    const positionsHtml = data.positions.map(pos => `
+                        <div class="position-card">
+                            <h3>${pos.symbol}</h3>
+                            <div>Qty: ${pos.qty} shares</div>
+                            <div>Current: $${pos.current_price.toFixed(2)}</div>
+                            <div>Avg Entry: $${pos.avg_entry_price.toFixed(2)}</div>
+                            <div>Market Value: $${pos.market_value.toLocaleString()}</div>
+                            <div class="${pos.unrealized_pl >= 0 ? 'profit' : 'loss'}">
+                                P/L: $${pos.unrealized_pl.toFixed(2)} (${pos.unrealized_plpc.toFixed(2)}%)
+                            </div>
+                        </div>
+                    `).join('');
+                    document.getElementById('positions').innerHTML = positionsHtml;
+                } else {
+                    document.getElementById('positions').innerHTML = 'No open positions';
+                }
+            } catch (error) {
+                document.getElementById('positions').innerHTML = '❌ Failed to load positions';
+            }
+        }
+
+        async function loadMarketData() {
+            try {
+                const priceResponse = await fetch(`${API_BASE}/api/price/SPY`);
+                const priceData = await priceResponse.json();
+                
+                const chartResponse = await fetch(`${API_BASE}/api/chart/SPY?timeframe=1Min&limit=5`);
+                const chartData = await chartResponse.json();
+                
+                if (priceData.success && chartData.success) {
+                    const latestCandle = chartData.data.data[chartData.data.data.length - 1];
+                    document.getElementById('market-data').innerHTML = `
+                        <div class="price">SPY: $${priceData.price.toFixed(2)}</div>
+                        <div>Latest Candle:</div>
+                        <div>Open: $${latestCandle.open.toFixed(2)} | High: $${latestCandle.high.toFixed(2)}</div>
+                        <div>Low: $${latestCandle.low.toFixed(2)} | Close: $${latestCandle.close.toFixed(2)}</div>
+                        <div>Volume: ${latestCandle.volume.toLocaleString()}</div>
+                        <div style="margin-top: 10px; color: #888;">Last ${chartData.data.data_points} candles loaded</div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('market-data').innerHTML = '❌ Failed to load market data';
+            }
+        }
+
+        // Load all data
+        checkStatus();
+        loadAccount();
+        loadPositions();
+        loadMarketData();
+
+        // Refresh every 5 seconds
+        setInterval(() => {
+            checkStatus();
+            loadMarketData();
+        }, 5000);
+    </script>
+</body>
+</html>

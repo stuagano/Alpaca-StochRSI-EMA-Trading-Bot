@@ -80,24 +80,31 @@ class UnifiedDataManager:
     def initialize_api(self) -> bool:
         """Initialize Alpaca API connection with proper error handling."""
         try:
-            if not os.path.exists('AUTH/authAlpaca.txt'):
-                raise FileNotFoundError("AUTH/authAlpaca.txt not found")
+            # Try to get credentials from environment variables first
+            api_key = os.getenv('APCA_API_KEY_ID')
+            secret_key = os.getenv('APCA_API_SECRET_KEY')
+            base_url = os.getenv('APCA_API_BASE_URL', 'https://paper-api.alpaca.markets')
             
-            with open('AUTH/authAlpaca.txt', 'r') as f:
-                content = f.read().strip()
-            
-            # Parse credentials (JSON or line format)
-            try:
-                auth_data = json.loads(content)
-                api_key = auth_data.get('APCA-API-KEY-ID', '').strip()
-                secret_key = auth_data.get('APCA-API-SECRET-KEY', '').strip()
-                base_url = auth_data.get('BASE-URL', 'https://paper-api.alpaca.markets').strip()
-            except json.JSONDecodeError:
-                lines = content.split('\n')
-                if len(lines) < 2:
-                    raise ValueError("Invalid authAlpaca.txt format")
-                api_key = lines[0].strip()
-                secret_key = lines[1].strip()
+            # If not in environment, fallback to AUTH file
+            if not api_key or not secret_key:
+                if not os.path.exists('AUTH/authAlpaca.txt'):
+                    raise FileNotFoundError("No API credentials found in environment or AUTH/authAlpaca.txt")
+                
+                with open('AUTH/authAlpaca.txt', 'r') as f:
+                    content = f.read().strip()
+                
+                # Parse credentials (JSON or line format)
+                try:
+                    auth_data = json.loads(content)
+                    api_key = auth_data.get('APCA-API-KEY-ID', '').strip()
+                    secret_key = auth_data.get('APCA-API-SECRET-KEY', '').strip()
+                    base_url = auth_data.get('BASE-URL', 'https://paper-api.alpaca.markets').strip()
+                except json.JSONDecodeError:
+                    lines = content.split('\n')
+                    if len(lines) < 2:
+                        raise ValueError("Invalid authAlpaca.txt format")
+                    api_key = lines[0].strip()
+                    secret_key = lines[1].strip()
                 base_url = lines[2].strip() if len(lines) > 2 else 'https://paper-api.alpaca.markets'
             
             if not api_key or not secret_key:
