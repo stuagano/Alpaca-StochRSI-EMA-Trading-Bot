@@ -461,6 +461,19 @@ def real_time_data_thread():
                                     # Calculate signal strength for better visualization
                                     strength = min(abs(k - lower_band) / lower_band, 1.0) if lower_band > 0 else 0
                                     
+                                    # Calculate SuperTrend signal
+                                    supertrend_signal = 0
+                                    supertrend_trend = 'neutral'
+                                    supertrend_action = 'NEUTRAL'
+                                    try:
+                                        from indicators.supertrend import get_current_signal
+                                        st_data = get_current_signal(data, period=10, multiplier=3.0)
+                                        supertrend_signal = st_data['signal']
+                                        supertrend_trend = st_data['trend']
+                                        supertrend_action = st_data['action']
+                                    except Exception as e:
+                                        logger.debug(f"SuperTrend calculation error for {ticker}: {e}")
+                                    
                                     ticker_signals[ticker] = {
                                         'stochRSI': {
                                             'signal': 1 if (k > d and k < lower_band) else 0,
@@ -469,7 +482,11 @@ def real_time_data_thread():
                                             'lower_band': lower_band,
                                             'strength': strength,
                                             'timestamp': datetime.now().isoformat()
-                                        }
+                                        },
+                                        'supertrend_signal': supertrend_signal,
+                                        'supertrend_trend': supertrend_trend,
+                                        'supertrend_action': supertrend_action,
+                                        'rsi': indicators.get('RSI', 50)
                                     }
 
                 data_payload = {
@@ -623,6 +640,10 @@ def get_config_template():
 # Routes
 @app.route('/')
 def index():
+    return render_template('tradingview_dashboard.html')
+
+@app.route('/dashboard_v2')
+def dashboard_v2():
     return render_template('dashboard_v2.html')
 
 @app.route('/v1')
@@ -1136,6 +1157,52 @@ def get_signals(symbol):
         return jsonify({'success': False, 'error': 'No data available'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/supertrend/<symbol>')
+def get_supertrend(symbol):
+    """Get SuperTrend indicator signals for a symbol"""
+    try:
+        from indicators.supertrend import get_current_signal, calculate_multi_timeframe_supertrend
+        
+        # Get historical data
+        data = data_manager.get_historical_data(symbol.upper(), '1Min', limit=200)
+        
+        if not data.empty:
+            # Calculate SuperTrend signal
+            signal_data = get_current_signal(data, period=10, multiplier=3.0)
+            
+            # Get multi-timeframe analysis for stronger signals
+            mtf_analysis = calculate_multi_timeframe_supertrend(
+                symbol.upper(), 
+                data_manager,
+                timeframes=['1Min', '5Min', '15Min']
+            )
+            
+            return jsonify({
+                'success': True,
+                'symbol': symbol.upper(),
+                'signal': signal_data['signal'],
+                'trend': signal_data['trend'],
+                'action': signal_data['action'],
+                'supertrend_value': signal_data['supertrend_value'],
+                'current_price': signal_data['current_price'],
+                'recent_signal_change': signal_data['recent_signal_change'],
+                'multi_timeframe': mtf_analysis,
+                'timestamp': datetime.now().isoformat()
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'No data available',
+                'symbol': symbol.upper()
+            })
+    except Exception as e:
+        logger.error(f"Error calculating SuperTrend for {symbol}: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'symbol': symbol.upper()
+        })
 
 from backtesting.backtesting_engine import BacktestingEngine
 from main import get_strategy
