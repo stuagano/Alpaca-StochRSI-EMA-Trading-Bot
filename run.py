@@ -30,7 +30,7 @@ class TradingBotLauncher:
         for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
             try:
                 cmdline = ' '.join(proc.info['cmdline'] or [])
-                if any(script in cmdline for script in ['main.py', 'flask_app.py', 'app.py', 'streamlit']):
+                if any(script in cmdline for script in ['main.py', 'flask_app.py', 'app.py']):
                     if proc.pid != os.getpid():  # Don't kill ourselves
                         print(f"🔪 Killing existing process: {proc.info['name']} (PID: {proc.info['pid']})")
                         proc.terminate()
@@ -88,9 +88,9 @@ class TradingBotLauncher:
             print(f"❌ Error running trading bot: {e}")
 
     def run_streamlit_dashboard(self):
-        """Run Streamlit dashboard - DEPRECATED: Use Flask instead"""
-        print("⚠️  Streamlit dashboard is deprecated. Use Flask dashboard instead.")
-        print("💡 Run: python run.py flask")
+        """Streamlit has been removed - Use Flask dashboard"""
+        print("❌ Streamlit has been removed from this project.")
+        print("💡 Use Flask dashboard instead: python run.py flask")
         return
 
     def run_flask_dashboard(self):
@@ -104,7 +104,7 @@ class TradingBotLauncher:
         except Exception as e:
             print(f"❌ Error running Flask dashboard: {e}")
 
-    def run_bot_with_dashboard(self, dashboard_type='streamlit'):
+    def run_bot_with_dashboard(self, dashboard_type='flask'):
         """Run bot and dashboard in parallel"""
         print(f"🚀 Starting trading bot with {dashboard_type} dashboard...")
         
@@ -122,7 +122,8 @@ class TradingBotLauncher:
         
         # Start dashboard in main thread
         if dashboard_type == 'streamlit':
-            self.run_streamlit_dashboard()
+            print("❌ Streamlit removed. Using Flask dashboard instead.")
+            self.run_flask_dashboard()
         else:
             self.run_flask_dashboard()
 

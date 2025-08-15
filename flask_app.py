@@ -81,6 +81,10 @@ except Exception as e:
     # Fallback to localhost only
     CORS(app, origins=["http://localhost:8765", "http://127.0.0.1:8765"], supports_credentials=True)
 
+# WebSocket configuration
+websocket_compression = True
+websocket_buffer_size = 64 * 1024  # 64KB buffer
+
 # Initialize SocketIO with secure CORS and performance optimizations
 try:
     allowed_origins = env_manager.get_cors_origins()
@@ -245,9 +249,7 @@ data_manager = registry.get('data_manager')
 response_cache = {}
 cache_lock = threading.RLock()
 
-# WebSocket optimization
-websocket_compression = True
-websocket_buffer_size = 64 * 1024  # 64KB buffer
+# WebSocket optimization - moved to top of file
 
 class BotManager:
     def __init__(self):

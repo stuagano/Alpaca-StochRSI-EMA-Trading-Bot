@@ -1,0 +1,23 @@
+{
+    "stoch_rsi_period": 14,
+    "stoch_rsi_k_period": 3,
+    "stoch_rsi_d_period": 3,
+    "stoch_rsi_oversold": 35.0,
+    "stoch_rsi_overbought": 80.0,
+    "stoch_k_period": 14,
+    "stoch_d_period": 3,
+    "stoch_oversold": 35.0,
+    "stoch_overbought": 80.0,
+    "ema_period": 9,
+    "ema_fast_period": 12,
+    "ema_slow_period": 26,
+    "ema_signal_period": 9,
+    "rsi_period": 14,
+    "rsi_oversold": 30.0,
+    "rsi_overbought": 70.0,
+    "bollinger_period": 20,
+    "bollinger_std": 2.0,
+    "macd_fast": 12,
+    "macd_slow": 26,
+    "macd_signal": 9
+}

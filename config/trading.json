@@ -1,0 +1,22 @@
+{
+    "strategy_mode": "stochastic_rsi_only",
+    "position_size_percentage": 5.0,
+    "max_positions": 3,
+    "enable_stop_loss": true,
+    "stop_loss_percentage": 5.0,
+    "enable_take_profit": true,
+    "take_profit_percentage": 5.0,
+    "enable_trailing_stop": true,
+    "trailing_stop_percentage": 2.0,
+    "max_daily_loss_percentage": 10.0,
+    "max_drawdown_percentage": 20.0,
+    "risk_per_trade_percentage": 2.0,
+    "correlation_threshold": 0.7,
+    "volatility_threshold": 0.3,
+    "market_open_hour": 9,
+    "market_open_minute": 30,
+    "market_close_hour": 16,
+    "market_close_minute": 0,
+    "enable_premarket": false,
+    "enable_afterhours": false
+}

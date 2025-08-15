@@ -1,0 +1,7 @@
+{
+    "db_path": "trading_bot.db",
+    "backup_enabled": true,
+    "backup_interval_hours": 24,
+    "max_backups": 7,
+    "connection_pool_size": 5
+}
