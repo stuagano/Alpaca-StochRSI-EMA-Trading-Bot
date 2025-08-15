@@ -505,7 +505,7 @@ def real_time_data_thread():
                     socketio.emit('real_time_update_compressed', {
                         'compressed': True,
                         'data': compressed_data
-                    }, binary=True)
+                    })
                 else:
                     socketio.emit('real_time_update', data_payload)
                 

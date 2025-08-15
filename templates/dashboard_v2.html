@@ -1142,10 +1142,81 @@
             status.textContent = isStreaming ? 'Streaming Live' : 'Connected';
             status.className = isStreaming ? 'text-success fw-bold' : 'text-muted';
         }
+        
+        // Update bot status
+        function updateBotStatus(running) {
+            const statusEl = document.getElementById('botStatus');
+            const startBtn = document.getElementById('startBotBtn');
+            const stopBtn = document.getElementById('stopBotBtn');
+
+            if (running) {
+                statusEl.textContent = 'BOT RUNNING';
+                statusEl.className = 'badge bg-success me-3';
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+            } else {
+                statusEl.textContent = 'BOT STOPPED';
+                statusEl.className = 'badge bg-secondary me-3';
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+            }
+        }
+        
+        // Load initial dashboard data
+        async function loadInitialData() {
+            try {
+                console.log('Loading initial dashboard data...');
+                
+                // Load account info
+                const accountResponse = await fetch('/api/account');
+                const accountData = await accountResponse.json();
+                if (accountData.success && accountData.account) {
+                    updateAccountMetrics(accountData.account);
+                }
+                
+                // Load positions
+                const positionsResponse = await fetch('/api/positions');
+                const positionsData = await positionsResponse.json();
+                if (positionsData.success && positionsData.positions) {
+                    updatePositions(positionsData.positions);
+                }
+                
+                // Load bot status
+                const statusResponse = await fetch('/api/bot/status');
+                const statusData = await statusResponse.json();
+                if (statusData.success) {
+                    updateBotStatus(statusData.running);
+                }
+                
+                // Initialize charts with default tickers
+                const defaultTickers = ['SPY', 'QQQ', 'AAPL'];
+                initializeCharts(defaultTickers);
+                
+                // Load initial chart data for each ticker
+                for (const ticker of defaultTickers) {
+                    try {
+                        const chartResponse = await fetch(`/api/chart/${ticker}?timeframe=1Min&limit=100`);
+                        const chartData = await chartResponse.json();
+                        if (chartData.success && chartData.data && charts[ticker]) {
+                            updatePriceData(ticker, chartData.data.data);
+                        }
+                    } catch (error) {
+                        console.error(`Error loading chart data for ${ticker}:`, error);
+                    }
+                }
+                
+                console.log('Initial dashboard data loaded successfully');
+            } catch (error) {
+                console.error('Error loading initial data:', error);
+            }
+        }
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             initSocket();
+            
+            // Load initial dashboard data
+            loadInitialData();
             
             document.getElementById('startStreamBtn').addEventListener('click', function() {
                 socket.emit('start_streaming', {interval: 5});
@@ -1170,24 +1241,6 @@
                         updateBotStatus(data.running);
                     });
             });
-
-            function updateBotStatus(running) {
-                const statusEl = document.getElementById('botStatus');
-                const startBtn = document.getElementById('startBotBtn');
-                const stopBtn = document.getElementById('stopBotBtn');
-
-                if (running) {
-                    statusEl.textContent = 'BOT RUNNING';
-                    statusEl.className = 'badge bg-success me-3';
-                    startBtn.disabled = true;
-                    stopBtn.disabled = false;
-                } else {
-                    statusEl.textContent = 'BOT STOPPED';
-                    statusEl.className = 'badge bg-secondary me-3';
-                    startBtn.disabled = false;
-                    stopBtn.disabled = true;
-                }
-            }
 
             document.getElementById('runBacktestBtn').addEventListener('click', function() {
                 const strategy = document.getElementById('strategySelect').value;
