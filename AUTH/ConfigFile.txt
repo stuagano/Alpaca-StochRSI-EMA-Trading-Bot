@@ -1,7 +1,7 @@
 {
         "start_date": "10 days ago",
         "end_date": "1 Jan, 2023",
-        "timeframe": "1Minute",
+        "timeframe": "1Min",
         "candle_lookback_period": 2,
 
         "investment_amount": 10000,
@@ -13,6 +13,8 @@
         "limit_price": 0.5,
         "exchange": "CBSE",
         "sleep_time_between_trades": 60,
+        "extended_hours": false,
+        "strategy": "StochRSI",
 
         "indicators": {
 
@@ -28,7 +30,7 @@
                 },
 
 
-                "stoch": "False",
+                "stoch": "True",
                 "stoch_params": {
                         "lower_band": 35,
                         "upper_band": 80,
@@ -38,11 +40,19 @@
                 },
 
 
-                "EMA": "False",
+                "EMA": "True",
                 "EMA_params": {
                         "ema_period": 9,
+                        "fast_period": 10,
+                        "slow_period": 30,
                         "source": "Close",
                         "smoothing": 2
                 }
-        }       
+        }       ,
+        "risk_management": {
+                "use_atr_stop_loss": true,
+                "atr_period": 14,
+                "atr_multiplier": 2.0,
+                "use_atr_position_sizing": true
+        }
 }

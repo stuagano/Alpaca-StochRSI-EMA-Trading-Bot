@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whitespace Series Pattern Example</title>
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .chart-container { height: 400px; margin-bottom: 20px; border: 1px solid #ddd; }
+        .controls { margin-bottom: 20px; }
+        button { margin-right: 10px; padding: 8px 16px; }
+        .info-panel { background: #f5f5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Whitespace Series Pattern for Lightweight Charts</h1>
+    
+    <div class="info-panel">
+        <h3>Pattern Benefits:</h3>
+        <ul>
+            <li><strong>Time Synchronization:</strong> Invisible whitespace series maintains consistent time scale</li>
+            <li><strong>Independent Updates:</strong> Indicators can be updated separately from price data</li>
+            <li><strong>Performance:</strong> Reduces unnecessary chart re-rendering</li>
+            <li><strong>Flexibility:</strong> Different update frequencies for price vs indicators</li>
+        </ul>
+    </div>
+    
+    <div class="controls">
+        <button onclick="addNewCandle()">Add New Price Bar</button>
+        <button onclick="updateIndicatorOnly()">Update Indicator Only</button>
+        <button onclick="simulateRealTimeUpdates()">Simulate Real-time</button>
+        <button onclick="stopSimulation()">Stop</button>
+    </div>
+    
+    <div class="chart-container" id="chart"></div>
+    
+    <script>
+        let chart;
+        let whitespaceSeries;
+        let candlestickSeries;
+        let emaSeries;
+        let simulationInterval;
+        let currentTime = Math.floor(Date.now() / 1000) - 1000;
+        let currentPrice = 100;
+        let emaValue = 100;
+        
+        // Initialize chart with whitespace series pattern
+        function initChart() {
+            chart = LightweightCharts.createChart(document.getElementById('chart'), {
+                width: 800,
+                height: 400,
+                layout: {
+                    backgroundColor: '#ffffff',
+                    textColor: 'rgba(33, 56, 77, 1)',
+                },
+                grid: {
+                    vertLines: { color: 'rgba(197, 203, 206, 0.5)' },
+                    horzLines: { color: 'rgba(197, 203, 206, 0.5)' },
+                },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                timeScale: { timeVisible: true, secondsVisible: false },
+            });
+
+            // 1. Add invisible whitespace series for time synchronization
+            whitespaceSeries = chart.addSeries(LightweightCharts.LineSeries, {
+                color: 'rgba(0, 0, 0, 0)', // Completely transparent
+                lineWidth: 0,
+                priceLineVisible: false,
+                lastValueVisible: false,
+                crosshairMarkerVisible: false,
+                visible: false, // Make series invisible
+                title: 'Whitespace (Time Sync)',
+            });
+
+            // 2. Add candlestick series for price data
+            candlestickSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
+                upColor: '#26a69a',
+                downColor: '#ef5350',
+                borderVisible: false,
+                wickUpColor: '#26a69a',
+                wickDownColor: '#ef5350',
+                title: 'Price',
+            });
+
+            // 3. Add EMA series that updates independently
+            emaSeries = chart.addSeries(LightweightCharts.LineSeries, {
+                color: '#FF6D00',
+                lineWidth: 2,
+                title: 'EMA (Independent)',
+            });
+
+            // Initialize with some sample data
+            initializeSampleData();
+        }
+        
+        function initializeSampleData() {
+            const sampleData = [];
+            const sampleWhitespace = [];
+            const sampleEMA = [];
+            
+            for (let i = 0; i < 50; i++) {
+                const time = currentTime - (50 - i) * 60;
+                const open = currentPrice + (Math.random() - 0.5) * 2;
+                const close = open + (Math.random() - 0.5) * 2;
+                const high = Math.max(open, close) + Math.random();
+                const low = Math.min(open, close) - Math.random();
+                
+                sampleData.push({ time, open, high, low, close });
+                sampleWhitespace.push({ time, value: close });
+                sampleEMA.push({ time, value: emaValue + (Math.random() - 0.5) * 0.5 });
+                
+                currentPrice = close;
+            }
+            
+            candlestickSeries.setData(sampleData);
+            whitespaceSeries.setData(sampleWhitespace);
+            emaSeries.setData(sampleEMA);
+        }
+        
+        // Add new price bar - updates both candlestick and whitespace series
+        function addNewCandle() {
+            currentTime += 60;
+            const open = currentPrice;
+            const close = open + (Math.random() - 0.5) * 4;
+            const high = Math.max(open, close) + Math.random() * 2;
+            const low = Math.min(open, close) - Math.random() * 2;
+            
+            const newBar = { time: currentTime, open, high, low, close };
+            
+            // Update candlestick series
+            candlestickSeries.update(newBar);
+            
+            // Update whitespace series for time synchronization
+            whitespaceSeries.update({ time: currentTime, value: close });
+            
+            currentPrice = close;
+            console.log('📊 Added new price bar:', newBar);
+        }
+        
+        // Update indicator only - demonstrates independent update capability
+        function updateIndicatorOnly() {
+            // Update EMA without affecting price data
+            emaValue += (Math.random() - 0.5) * 2;
+            
+            emaSeries.update({
+                time: currentTime, // Use current time from whitespace series
+                value: emaValue
+            });
+            
+            console.log('📈 Updated EMA independently:', emaValue);
+        }
+        
+        // Simulate real-time updates with different frequencies
+        function simulateRealTimeUpdates() {
+            if (simulationInterval) clearInterval(simulationInterval);
+            
+            let priceUpdateCount = 0;
+            let indicatorUpdateCount = 0;
+            
+            simulationInterval = setInterval(() => {
+                priceUpdateCount++;
+                indicatorUpdateCount++;
+                
+                // Update price data every iteration (high frequency)
+                addNewCandle();
+                
+                // Update indicators every 3rd iteration (lower frequency)
+                if (indicatorUpdateCount % 3 === 0) {
+                    updateIndicatorOnly();
+                }
+                
+                // Stop after 20 updates
+                if (priceUpdateCount >= 20) {
+                    stopSimulation();
+                }
+            }, 1000);
+            
+            console.log('🚀 Started real-time simulation');
+        }
+        
+        function stopSimulation() {
+            if (simulationInterval) {
+                clearInterval(simulationInterval);
+                simulationInterval = null;
+                console.log('⏹️ Stopped simulation');
+            }
+        }
+        
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', initChart);
+        
+        // Cleanup on unload
+        window.addEventListener('beforeunload', () => {
+            stopSimulation();
+            if (chart) {
+                chart.remove();
+            }
+        });
+    </script>
+</body>
+</html>

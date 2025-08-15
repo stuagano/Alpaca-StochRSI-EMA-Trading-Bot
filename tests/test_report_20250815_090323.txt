@@ -1,0 +1,65 @@
+
+============================================================
+TRADING BOT TEST EXECUTION REPORT
+============================================================
+Timestamp: 2025-08-15T09:03:20.417760
+Total Tests: 4
+Passed: 4
+Failed: 0
+Success Rate: 100.0%
+
+TEST RESULTS:
+============================================================
+
+MODULE_IMPORTS - PASSED
+  ✓ pandas imported successfully
+  ✓ numpy imported successfully
+  ✓ alpaca_trade_api imported successfully
+  ✓ ta imported successfully
+  ✓ flask imported successfully
+  ✓ pydantic imported successfully
+  ✓ yaml imported successfully
+  ✓ pandas_ta imported successfully
+
+CONFIGURATION - PASSED
+  ✓ config/config.yml exists
+  ✓ AUTH/authAlpaca.txt exists
+  ✓ AUTH/Tickers.txt exists
+  ✓ Config loaded: strategy=StochRSI
+
+API_CONNECTION - PASSED
+  ✓ API connected: Account status=ACTIVE
+    Buying power: $170071.64
+    Paper trading: True
+
+BOT_EXECUTION - PASSED
+  ✓ Bot ran for 1.8 seconds
+
+  Last Output Lines:
+    {"asctime": "2025-08-15 09:03:23,266", "name": "config.unified_config", "levelname": "INFO", "message": "Configuration manager initialized with config_dir: config", "taskName": null}
+    {"asctime": "2025-08-15 09:03:23,270", "name": "config.unified_config", "levelname": "INFO", "message": "Configuration loaded successfully", "taskName": null}
+    {"asctime": "2025-08-15 09:03:23,270", "name": "__main__", "levelname": "INFO", "message": "Starting Alpaca Trading Bot with unified architecture...", "taskName": null}
+    {"asctime": "2025-08-15 09:03:23,270", "name": "__main__", "levelname": "INFO", "message": "Initializing service registry...", "taskName": null}
+    {"asctime": "2025-08-15 09:03:23,270", "name": "core.service_registry", "levelname": "INFO", "message": "Service registry initialized", "taskName": null}
+    {"asctime": "2025-08-15 09:03:23,531", "name": "__main__", "levelname": "ERROR", "message": "Fatal error in main: cannot import name 'PerformanceLogger' from 'utils.logging_config' (/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/utils/logging_config.py)", "exc_info": "Traceback (most recent call last):\n  File \"/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/main.py\", line 59, in main\n    setup_core_services()\n  File \"/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/core/service_registry.py\", line 428, in setup_core_services\n    from services.data_service import DataService\n  File \"/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/services/data_service.py\", line 8, in <module>\n    from utils.logging_config import PerformanceLogger\nImportError: cannot import name 'PerformanceLogger' from 'utils.logging_config' (/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/utils/logging_config.py)", "taskName": null}
+    {"asctime": "2025-08-15 09:03:23,532", "name": "__main__", "levelname": "INFO", "message": "Performing cleanup...", "taskName": null}
+    {"asctime": "2025-08-15 09:03:23,532", "name": "core.service_registry", "levelname": "INFO", "message": "Starting service registry shutdown...", "taskName": null}
+    {"asctime": "2025-08-15 09:03:23,532", "name": "core.service_registry", "levelname": "INFO", "message": "Service registry shutdown complete", "taskName": null}
+    {"asctime": "2025-08-15 09:03:23,532", "name": "__main__", "levelname": "INFO", "message": "Main process completed", "taskName": null}
+
+============================================================
+ERRORS:
+  • Bot stderr: Traceback (most recent call last):
+  File "/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/main.py", line 102, in <module>
+    main()
+  File "/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/main.py", line 59, in main
+    setup_core_services()
+  File "/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/core/service_registry.py", line 428, in setup_core_services
+    from services.data_service import DataService  
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/services/data_service.py", line 8, in <module>
+    from utils.logging_config import PerformanceLogger
+ImportError: cannot import name 'PerformanceLogger' from 'utils.logging_config' (/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/utils/logging_config.py)
+
+
+============================================================

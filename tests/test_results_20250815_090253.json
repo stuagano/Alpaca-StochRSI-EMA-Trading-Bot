@@ -1,0 +1,57 @@
+{
+  "timestamp": "2025-08-15T09:02:33.394733",
+  "tests": [
+    {
+      "name": "module_imports",
+      "status": "passed",
+      "details": [
+        "\u2713 pandas imported successfully",
+        "\u2713 numpy imported successfully",
+        "\u2713 alpaca_trade_api imported successfully",
+        "\u2713 ta imported successfully",
+        "\u2713 flask imported successfully",
+        "\u2713 pydantic imported successfully",
+        "\u2713 yaml imported successfully",
+        "\u2713 pandas_ta installed and imported"
+      ]
+    },
+    {
+      "name": "configuration",
+      "status": "passed",
+      "details": [
+        "\u2713 config/config.yml exists",
+        "\u2713 AUTH/authAlpaca.txt exists",
+        "\u2713 AUTH/Tickers.txt exists",
+        "\u2713 Config loaded: strategy=StochRSI"
+      ]
+    },
+    {
+      "name": "api_connection",
+      "status": "failed",
+      "details": [
+        "\u2713 API connected: Account status=ACTIVE",
+        "  Buying power: $170119.39",
+        "\u2717 API connection failed: 'str' object has no attribute 'contains'"
+      ]
+    },
+    {
+      "name": "bot_execution",
+      "status": "passed",
+      "details": [
+        "\u2713 Bot ran for 13.7 seconds"
+      ],
+      "output": [
+        "{\"asctime\": \"2025-08-15 09:02:39,906\", \"name\": \"numexpr.utils\", \"levelname\": \"INFO\", \"message\": \"Note: NumExpr detected 10 cores but \\\"NUMEXPR_MAX_THREADS\\\" not set, so enforcing safe limit of 8.\", \"taskName\": null}",
+        "{\"asctime\": \"2025-08-15 09:02:39,906\", \"name\": \"numexpr.utils\", \"levelname\": \"INFO\", \"message\": \"NumExpr defaulting to 8 threads.\", \"taskName\": null}",
+        "{\"asctime\": \"2025-08-15 09:02:53,034\", \"name\": \"config.unified_config\", \"levelname\": \"INFO\", \"message\": \"Configuration manager initialized with config_dir: config\", \"taskName\": null}",
+        "{\"asctime\": \"2025-08-15 09:02:53,037\", \"name\": \"config.unified_config\", \"levelname\": \"INFO\", \"message\": \"Configuration loaded successfully\", \"taskName\": null}"
+      ]
+    }
+  ],
+  "errors": [
+    "API error: 'str' object has no attribute 'contains'",
+    "Bot stderr: Traceback (most recent call last):\n  File \"/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/main.py\", line 102, in <module>\n    main()\n  File \"/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/main.py\", line 54, in main\n    setup_logging(config.logging)\nTypeError: setup_logging() takes 0 positional arguments but 1 was given\n"
+  ],
+  "warnings": [],
+  "performance_metrics": {}
+}

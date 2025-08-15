@@ -1,0 +1,64 @@
+{
+  "timestamp": "2025-08-15T09:03:20.417760",
+  "tests": [
+    {
+      "name": "module_imports",
+      "status": "passed",
+      "details": [
+        "\u2713 pandas imported successfully",
+        "\u2713 numpy imported successfully",
+        "\u2713 alpaca_trade_api imported successfully",
+        "\u2713 ta imported successfully",
+        "\u2713 flask imported successfully",
+        "\u2713 pydantic imported successfully",
+        "\u2713 yaml imported successfully",
+        "\u2713 pandas_ta imported successfully"
+      ]
+    },
+    {
+      "name": "configuration",
+      "status": "passed",
+      "details": [
+        "\u2713 config/config.yml exists",
+        "\u2713 AUTH/authAlpaca.txt exists",
+        "\u2713 AUTH/Tickers.txt exists",
+        "\u2713 Config loaded: strategy=StochRSI"
+      ]
+    },
+    {
+      "name": "api_connection",
+      "status": "passed",
+      "details": [
+        "\u2713 API connected: Account status=ACTIVE",
+        "  Buying power: $170071.64",
+        "  Paper trading: True"
+      ]
+    },
+    {
+      "name": "bot_execution",
+      "status": "passed",
+      "details": [
+        "\u2713 Bot ran for 1.8 seconds"
+      ],
+      "output": [
+        "{\"asctime\": \"2025-08-15 09:03:22,376\", \"name\": \"numexpr.utils\", \"levelname\": \"INFO\", \"message\": \"Note: NumExpr detected 10 cores but \\\"NUMEXPR_MAX_THREADS\\\" not set, so enforcing safe limit of 8.\", \"taskName\": null}",
+        "{\"asctime\": \"2025-08-15 09:03:22,376\", \"name\": \"numexpr.utils\", \"levelname\": \"INFO\", \"message\": \"NumExpr defaulting to 8 threads.\", \"taskName\": null}",
+        "{\"asctime\": \"2025-08-15 09:03:23,266\", \"name\": \"config.unified_config\", \"levelname\": \"INFO\", \"message\": \"Configuration manager initialized with config_dir: config\", \"taskName\": null}",
+        "{\"asctime\": \"2025-08-15 09:03:23,270\", \"name\": \"config.unified_config\", \"levelname\": \"INFO\", \"message\": \"Configuration loaded successfully\", \"taskName\": null}",
+        "{\"asctime\": \"2025-08-15 09:03:23,270\", \"name\": \"__main__\", \"levelname\": \"INFO\", \"message\": \"Starting Alpaca Trading Bot with unified architecture...\", \"taskName\": null}",
+        "{\"asctime\": \"2025-08-15 09:03:23,270\", \"name\": \"__main__\", \"levelname\": \"INFO\", \"message\": \"Initializing service registry...\", \"taskName\": null}",
+        "{\"asctime\": \"2025-08-15 09:03:23,270\", \"name\": \"core.service_registry\", \"levelname\": \"INFO\", \"message\": \"Service registry initialized\", \"taskName\": null}",
+        "{\"asctime\": \"2025-08-15 09:03:23,531\", \"name\": \"__main__\", \"levelname\": \"ERROR\", \"message\": \"Fatal error in main: cannot import name 'PerformanceLogger' from 'utils.logging_config' (/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/utils/logging_config.py)\", \"exc_info\": \"Traceback (most recent call last):\\n  File \\\"/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/main.py\\\", line 59, in main\\n    setup_core_services()\\n  File \\\"/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/core/service_registry.py\\\", line 428, in setup_core_services\\n    from services.data_service import DataService\\n  File \\\"/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/services/data_service.py\\\", line 8, in <module>\\n    from utils.logging_config import PerformanceLogger\\nImportError: cannot import name 'PerformanceLogger' from 'utils.logging_config' (/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/utils/logging_config.py)\", \"taskName\": null}",
+        "{\"asctime\": \"2025-08-15 09:03:23,532\", \"name\": \"__main__\", \"levelname\": \"INFO\", \"message\": \"Performing cleanup...\", \"taskName\": null}",
+        "{\"asctime\": \"2025-08-15 09:03:23,532\", \"name\": \"core.service_registry\", \"levelname\": \"INFO\", \"message\": \"Starting service registry shutdown...\", \"taskName\": null}",
+        "{\"asctime\": \"2025-08-15 09:03:23,532\", \"name\": \"core.service_registry\", \"levelname\": \"INFO\", \"message\": \"Service registry shutdown complete\", \"taskName\": null}",
+        "{\"asctime\": \"2025-08-15 09:03:23,532\", \"name\": \"__main__\", \"levelname\": \"INFO\", \"message\": \"Main process completed\", \"taskName\": null}"
+      ]
+    }
+  ],
+  "errors": [
+    "Bot stderr: Traceback (most recent call last):\n  File \"/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/main.py\", line 102, in <module>\n    main()\n  File \"/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/main.py\", line 59, in main\n    setup_core_services()\n  File \"/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/core/service_registry.py\", line 428, in setup_core_services\n    from services.data_service import DataService  \n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/services/data_service.py\", line 8, in <module>\n    from utils.logging_config import PerformanceLogger\nImportError: cannot import name 'PerformanceLogger' from 'utils.logging_config' (/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/utils/logging_config.py)\n"
+  ],
+  "warnings": [],
+  "performance_metrics": {}
+}

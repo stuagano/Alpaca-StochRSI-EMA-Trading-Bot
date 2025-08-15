@@ -1,0 +1,55 @@
+
+============================================================
+TRADING BOT TEST EXECUTION REPORT
+============================================================
+Timestamp: 2025-08-15T09:02:33.394733
+Total Tests: 4
+Passed: 3
+Failed: 1
+Success Rate: 75.0%
+
+TEST RESULTS:
+============================================================
+
+MODULE_IMPORTS - PASSED
+  ✓ pandas imported successfully
+  ✓ numpy imported successfully
+  ✓ alpaca_trade_api imported successfully
+  ✓ ta imported successfully
+  ✓ flask imported successfully
+  ✓ pydantic imported successfully
+  ✓ yaml imported successfully
+  ✓ pandas_ta installed and imported
+
+CONFIGURATION - PASSED
+  ✓ config/config.yml exists
+  ✓ AUTH/authAlpaca.txt exists
+  ✓ AUTH/Tickers.txt exists
+  ✓ Config loaded: strategy=StochRSI
+
+API_CONNECTION - FAILED
+  ✓ API connected: Account status=ACTIVE
+    Buying power: $170119.39
+  ✗ API connection failed: 'str' object has no attribute 'contains'
+
+BOT_EXECUTION - PASSED
+  ✓ Bot ran for 13.7 seconds
+
+  Last Output Lines:
+    {"asctime": "2025-08-15 09:02:39,906", "name": "numexpr.utils", "levelname": "INFO", "message": "Note: NumExpr detected 10 cores but \"NUMEXPR_MAX_THREADS\" not set, so enforcing safe limit of 8.", "taskName": null}
+    {"asctime": "2025-08-15 09:02:39,906", "name": "numexpr.utils", "levelname": "INFO", "message": "NumExpr defaulting to 8 threads.", "taskName": null}
+    {"asctime": "2025-08-15 09:02:53,034", "name": "config.unified_config", "levelname": "INFO", "message": "Configuration manager initialized with config_dir: config", "taskName": null}
+    {"asctime": "2025-08-15 09:02:53,037", "name": "config.unified_config", "levelname": "INFO", "message": "Configuration loaded successfully", "taskName": null}
+
+============================================================
+ERRORS:
+  • API error: 'str' object has no attribute 'contains'
+  • Bot stderr: Traceback (most recent call last):
+  File "/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/main.py", line 102, in <module>
+    main()
+  File "/Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/main.py", line 54, in main
+    setup_logging(config.logging)
+TypeError: setup_logging() takes 0 positional arguments but 1 was given
+
+
+============================================================
