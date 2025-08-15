@@ -441,7 +441,8 @@ def real_time_data_thread():
                                     
                                     # Debug: Log the first candlestick to verify format
                                     if i == 0:
-                                        logger.info(f"🕯️ First candlestick for {ticker}: time={time_unix} (type: {type(time_unix)}), OHLC=[{candle['open']},{candle['high']},{candle['low']},{candle['close']}]")
+                                        current_unix = int(datetime.now().timestamp())
+                                        logger.info(f"🕯️ First candlestick for {ticker}: time={time_unix} (current={current_unix}), OHLC=[{candle['open']},{candle['high']},{candle['low']},{candle['close']}]")
                                 
                                 ticker_candlesticks[ticker] = {
                                     'data': sorted(candlesticks, key=lambda x: x['time']),  # Ensure chronological order
@@ -665,6 +666,54 @@ def test_charts():
     with open('test_real_time_charts.html', 'r') as f:
         return f.read()
 
+@app.route('/api/debug/chart_data/<symbol>')
+def debug_chart_data(symbol):
+    """Debug endpoint to test chart data format"""
+    try:
+        data = data_manager.get_historical_data(symbol.upper(), timeframe='1Min', limit=20)
+        
+        if not data.empty:
+            candlesticks = []
+            for timestamp, row in data.iterrows():
+                time_unix = int(timestamp.timestamp())
+                candlesticks.append({
+                    'time': time_unix,
+                    'open': float(row['open']),
+                    'high': float(row['high']),
+                    'low': float(row['low']),
+                    'close': float(row['close']),
+                    'volume': int(row['volume']) if 'volume' in row else 0
+                })
+            
+            return jsonify({
+                'success': True,
+                'symbol': symbol.upper(),
+                'data_count': len(candlesticks),
+                'first_candle': candlesticks[0] if candlesticks else None,
+                'last_candle': candlesticks[-1] if candlesticks else None,
+                'candlesticks': candlesticks,
+                'websocket_format': {
+                    'ticker_candlesticks': {
+                        symbol.upper(): {
+                            'data': candlesticks,
+                            'last_update': int(datetime.now().timestamp())
+                        }
+                    }
+                }
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'No data available'
+            })
+            
+    except Exception as e:
+        logger.error(f"Error in debug chart data: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
 @app.route('/api/config', methods=['GET', 'POST'])
 @require_auth
 @cache_response(timeout=60)  # Cache config for 1 minute
@@ -805,7 +854,15 @@ def get_chart_data(symbol):
             # Convert to LightweightCharts format with optimization
             candlesticks = []
             for timestamp, row in data.iterrows():
+                # Fix timestamp conversion - ensure we get current time in seconds
                 time_unix = int(timestamp.timestamp())
+                
+                # Debug timestamp conversion
+                if len(candlesticks) == 0:  # Log first timestamp for debugging
+                    logger.info(f"🕐 Timestamp conversion for {symbol}: {timestamp} -> {time_unix}")
+                    current_time = datetime.now().timestamp()
+                    logger.info(f"🕐 Current time for comparison: {current_time}")
+                
                 candlesticks.append({
                     'time': time_unix,
                     'open': round(float(row['open']), 4),  # Round to reduce payload size
@@ -1419,5 +1476,13 @@ if __name__ == '__main__':
     logger.info(f"- WebSocket buffer size: {websocket_buffer_size}")
     logger.info(f"- Thread pool workers: {thread_executor._max_workers}")
     logger.info(f"- Cache timeouts: Realtime={REALTIME_CACHE_TIMEOUT}s, General={CACHE_TIMEOUT}s, Static={STATIC_CACHE_TIMEOUT}s")
+    
+    # Start the real-time data streaming thread
+    try:
+        streaming_thread = threading.Thread(target=real_time_data_thread, daemon=True)
+        streaming_thread.start()
+        logger.info("✅ Real-time data streaming thread started successfully")
+    except Exception as e:
+        logger.error(f"❌ Failed to start real-time streaming thread: {e}")
     
     socketio.run(app, host='0.0.0.0', port=port)

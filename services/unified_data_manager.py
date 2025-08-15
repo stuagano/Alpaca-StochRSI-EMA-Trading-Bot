@@ -310,13 +310,22 @@ class UnifiedDataManager:
                         # Convert to DataFrame
                         data = []
                         for bar in bars:
+                            # Convert bar timestamp to proper datetime
+                            if hasattr(bar.t, 'timestamp'):
+                                # If it's already a datetime object
+                                timestamp = bar.t
+                            else:
+                                # If it's a string, parse it
+                                from dateutil import parser
+                                timestamp = parser.parse(str(bar.t))
+                            
                             data.append({
                                 'open': float(bar.o),
                                 'high': float(bar.h),
                                 'low': float(bar.l),
                                 'close': float(bar.c),
                                 'volume': int(bar.v),
-                                'timestamp': bar.t
+                                'timestamp': timestamp
                             })
                         
                         if data:

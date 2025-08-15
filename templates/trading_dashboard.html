@@ -92,10 +92,16 @@
         }
         .chart-container {
             height: 500px;
+            width: 100%;
             background: #0d1117;
             border-radius: 8px;
             padding: 10px;
             position: relative;
+            box-sizing: border-box;
+        }
+        #mainChart {
+            height: 100%;
+            width: 100%;
         }
         .position-card {
             background: linear-gradient(135deg, #1e293b, #0f172a);
@@ -186,9 +192,11 @@
         }
         .mini-chart {
             height: 100px;
+            width: 100%;
             background: #0d1117;
             border-radius: 6px;
             margin-top: 10px;
+            box-sizing: border-box;
         }
     </style>
 </head>
@@ -207,8 +215,11 @@
                     <button class="btn btn-success me-2" id="startBotBtn">
                         <i class="bi bi-play-fill"></i> Start Bot
                     </button>
-                    <button class="btn btn-danger" id="stopBotBtn" disabled>
+                    <button class="btn btn-danger me-2" id="stopBotBtn" disabled>
                         <i class="bi bi-stop-fill"></i> Stop Bot
+                    </button>
+                    <button class="btn btn-info" id="testChartsBtn" onclick="testChartData()">
+                        <i class="bi bi-graph-up"></i> Test Charts
                     </button>
                 </div>
             </div>
@@ -387,6 +398,8 @@
         let currentSymbol = 'SPY';
         let currentTimeframe = '1';
         let lastPriceData = {};
+        let isChartInitialized = false;
+        let lastCandleTime = {}; // Track last candle time per symbol
 
         // Initialize WebSocket connection
         function initSocket() {
@@ -404,7 +417,17 @@
             });
             
             socket.on('real_time_update', function(data) {
-                console.log('Real-time update received:', data);
+                console.log('📡 Real-time update received:', data);
+                if (data.ticker_candlesticks) {
+                    console.log('📊 Ticker candlesticks data available for:', Object.keys(data.ticker_candlesticks));
+                    Object.keys(data.ticker_candlesticks).forEach(symbol => {
+                        const symbolData = data.ticker_candlesticks[symbol];
+                        console.log(`🕯️ ${symbol}: ${symbolData.data ? symbolData.data.length : 0} candlesticks`);
+                        if (symbolData.data && symbolData.data.length > 0) {
+                            console.log(`   Latest candle:`, symbolData.data[symbolData.data.length - 1]);
+                        }
+                    });
+                }
                 updateDashboard(data);
             });
             
@@ -415,33 +438,75 @@
             });
         }
 
+        // Utility function to validate and convert timestamps
+        function validateTimestamp(timestamp, fallbackContext = '') {
+            if (timestamp instanceof Date) {
+                return Math.floor(timestamp.getTime() / 1000);
+            }
+            if (typeof timestamp === 'string') {
+                const parsed = Date.parse(timestamp);
+                if (!isNaN(parsed)) {
+                    return Math.floor(parsed / 1000);
+                }
+            }
+            if (typeof timestamp === 'number') {
+                // If it looks like milliseconds, convert to seconds
+                if (timestamp > 10000000000) {
+                    return Math.floor(timestamp / 1000);
+                }
+                return Math.floor(timestamp);
+            }
+            console.warn(`Invalid timestamp: ${timestamp} in context: ${fallbackContext}`);
+            return Math.floor(Date.now() / 1000);
+        }
+
         // Initialize Lightweight Charts
         function initCharts() {
-            // Main chart
-            const chartElement = document.getElementById('mainChart');
-            chart = LightweightCharts.createChart(chartElement, {
-                width: chartElement.clientWidth,
-                height: 480,
-                layout: {
-                    background: { color: '#0d1117' },
-                    textColor: '#d1d5db',
-                },
-                grid: {
-                    vertLines: { color: 'rgba(42, 46, 57, 0.5)' },
-                    horzLines: { color: 'rgba(42, 46, 57, 0.5)' },
-                },
-                crosshair: {
-                    mode: LightweightCharts.CrosshairMode.Normal,
-                },
-                rightPriceScale: {
-                    borderColor: 'rgba(197, 203, 206, 0.8)',
-                },
-                timeScale: {
-                    borderColor: 'rgba(197, 203, 206, 0.8)',
-                    timeVisible: true,
-                    secondsVisible: false,
-                },
-            });
+            try {
+                // Main chart
+                const chartElement = document.getElementById('mainChart');
+                if (!chartElement) {
+                    console.error('Chart container element not found');
+                    return;
+                }
+                
+                // Get container dimensions
+                const containerRect = chartElement.parentElement.getBoundingClientRect();
+                const chartWidth = Math.max(containerRect.width - 20, 400); // Account for padding
+                const chartHeight = 460; // Fixed height minus padding
+                
+                chart = LightweightCharts.createChart(chartElement, {
+                    width: chartWidth,
+                    height: chartHeight,
+                    layout: {
+                        background: { color: '#0d1117' },
+                        textColor: '#d1d5db',
+                    },
+                    grid: {
+                        vertLines: { color: 'rgba(42, 46, 57, 0.5)' },
+                        horzLines: { color: 'rgba(42, 46, 57, 0.5)' },
+                    },
+                    crosshair: {
+                        mode: LightweightCharts.CrosshairMode.Normal,
+                    },
+                    rightPriceScale: {
+                        borderColor: 'rgba(197, 203, 206, 0.8)',
+                    },
+                    timeScale: {
+                        borderColor: 'rgba(197, 203, 206, 0.8)',
+                        timeVisible: true,
+                        secondsVisible: false,
+                    },
+                    handleScroll: {
+                        mouseWheel: true,
+                        pressedMouseMove: true,
+                    },
+                    handleScale: {
+                        axisPressedMouseMove: true,
+                        mouseWheel: true,
+                        pinch: true,
+                    },
+                });
 
             candlestickSeries = chart.addCandlestickSeries({
                 upColor: '#10b981',
@@ -467,24 +532,28 @@
                 priceScaleId: '',
             });
 
-            // RSI Chart
-            const rsiElement = document.getElementById('rsiChart');
-            rsiChart = LightweightCharts.createChart(rsiElement, {
-                width: rsiElement.clientWidth,
-                height: 100,
-                layout: {
-                    background: { color: '#0d1117' },
-                    textColor: '#d1d5db',
-                },
-                grid: {
-                    vertLines: { visible: false },
-                    horzLines: { color: 'rgba(42, 46, 57, 0.5)' },
-                },
-                timeScale: { visible: false },
-                rightPriceScale: {
-                    scaleMargins: { top: 0.1, bottom: 0.1 },
-                },
-            });
+                // RSI Chart
+                const rsiElement = document.getElementById('rsiChart');
+                if (rsiElement) {
+                    const rsiRect = rsiElement.getBoundingClientRect();
+                    const rsiWidth = Math.max(rsiRect.width || 400, 300);
+                    
+                    rsiChart = LightweightCharts.createChart(rsiElement, {
+                        width: rsiWidth,
+                        height: 100,
+                        layout: {
+                            background: { color: '#0d1117' },
+                            textColor: '#d1d5db',
+                        },
+                        grid: {
+                            vertLines: { visible: false },
+                            horzLines: { color: 'rgba(42, 46, 57, 0.5)' },
+                        },
+                        timeScale: { visible: false },
+                        rightPriceScale: {
+                            scaleMargins: { top: 0.1, bottom: 0.1 },
+                        },
+                    });
 
             rsiSeries = rsiChart.addLineSeries({
                 color: '#f59e0b',
@@ -510,24 +579,28 @@
                 { time: Date.now() / 1000, value: 30 }
             ]);
 
-            // Volume Chart
-            const volumeElement = document.getElementById('volumeChart');
-            volumeChart = LightweightCharts.createChart(volumeElement, {
-                width: volumeElement.clientWidth,
-                height: 100,
-                layout: {
-                    background: { color: '#0d1117' },
-                    textColor: '#d1d5db',
-                },
-                grid: {
-                    vertLines: { visible: false },
-                    horzLines: { visible: false },
-                },
-                timeScale: { visible: false },
-                rightPriceScale: {
-                    scaleMargins: { top: 0.1, bottom: 0 },
-                },
-            });
+                // Volume Chart
+                const volumeElement = document.getElementById('volumeChart');
+                if (volumeElement) {
+                    const volumeRect = volumeElement.getBoundingClientRect();
+                    const volumeWidth = Math.max(volumeRect.width || 400, 300);
+                    
+                    volumeChart = LightweightCharts.createChart(volumeElement, {
+                        width: volumeWidth,
+                        height: 100,
+                        layout: {
+                            background: { color: '#0d1117' },
+                            textColor: '#d1d5db',
+                        },
+                        grid: {
+                            vertLines: { visible: false },
+                            horzLines: { visible: false },
+                        },
+                        timeScale: { visible: false },
+                        rightPriceScale: {
+                            scaleMargins: { top: 0.1, bottom: 0 },
+                        },
+                    });
 
             volumeBarSeries = volumeChart.addHistogramSeries({
                 color: '#26a69a',
@@ -536,27 +609,58 @@
                 },
             });
 
-            // Load initial data
-            loadChartData(currentSymbol, currentTimeframe);
+                isChartInitialized = true;
+                console.log('Charts initialized successfully');
+                
+                // Load initial data
+                loadChartData(currentSymbol, currentTimeframe);
+                
+            } catch (error) {
+                console.error('Error initializing charts:', error);
+            }
         }
 
         // Load chart data
         async function loadChartData(symbol, timeframe) {
+            if (!isChartInitialized) {
+                console.warn('Charts not initialized yet, skipping data load');
+                return;
+            }
+            
             try {
+                console.log(`Loading chart data for ${symbol} - ${timeframe}min`);
                 const response = await fetch(`/api/chart/${symbol}?timeframe=${timeframe}Min&limit=200`);
                 const data = await response.json();
                 
-                if (data.success && data.data) {
-                    const chartData = data.data.data.map(candle => ({
-                        time: candle.time,
-                        open: candle.open,
-                        high: candle.high,
-                        low: candle.low,
-                        close: candle.close,
-                        volume: candle.volume
-                    }));
+                if (data.success && data.data && data.data.data) {
+                    const rawData = data.data.data;
+                    console.log(`Received ${rawData.length} data points for ${symbol}`);
                     
-                    candlestickSeries.setData(chartData);
+                    const chartData = rawData.map(candle => {
+                        const validatedTime = validateTimestamp(candle.time, `chart data for ${symbol}`);
+                        return {
+                            time: validatedTime,
+                            open: parseFloat(candle.open),
+                            high: parseFloat(candle.high),
+                            low: parseFloat(candle.low),
+                            close: parseFloat(candle.close),
+                            volume: candle.volume ? parseInt(candle.volume) : 0
+                        };
+                    });
+                    
+                    // Sort data by time to ensure chronological order
+                    chartData.sort((a, b) => a.time - b.time);
+                    
+                    // Update last candle time for this symbol
+                    if (chartData.length > 0) {
+                        lastCandleTime[symbol] = chartData[chartData.length - 1].time;
+                        console.log(`Last candle time for ${symbol}: ${lastCandleTime[symbol]}`);
+                    }
+                    
+                    if (candlestickSeries) {
+                        candlestickSeries.setData(chartData);
+                        console.log(`Set ${chartData.length} candlesticks for ${symbol}`);
+                    }
                     
                     // Volume data
                     const volumeData = chartData.map(d => ({
@@ -656,29 +760,91 @@
             loadChartData(currentSymbol, timeframe);
         }
 
-        // Update chart with real-time data
+        // Update chart with real-time data (single candle)
         function updateChart(data) {
-            const candle = {
-                time: data.time,
-                open: data.open,
-                high: data.high,
-                low: data.low,
-                close: data.close
-            };
+            if (!isChartInitialized || !candlestickSeries) {
+                console.warn('Chart not ready for updates');
+                return;
+            }
             
-            candlestickSeries.update(candle);
-            
-            if (data.volume) {
-                volumeSeries.update({
-                    time: data.time,
-                    value: data.volume,
-                    color: data.close >= data.open ? '#10b98180' : '#ef444480'
-                });
+            try {
+                const validatedTime = validateTimestamp(data.time, 'updateChart');
+                const candle = {
+                    time: validatedTime,
+                    open: parseFloat(data.open),
+                    high: parseFloat(data.high),
+                    low: parseFloat(data.low),
+                    close: parseFloat(data.close)
+                };
                 
-                volumeBarSeries.update({
-                    time: data.time,
-                    value: data.volume
-                });
+                console.log(`Updating single candle: ${JSON.stringify(candle)}`);
+                candlestickSeries.update(candle);
+                
+                if (data.volume && volumeSeries && volumeBarSeries) {
+                    const volumeData = {
+                        time: validatedTime,
+                        value: parseInt(data.volume),
+                        color: data.close >= data.open ? '#10b98180' : '#ef444480'
+                    };
+                    
+                    volumeSeries.update(volumeData);
+                    volumeBarSeries.update({
+                        time: validatedTime,
+                        value: parseInt(data.volume)
+                    });
+                }
+            } catch (error) {
+                console.error('Error updating chart:', error, data);
+            }
+        }
+        
+        // Update chart with multiple candlesticks (from WebSocket)
+        function updateChartWithCandlesticks(symbol, candlesticks) {
+            if (!isChartInitialized || !candlestickSeries) {
+                console.warn('Chart not ready for candlestick updates');
+                return;
+            }
+            
+            if (symbol !== currentSymbol) {
+                console.log(`Ignoring candlesticks for ${symbol}, current symbol is ${currentSymbol}`);
+                return;
+            }
+            
+            try {
+                console.log(`Updating chart with ${candlesticks.length} candlesticks for ${symbol}`);
+                
+                // Process and validate candlestick data
+                const validatedCandles = candlesticks.map(candle => {
+                    const validatedTime = validateTimestamp(candle.time, `candlesticks for ${symbol}`);
+                    return {
+                        time: validatedTime,
+                        open: parseFloat(candle.open),
+                        high: parseFloat(candle.high),
+                        low: parseFloat(candle.low),
+                        close: parseFloat(candle.close)
+                    };
+                }).sort((a, b) => a.time - b.time);
+                
+                // Check if we need to add new candles or update existing ones
+                const lastKnownTime = lastCandleTime[symbol] || 0;
+                const newestCandleTime = validatedCandles.length > 0 ? validatedCandles[validatedCandles.length - 1].time : 0;
+                
+                if (newestCandleTime > lastKnownTime) {
+                    console.log(`🕯️ New candle detected for ${symbol}! Adding new data...`);
+                    // Use setData to refresh with new candles
+                    // First, get current data and merge with new data
+                    candlestickSeries.setData(validatedCandles);
+                    lastCandleTime[symbol] = newestCandleTime;
+                } else {
+                    console.log(`📊 Updating existing candles for ${symbol}`);
+                    // Update existing candles
+                    validatedCandles.forEach(candle => {
+                        candlestickSeries.update(candle);
+                    });
+                }
+                
+            } catch (error) {
+                console.error('Error updating chart with candlesticks:', error, candlesticks);
             }
         }
 
@@ -777,13 +943,14 @@
             }
             
             // Update price data for charts
-            if (data.ticker_candlesticks && data.ticker_candlesticks[currentSymbol]) {
-                const candleData = data.ticker_candlesticks[currentSymbol].data;
-                if (candleData && candleData.length > 0) {
-                    candleData.forEach(candle => {
-                        candlestickSeries.update(candle);
-                    });
-                }
+            if (data.ticker_candlesticks) {
+                Object.keys(data.ticker_candlesticks).forEach(symbol => {
+                    const symbolData = data.ticker_candlesticks[symbol];
+                    if (symbolData && symbolData.data && symbolData.data.length > 0) {
+                        console.log(`📈 Received ${symbolData.data.length} candlesticks for ${symbol}`);
+                        updateChartWithCandlesticks(symbol, symbolData.data);
+                    }
+                });
             }
         }
 
@@ -827,39 +994,129 @@
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
-            initSocket();
+            console.log('🚀 Trading Dashboard initializing...');
+            
+            // Initialize charts first, then WebSocket
             initCharts();
+            initSocket();
             
-            // Load initial data
-            fetch('/api/account')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        updateDashboard({account_info: data.account});
-                    }
-                });
-            
-            fetch('/api/positions')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        updateDashboard({positions: data.positions});
-                    }
-                });
+            // Load initial data with proper error handling
+            console.log('📊 Loading initial dashboard data...');
+            Promise.all([
+                fetch('/api/account').then(response => response.json()),
+                fetch('/api/positions').then(response => response.json())
+            ]).then(([accountData, positionsData]) => {
+                const dashboardData = {};
+                
+                if (accountData.success) {
+                    dashboardData.account_info = accountData.account;
+                    console.log('✅ Account data loaded');
+                } else {
+                    console.error('❌ Failed to load account data:', accountData.error);
+                }
+                
+                if (positionsData.success) {
+                    dashboardData.positions = positionsData.positions;
+                    console.log('✅ Positions data loaded');
+                } else {
+                    console.error('❌ Failed to load positions data:', positionsData.error);
+                }
+                
+                updateDashboard(dashboardData);
+                
+                // Test chart data loading after initial data
+                console.log('🧪 Testing chart data loading...');
+                setTimeout(() => {
+                    fetch('/api/chart/SPY?timeframe=1Min&limit=5')
+                        .then(response => response.json())
+                        .then(testData => {
+                            console.log('🧪 Chart API test:', testData);
+                            if (testData.success && testData.data && testData.data.data) {
+                                console.log(`🧪 Chart test successful: ${testData.data.data.length} candles`);
+                                // Trigger a chart update
+                                if (isChartInitialized) {
+                                    loadChartData('SPY', '1');
+                                }
+                            } else {
+                                console.error('🧪 Chart test failed:', testData.error);
+                            }
+                        })
+                        .catch(error => console.error('🧪 Chart test error:', error));
+                }, 1000);
+                
+            }).catch(error => {
+                console.error('❌ Error loading initial data:', error);
+            });
             
             // Auto-resize charts
+            let resizeTimeout;
             window.addEventListener('resize', () => {
-                chart.applyOptions({ 
-                    width: document.getElementById('mainChart').clientWidth 
-                });
-                rsiChart.applyOptions({ 
-                    width: document.getElementById('rsiChart').clientWidth 
-                });
-                volumeChart.applyOptions({ 
-                    width: document.getElementById('volumeChart').clientWidth 
-                });
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(() => {
+                    try {
+                        if (chart && isChartInitialized) {
+                            const mainContainer = document.getElementById('mainChart').parentElement;
+                            const containerRect = mainContainer.getBoundingClientRect();
+                            const newWidth = Math.max(containerRect.width - 20, 400);
+                            
+                            chart.applyOptions({ width: newWidth });
+                            
+                            if (rsiChart) {
+                                const rsiContainer = document.getElementById('rsiChart');
+                                if (rsiContainer) {
+                                    const rsiRect = rsiContainer.getBoundingClientRect();
+                                    rsiChart.applyOptions({ width: Math.max(rsiRect.width || 400, 300) });
+                                }
+                            }
+                            
+                            if (volumeChart) {
+                                const volumeContainer = document.getElementById('volumeChart');
+                                if (volumeContainer) {
+                                    const volumeRect = volumeContainer.getBoundingClientRect();
+                                    volumeChart.applyOptions({ width: Math.max(volumeRect.width || 400, 300) });
+                                }
+                            }
+                            
+                            console.log('Charts resized successfully');
+                        }
+                    } catch (error) {
+                        console.error('Error resizing charts:', error);
+                    }
+                }, 250); // Debounce resize events
             });
+            
         });
+        
+        // Test function for manual chart debugging
+        async function testChartData() {
+            console.log('🔬 Testing chart data...');
+            try {
+                const response = await fetch(`/api/debug/chart_data/${currentSymbol}`);
+                const data = await response.json();
+                console.log('Debug data received:', data);
+                
+                if (data.success && data.candlesticks) {
+                    console.log(`📊 Testing with ${data.candlesticks.length} candlesticks for ${data.symbol}`);
+                    
+                    if (isChartInitialized && candlestickSeries) {
+                        candlestickSeries.setData(data.candlesticks);
+                        console.log('✅ Test data loaded into chart');
+                        
+                        // Test WebSocket format
+                        if (data.websocket_format) {
+                            console.log('🧪 Testing WebSocket format update...');
+                            updateChartWithCandlesticks(data.symbol, data.candlesticks);
+                        }
+                    } else {
+                        console.warn('❌ Chart not initialized yet');
+                    }
+                } else {
+                    console.error('❌ Failed to get test data:', data.error);
+                }
+            } catch (error) {
+                console.error('❌ Error testing chart data:', error);
+            }
+        }
     </script>
 </body>
 </html>
