@@ -640,7 +640,12 @@ def get_config_template():
 # Routes
 @app.route('/')
 def index():
-    return render_template('tradingview_dashboard.html')
+    return render_template('trading_dashboard.html')
+
+@app.route('/dashboard')
+@require_auth
+def dashboard():
+    return render_template('trading_dashboard.html')
 
 @app.route('/dashboard_v2')
 def dashboard_v2():

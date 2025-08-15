@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alpaca Trading Dashboard - SuperTrend Strategy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        body { 
+            background: #1a1a2e; 
+            color: #eee;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .dashboard-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .card {
+            background: #16213e;
+            border: 1px solid #0f3460;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .status-card {
+            background: linear-gradient(135deg, #0f3460, #16213e);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .status-card h6 {
+            color: #9ca3af;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .status-card h3 {
+            font-weight: 600;
+            margin: 0;
+        }
+        .profit { color: #10b981; font-weight: 600; }
+        .loss { color: #ef4444; font-weight: 600; }
+        .signal-buy { 
+            background: linear-gradient(45deg, #10b981, #059669); 
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        .signal-sell { 
+            background: linear-gradient(45deg, #ef4444, #dc2626); 
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        .signal-neutral { 
+            background: linear-gradient(45deg, #6b7280, #4b5563); 
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        .streaming-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+            margin-right: 8px;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+        .chart-container {
+            height: 500px;
+            background: #0d1117;
+            border-radius: 8px;
+            padding: 10px;
+            position: relative;
+        }
+        .position-card {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+        .position-card.profit {
+            border-left-color: #10b981;
+        }
+        .position-card.loss {
+            border-left-color: #ef4444;
+        }
+        .position-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .supertrend-signal {
+            font-size: 1.2em;
+            font-weight: bold;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        .supertrend-buy {
+            background: linear-gradient(135deg, #065f46, #10b981);
+            color: white;
+            box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
+        }
+        .supertrend-sell {
+            background: linear-gradient(135deg, #991b1b, #ef4444);
+            color: white;
+            box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3);
+        }
+        .supertrend-neutral {
+            background: linear-gradient(135deg, #374151, #6b7280);
+            color: white;
+        }
+        .btn-symbol {
+            background: #1e293b;
+            color: white;
+            border: 1px solid #334155;
+            padding: 8px 16px;
+            margin: 2px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+        .btn-symbol:hover {
+            background: #334155;
+            transform: translateY(-2px);
+        }
+        .btn-symbol.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-color: #667eea;
+        }
+        .chart-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+        }
+        .timeframe-btn {
+            background: rgba(30, 41, 59, 0.8);
+            color: white;
+            border: 1px solid #334155;
+            padding: 4px 12px;
+            margin: 0 2px;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+        .timeframe-btn:hover {
+            background: #334155;
+        }
+        .timeframe-btn.active {
+            background: #667eea;
+            border-color: #667eea;
+        }
+        .signal-item {
+            padding: 12px;
+            margin: 8px 0;
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border-radius: 8px;
+            border-left: 3px solid #667eea;
+        }
+        .mini-chart {
+            height: 100px;
+            background: #0d1117;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid p-3">
+        <!-- Header -->
+        <div class="dashboard-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2><i class="bi bi-graph-up"></i> Alpaca Trading Dashboard</h2>
+                    <p class="mb-0 opacity-75">SuperTrend Strategy with Real-Time Charts</p>
+                </div>
+                <div class="d-flex align-items-center">
+                    <span class="streaming-dot"></span>
+                    <span id="connectionStatus" class="me-3">Connecting...</span>
+                    <button class="btn btn-success me-2" id="startBotBtn">
+                        <i class="bi bi-play-fill"></i> Start Bot
+                    </button>
+                    <button class="btn btn-danger" id="stopBotBtn" disabled>
+                        <i class="bi bi-stop-fill"></i> Stop Bot
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Stats Row -->
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <div class="status-card">
+                    <h6>Portfolio Value</h6>
+                    <h3 id="portfolioValue">$0.00</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="status-card">
+                    <h6>Buying Power</h6>
+                    <h3 id="buyingPower">$0.00</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="status-card">
+                    <h6>Daily P/L</h6>
+                    <h3 id="dailyPL">$0.00</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="status-card">
+                    <h6>SuperTrend Signal</h6>
+                    <div id="supertrendSignal" class="supertrend-signal supertrend-neutral">
+                        ANALYZING...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Chart and Positions -->
+        <div class="row">
+            <!-- Main Chart -->
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">Live Chart - <span id="currentSymbol">SPY</span></h5>
+                        <div>
+                            <span class="me-2">Symbol:</span>
+                            <div class="btn-group" role="group">
+                                <button class="btn-symbol active" onclick="changeSymbol('SPY')">SPY</button>
+                                <button class="btn-symbol" onclick="changeSymbol('AMD')">AMD</button>
+                                <button class="btn-symbol" onclick="changeSymbol('GOOG')">GOOG</button>
+                                <button class="btn-symbol" onclick="changeSymbol('PYPL')">PYPL</button>
+                                <button class="btn-symbol" onclick="changeSymbol('AAPL')">AAPL</button>
+                                <button class="btn-symbol" onclick="changeSymbol('TSLA')">TSLA</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-container position-relative">
+                        <div class="chart-controls">
+                            <button class="timeframe-btn active" onclick="changeTimeframe('1')">1m</button>
+                            <button class="timeframe-btn" onclick="changeTimeframe('5')">5m</button>
+                            <button class="timeframe-btn" onclick="changeTimeframe('15')">15m</button>
+                            <button class="timeframe-btn" onclick="changeTimeframe('60')">1h</button>
+                            <button class="timeframe-btn" onclick="changeTimeframe('D')">1D</button>
+                        </div>
+                        <div id="mainChart" style="height: 100%;"></div>
+                    </div>
+                    
+                    <!-- Indicator Charts -->
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <h6>RSI Indicator</h6>
+                                <div id="rsiChart" class="mini-chart"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <h6>Volume</h6>
+                                <div id="volumeChart" class="mini-chart"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Positions and Signals -->
+            <div class="col-lg-4">
+                <!-- Positions -->
+                <div class="card">
+                    <h5 class="mb-3">Open Positions</h5>
+                    <div id="positionsContainer">
+                        <p class="text-muted">Loading positions...</p>
+                    </div>
+                </div>
+
+                <!-- Trading Signals -->
+                <div class="card mt-3">
+                    <h5 class="mb-3">Trading Signals</h5>
+                    <div id="signalsContainer">
+                        <p class="text-muted">Waiting for signals...</p>
+                    </div>
+                </div>
+
+                <!-- Recent Orders -->
+                <div class="card mt-3">
+                    <h5 class="mb-3">Recent Activity</h5>
+                    <div id="ordersContainer" style="max-height: 200px; overflow-y: auto;">
+                        <p class="text-muted">No recent activity</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Market Overview -->
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="card">
+                    <h5 class="mb-3">Market Overview</h5>
+                    <div class="row" id="marketOverview">
+                        <div class="col-md-2">
+                            <div class="status-card">
+                                <h6>S&P 500</h6>
+                                <h4 id="sp500Price">-</h4>
+                                <small id="sp500Change">-</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="status-card">
+                                <h6>NASDAQ</h6>
+                                <h4 id="nasdaqPrice">-</h4>
+                                <small id="nasdaqChange">-</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="status-card">
+                                <h6>VIX</h6>
+                                <h4 id="vixPrice">-</h4>
+                                <small id="vixChange">-</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="status-card">
+                                <h6>Gold</h6>
+                                <h4 id="goldPrice">-</h4>
+                                <small id="goldChange">-</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="status-card">
+                                <h6>Bitcoin</h6>
+                                <h4 id="btcPrice">-</h4>
+                                <small id="btcChange">-</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="status-card">
+                                <h6>10Y Yield</h6>
+                                <h4 id="yieldPrice">-</h4>
+                                <small id="yieldChange">-</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket;
+        let chart;
+        let candlestickSeries;
+        let supertrendSeries;
+        let volumeSeries;
+        let rsiChart;
+        let rsiSeries;
+        let volumeChart;
+        let volumeBarSeries;
+        let currentSymbol = 'SPY';
+        let currentTimeframe = '1';
+        let lastPriceData = {};
+
+        // Initialize WebSocket connection
+        function initSocket() {
+            socket = io();
+            
+            socket.on('connect', function() {
+                console.log('Connected to server');
+                document.getElementById('connectionStatus').textContent = 'Connected';
+                socket.emit('start_streaming', {interval: 5});
+            });
+            
+            socket.on('disconnect', function() {
+                console.log('Disconnected from server');
+                document.getElementById('connectionStatus').textContent = 'Disconnected';
+            });
+            
+            socket.on('real_time_update', function(data) {
+                console.log('Real-time update received:', data);
+                updateDashboard(data);
+            });
+            
+            socket.on('price_update', function(data) {
+                if (data.symbol === currentSymbol) {
+                    updateChart(data);
+                }
+            });
+        }
+
+        // Initialize Lightweight Charts
+        function initCharts() {
+            // Main chart
+            const chartElement = document.getElementById('mainChart');
+            chart = LightweightCharts.createChart(chartElement, {
+                width: chartElement.clientWidth,
+                height: 480,
+                layout: {
+                    background: { color: '#0d1117' },
+                    textColor: '#d1d5db',
+                },
+                grid: {
+                    vertLines: { color: 'rgba(42, 46, 57, 0.5)' },
+                    horzLines: { color: 'rgba(42, 46, 57, 0.5)' },
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                },
+                rightPriceScale: {
+                    borderColor: 'rgba(197, 203, 206, 0.8)',
+                },
+                timeScale: {
+                    borderColor: 'rgba(197, 203, 206, 0.8)',
+                    timeVisible: true,
+                    secondsVisible: false,
+                },
+            });
+
+            candlestickSeries = chart.addCandlestickSeries({
+                upColor: '#10b981',
+                downColor: '#ef4444',
+                borderVisible: false,
+                wickUpColor: '#10b981',
+                wickDownColor: '#ef4444',
+            });
+
+            // SuperTrend line
+            supertrendSeries = chart.addLineSeries({
+                color: '#667eea',
+                lineWidth: 2,
+                title: 'SuperTrend',
+            });
+
+            // Volume series
+            volumeSeries = chart.addHistogramSeries({
+                color: '#26a69a',
+                priceFormat: {
+                    type: 'volume',
+                },
+                priceScaleId: '',
+            });
+
+            // RSI Chart
+            const rsiElement = document.getElementById('rsiChart');
+            rsiChart = LightweightCharts.createChart(rsiElement, {
+                width: rsiElement.clientWidth,
+                height: 100,
+                layout: {
+                    background: { color: '#0d1117' },
+                    textColor: '#d1d5db',
+                },
+                grid: {
+                    vertLines: { visible: false },
+                    horzLines: { color: 'rgba(42, 46, 57, 0.5)' },
+                },
+                timeScale: { visible: false },
+                rightPriceScale: {
+                    scaleMargins: { top: 0.1, bottom: 0.1 },
+                },
+            });
+
+            rsiSeries = rsiChart.addLineSeries({
+                color: '#f59e0b',
+                lineWidth: 2,
+            });
+
+            // Add RSI levels
+            rsiChart.addLineSeries({
+                color: 'rgba(239, 68, 68, 0.5)',
+                lineWidth: 1,
+                lineStyle: LightweightCharts.LineStyle.Dashed,
+            }).setData([
+                { time: Date.now() / 1000 - 86400, value: 70 },
+                { time: Date.now() / 1000, value: 70 }
+            ]);
+
+            rsiChart.addLineSeries({
+                color: 'rgba(16, 185, 129, 0.5)',
+                lineWidth: 1,
+                lineStyle: LightweightCharts.LineStyle.Dashed,
+            }).setData([
+                { time: Date.now() / 1000 - 86400, value: 30 },
+                { time: Date.now() / 1000, value: 30 }
+            ]);
+
+            // Volume Chart
+            const volumeElement = document.getElementById('volumeChart');
+            volumeChart = LightweightCharts.createChart(volumeElement, {
+                width: volumeElement.clientWidth,
+                height: 100,
+                layout: {
+                    background: { color: '#0d1117' },
+                    textColor: '#d1d5db',
+                },
+                grid: {
+                    vertLines: { visible: false },
+                    horzLines: { visible: false },
+                },
+                timeScale: { visible: false },
+                rightPriceScale: {
+                    scaleMargins: { top: 0.1, bottom: 0 },
+                },
+            });
+
+            volumeBarSeries = volumeChart.addHistogramSeries({
+                color: '#26a69a',
+                priceFormat: {
+                    type: 'volume',
+                },
+            });
+
+            // Load initial data
+            loadChartData(currentSymbol, currentTimeframe);
+        }
+
+        // Load chart data
+        async function loadChartData(symbol, timeframe) {
+            try {
+                const response = await fetch(`/api/chart/${symbol}?timeframe=${timeframe}Min&limit=200`);
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    const chartData = data.data.data.map(candle => ({
+                        time: candle.time,
+                        open: candle.open,
+                        high: candle.high,
+                        low: candle.low,
+                        close: candle.close,
+                        volume: candle.volume
+                    }));
+                    
+                    candlestickSeries.setData(chartData);
+                    
+                    // Volume data
+                    const volumeData = chartData.map(d => ({
+                        time: d.time,
+                        value: d.volume,
+                        color: d.close >= d.open ? '#10b98180' : '#ef444480'
+                    }));
+                    volumeSeries.setData(volumeData);
+                    volumeBarSeries.setData(volumeData);
+                    
+                    // Get SuperTrend data
+                    loadSuperTrend(symbol);
+                    
+                    // Get indicators
+                    loadIndicators(symbol);
+                }
+            } catch (error) {
+                console.error('Error loading chart data:', error);
+            }
+        }
+
+        // Load SuperTrend indicator
+        async function loadSuperTrend(symbol) {
+            try {
+                const response = await fetch(`/api/supertrend/${symbol}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateSuperTrendSignal(data);
+                    
+                    // For now, just draw a simple trend line
+                    // In production, you'd calculate the full SuperTrend series
+                    if (data.supertrend_value && data.current_price) {
+                        const time = Math.floor(Date.now() / 1000);
+                        supertrendSeries.update({
+                            time: time,
+                            value: data.supertrend_value
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading SuperTrend:', error);
+            }
+        }
+
+        // Load indicators
+        async function loadIndicators(symbol) {
+            try {
+                const response = await fetch(`/api/indicators/${symbol}`);
+                const data = await response.json();
+                
+                if (data.success && data.indicators) {
+                    // Update RSI if available
+                    if (data.indicators.RSI) {
+                        const time = Math.floor(Date.now() / 1000);
+                        rsiSeries.update({
+                            time: time,
+                            value: data.indicators.RSI
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading indicators:', error);
+            }
+        }
+
+        // Change symbol
+        function changeSymbol(symbol) {
+            currentSymbol = symbol;
+            document.getElementById('currentSymbol').textContent = symbol;
+            
+            // Update button states
+            document.querySelectorAll('.btn-symbol').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent === symbol) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            // Load new data
+            loadChartData(symbol, currentTimeframe);
+        }
+
+        // Change timeframe
+        function changeTimeframe(timeframe) {
+            currentTimeframe = timeframe;
+            
+            // Update button states
+            document.querySelectorAll('.timeframe-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent.includes(timeframe)) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            // Load new data
+            loadChartData(currentSymbol, timeframe);
+        }
+
+        // Update chart with real-time data
+        function updateChart(data) {
+            const candle = {
+                time: data.time,
+                open: data.open,
+                high: data.high,
+                low: data.low,
+                close: data.close
+            };
+            
+            candlestickSeries.update(candle);
+            
+            if (data.volume) {
+                volumeSeries.update({
+                    time: data.time,
+                    value: data.volume,
+                    color: data.close >= data.open ? '#10b98180' : '#ef444480'
+                });
+                
+                volumeBarSeries.update({
+                    time: data.time,
+                    value: data.volume
+                });
+            }
+        }
+
+        // Update dashboard with real-time data
+        function updateDashboard(data) {
+            // Update account info
+            if (data.account_info) {
+                document.getElementById('portfolioValue').textContent = 
+                    `$${parseFloat(data.account_info.portfolio_value).toLocaleString()}`;
+                document.getElementById('buyingPower').textContent = 
+                    `$${parseFloat(data.account_info.buying_power).toLocaleString()}`;
+                document.getElementById('dailyPL').textContent = 
+                    `$${parseFloat(data.account_info.day_pl || 0).toLocaleString()}`;
+                
+                // Color code P/L
+                const plElement = document.getElementById('dailyPL');
+                if (data.account_info.day_pl >= 0) {
+                    plElement.className = 'profit';
+                } else {
+                    plElement.className = 'loss';
+                }
+            }
+            
+            // Update positions
+            if (data.positions && data.positions.length > 0) {
+                const positionsHtml = data.positions.map(pos => {
+                    const plClass = pos.unrealized_pl >= 0 ? 'profit' : 'loss';
+                    return `
+                        <div class="position-card ${plClass}">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong style="font-size: 1.1em;">${pos.symbol}</strong>
+                                    <div class="small text-muted mt-1">
+                                        ${pos.qty} shares @ $${pos.avg_entry_price.toFixed(2)}
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="${plClass}">
+                                        ${pos.unrealized_pl >= 0 ? '+' : ''}$${pos.unrealized_pl.toFixed(2)}
+                                    </div>
+                                    <div class="small text-muted">
+                                        ${pos.unrealized_plpc >= 0 ? '+' : ''}${pos.unrealized_plpc.toFixed(2)}%
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-2 pt-2 border-top border-secondary">
+                                <div class="d-flex justify-content-between small">
+                                    <span>Current:</span>
+                                    <span>$${pos.current_price.toFixed(2)}</span>
+                                </div>
+                                <div class="d-flex justify-content-between small">
+                                    <span>Value:</span>
+                                    <span>$${pos.market_value.toLocaleString()}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                document.getElementById('positionsContainer').innerHTML = positionsHtml;
+            } else {
+                document.getElementById('positionsContainer').innerHTML = 
+                    '<p class="text-muted">No open positions</p>';
+            }
+            
+            // Update trading signals
+            if (data.ticker_signals) {
+                const signalsHtml = Object.entries(data.ticker_signals).map(([ticker, signals]) => {
+                    let signalClass = 'signal-neutral';
+                    let signalText = 'NEUTRAL';
+                    
+                    if (signals.supertrend_signal === 1) {
+                        signalClass = 'signal-buy';
+                        signalText = 'BUY';
+                    } else if (signals.supertrend_signal === -1) {
+                        signalClass = 'signal-sell';
+                        signalText = 'SELL';
+                    }
+                    
+                    return `
+                        <div class="signal-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <strong>${ticker}</strong>
+                                <span class="${signalClass}">${signalText}</span>
+                            </div>
+                            <div class="small mt-2">
+                                <div>Trend: ${signals.supertrend_trend || 'neutral'}</div>
+                                <div>RSI: ${signals.rsi ? signals.rsi.toFixed(2) : 'N/A'}</div>
+                                ${signals.stochRSI ? `
+                                    <div>StochRSI: ${signals.stochRSI.k.toFixed(2)} / ${signals.stochRSI.d.toFixed(2)}</div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                document.getElementById('signalsContainer').innerHTML = signalsHtml;
+            }
+            
+            // Update price data for charts
+            if (data.ticker_candlesticks && data.ticker_candlesticks[currentSymbol]) {
+                const candleData = data.ticker_candlesticks[currentSymbol].data;
+                if (candleData && candleData.length > 0) {
+                    candleData.forEach(candle => {
+                        candlestickSeries.update(candle);
+                    });
+                }
+            }
+        }
+
+        // Update SuperTrend signal
+        function updateSuperTrendSignal(data) {
+            const signalElement = document.getElementById('supertrendSignal');
+            if (data.signal === 1) {
+                signalElement.className = 'supertrend-signal supertrend-buy';
+                signalElement.textContent = 'BUY SIGNAL';
+            } else if (data.signal === -1) {
+                signalElement.className = 'supertrend-signal supertrend-sell';
+                signalElement.textContent = 'SELL SIGNAL';
+            } else {
+                signalElement.className = 'supertrend-signal supertrend-neutral';
+                signalElement.textContent = 'NEUTRAL';
+            }
+        }
+
+        // Bot control
+        document.getElementById('startBotBtn').addEventListener('click', function() {
+            fetch('/api/bot/start', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.disabled = true;
+                        document.getElementById('stopBotBtn').disabled = false;
+                    }
+                });
+        });
+
+        document.getElementById('stopBotBtn').addEventListener('click', function() {
+            fetch('/api/bot/stop', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.disabled = true;
+                        document.getElementById('startBotBtn').disabled = false;
+                    }
+                });
+        });
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initSocket();
+            initCharts();
+            
+            // Load initial data
+            fetch('/api/account')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateDashboard({account_info: data.account});
+                    }
+                });
+            
+            fetch('/api/positions')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateDashboard({positions: data.positions});
+                    }
+                });
+            
+            // Auto-resize charts
+            window.addEventListener('resize', () => {
+                chart.applyOptions({ 
+                    width: document.getElementById('mainChart').clientWidth 
+                });
+                rsiChart.applyOptions({ 
+                    width: document.getElementById('rsiChart').clientWidth 
+                });
+                volumeChart.applyOptions({ 
+                    width: document.getElementById('volumeChart').clientWidth 
+                });
+            });
+        });
+    </script>
+</body>
+</html>
