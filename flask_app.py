@@ -973,13 +973,38 @@ def get_chart_indicators(symbol):
         
         timeframe = request.args.get('timeframe', '1Min')
         limit = int(request.args.get('limit', 200))
+        # Ensure minimum data for indicator calculation
+        limit = max(limit, 50)
         
         logger.info(f"Fetching indicator data for {symbol.upper()} with timeframe {timeframe}, limit {limit}")
         data = data_manager.get_historical_data(symbol.upper(), timeframe, limit=limit)
         
         if not data.empty:
+            # Convert unified config to legacy format for indicators
+            config_dict = {
+                'indicators': {
+                    'stochRSI': "True" if config.indicators.stochRSI.enabled else "False",
+                    'stochRSI_params': {
+                        'rsi_length': config.indicators.stochRSI.rsi_length,
+                        'stoch_length': config.indicators.stochRSI.stoch_length,
+                        'K': config.indicators.stochRSI.K,
+                        'D': config.indicators.stochRSI.D
+                    },
+                    'EMA': "True" if config.indicators.EMA.enabled else "False",
+                    'EMA_params': {
+                        'ema_period': config.indicators.EMA.ema_period
+                    },
+                    'stoch': "True" if config.indicators.stoch.enabled else "False",
+                    'stoch_params': {
+                        'K_Length': config.indicators.stoch.K_Length,
+                        'smooth_K': config.indicators.stoch.smooth_K,
+                        'smooth_D': config.indicators.stoch.smooth_D
+                    }
+                }
+            }
+            
             # Calculate indicators for all historical data points
-            chart_indicators = data_manager.calculate_indicators_series(data, config)
+            chart_indicators = data_manager.calculate_indicators_series(data, config_dict)
             
             if chart_indicators:
                 # Convert timestamps to UNIX timestamps for charting - ensure integers

@@ -1188,8 +1188,12 @@
                     updateBotStatus(statusData.running);
                 }
                 
-                // Initialize charts with default tickers
-                const defaultTickers = ['SPY', 'QQQ', 'AAPL'];
+                // Auto-start streaming for live data
+                console.log('Auto-starting real-time streaming...');
+                socket.emit('start_streaming', {interval: 5});
+                
+                // Initialize charts with default tickers - using your actual positions
+                const defaultTickers = ['AMD', 'GOOG', 'PYPL', 'SPY'];
                 initializeCharts(defaultTickers);
                 
                 // Load initial chart data for each ticker

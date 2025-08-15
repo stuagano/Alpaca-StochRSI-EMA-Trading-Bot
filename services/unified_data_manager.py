@@ -105,7 +105,7 @@ class UnifiedDataManager:
                         raise ValueError("Invalid authAlpaca.txt format")
                     api_key = lines[0].strip()
                     secret_key = lines[1].strip()
-                base_url = lines[2].strip() if len(lines) > 2 else 'https://paper-api.alpaca.markets'
+                    base_url = lines[2].strip() if len(lines) > 2 else 'https://paper-api.alpaca.markets'
             
             if not api_key or not secret_key:
                 raise ValueError("API key and secret key cannot be empty")
