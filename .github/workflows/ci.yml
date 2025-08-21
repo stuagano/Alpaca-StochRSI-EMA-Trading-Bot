@@ -148,7 +148,7 @@ jobs:
 
     - name: Upload test artifacts
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: test-results-${{ matrix.os }}-py${{ matrix.python-version }}
         path: |
@@ -158,7 +158,7 @@ jobs:
 
     - name: Upload coverage artifacts
       if: matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: coverage-report
         path: tests/reports/htmlcov*/
@@ -241,7 +241,7 @@ jobs:
 
     - name: Upload security artifacts
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: security-reports
         path: |
@@ -275,7 +275,7 @@ jobs:
 
     - name: Upload documentation
       if: success()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: documentation
         path: docs/_build/html/
@@ -326,7 +326,7 @@ jobs:
         pip-audit --format=json --output=dependency-audit.json
 
     - name: Upload dependency report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dependency-report
         path: |
