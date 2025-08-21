@@ -1,29 +1,81 @@
-# Technical-Trading-Bot
-Trading Bot built using the Alpaca API in Python. Indicators used for Signal Generation: EMA, StochRSI, and Stochastic Oscillator
+# Alpaca StochRSI-EMA Trading Bot
 
-## AUTH
+A sophisticated algorithmic trading bot built with Python and the Alpaca API, featuring StochRSI and EMA indicators for signal generation.
 
-1. configFile.txt: To enable/disable the indicators for which the bot will check and generate buy/sell signals. Other parameters such as:
-- Trade Params: % Capital to be used / trade, Stop Loss, Trailing Stop, Limit Price, etc can be changed.
-- Data Params: Timeframe, Start Date, End Date
-- Indicator Params: Indicator parameters can also be changed in the ConfigFile.txt. 
-    1. StochRSI: Lower Band, Upper Band, K, D, RSI Length, etc)
-    2. Stoch: Lower Band, Upper Band, K Smoothing, D Smoothing
-    3. EMA: Period, Smoothing
+## Features
 
-2. Tickers.txt: Add ticker symbols (seperated by space) to check the critera for
-3. authAlpaca.txt: Add Alpaca API Key and Secret Key for the bot to start trading. Change *"BASE-URL"* to *"api.alpaca.markets"* to trade in real-time markets.
+- **Multiple Technical Indicators**: StochRSI, Stochastic Oscillator, EMA
+- **Risk Management**: Stop loss, trailing stops, position sizing
+- **Real-time Trading**: Live market data and order execution
+- **Backtesting Engine**: Strategy validation and optimization
+- **Web Dashboard**: Real-time monitoring and visualization
+- **Docker Support**: Containerized deployment
 
-## Root Dir
+## Quick Start
 
-1. config_params.py: Initializes all the params set by the user in ConfigFile.txt
-2. indicator.py: Calculates values and generates signals for all the indicators enabled 
-3. main.py: Signal generation, decision-making, trade execution, trade monitoring, email alerts
+1. **Setup Configuration**
+   ```bash
+   # Configure API credentials in AUTH/authAlpaca.txt
+   # Set trading parameters in AUTH/ConfigFile.txt
+   # Add tickers in AUTH/Tickers.txt
+   ```
 
-After the bot starts checking for the buy/sell criteria and places the first trade, there will be 3 new files created in the *ORDERS* folder.
-1. Orders.csv: CSV file with all the trades (buy and sell both) placed by the bot
-2. Open Orders.csv: CSV file with all the open positions held by the bot. The bot will check for returns using this file and sell once the sell criteria (Stop Loss/Limit Price/Trailing Stop) has been met. The bot will remove the position from _Open Orders.csv_ once it's closed.
-3. Time and Coins.csv: Using this file, the bot will ensure that no 2 (or more) trades are placed for the same ticker in the _sleep_time_between_trades_ (parameter in ConfigFile.txt) time period. 
-Example: If _sleep_time_between_trades_ is 100 seconds and the bot places a buy trade for ETHUSD, the bot won't check the criteria for ETHUSD for another 100 seconds.
+2. **Install Dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-Feel free to contact me at tejas.linge101@gmail.com for **ANY** doubts, suggestions, reviews, or to just connect and talk about Algo Trading Projects. Thanks!
+3. **Run the Bot**
+   ```bash
+   python main.py                    # Start trading bot
+   python run_enhanced_dashboard.py # Launch web dashboard
+   ```
+
+4. **Docker Deployment**
+   ```bash
+   docker-compose up --build
+   ```
+
+## Key Components
+
+- **Trading Engine**: `main.py` - Core trading logic and execution
+- **Indicators**: `indicator.py` - Technical analysis calculations
+- **Dashboard**: `flask_app.py` - Web-based monitoring interface
+- **Risk Management**: `risk_management/` - Position sizing and stop losses
+- **Backtesting**: `backtesting/` - Strategy validation tools
+
+## Configuration
+
+All trading parameters are configurable through files in the `AUTH/` directory:
+
+- **ConfigFile.txt**: Indicator parameters, risk settings, timeframes
+- **authAlpaca.txt**: API credentials (paper/live trading)
+- **Tickers.txt**: Assets to monitor and trade
+
+## Documentation
+
+Comprehensive documentation is available in the `/docs` directory:
+
+- [📚 Complete Documentation](docs/README.md)
+- [🚀 Quick Start Guide](docs/BMAD/guides/quick-start.md)
+- [⚙️ Configuration Guide](docs/GUIDES/configuration.md)
+- [📊 Strategy Documentation](docs/IMPLEMENTATION/strategies.md)
+
+## BMAD Methodology
+
+This project implements the BMAD (Build, Measure, Analyze, Document) methodology for systematic development:
+
+```bash
+npx claude-flow bmad cycle "feature-name"  # Complete BMAD cycle
+npx claude-flow bmad build "component"     # Build phase only
+```
+
+## Support
+
+- 📖 [Documentation](docs/README.md)
+- 🐛 [Common Issues](docs/COMMON_ISSUES_AND_FIXES.md)
+- 💬 Create an issue for support
+
+---
+
+**⚠️ Disclaimer**: This software is for educational purposes. Trading involves risk of financial loss. Always test strategies thoroughly before live trading.
