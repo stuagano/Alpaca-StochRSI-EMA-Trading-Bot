@@ -8,9 +8,9 @@ Welcome to the comprehensive documentation for the Alpaca StochRSI-EMA Trading B
 
 ### 🚀 Getting Started
 - [Project Overview](PROJECT_BRIEF.md)
-- [Implementation Guide](IMPLEMENTATION_GUIDE.md)
-- [Deployment Quick Guide](DEPLOYMENT_QUICK_GUIDE.md)
-- [Configuration Guide](../CONFIGURATION.md)
+- [Implementation Guide](IMPLEMENTATION/implementation-guide.md)
+- [Deployment Quick Guide](DEPLOYMENT/quick-guide.md)
+- [Configuration Guide](GUIDES/configuration.md)
 
 ### 🧠 BMAD Methodology
 - **[BMAD Overview](BMAD/README.md)** - Complete methodology guide
@@ -22,8 +22,8 @@ Welcome to the comprehensive documentation for the Alpaca StochRSI-EMA Trading B
 ### 🔧 Implementation Guides
 - [BMAD Trading Bot Integration](BMAD/guides/trading-bot-integration.md)
 - [BMAD Commands Reference](BMAD/guides/commands-reference.md)
-- [Multi-Timeframe Architecture](MULTI_TIMEFRAME_ARCHITECTURE.md)
-- [WebSocket Implementation](WEBSOCKET_IMPLEMENTATION.md)
+- [Multi-Timeframe Architecture](ARCHITECTURE/multi-timeframe.md)
+- [WebSocket Implementation](IMPLEMENTATION/websocket.md)
 
 ### 📊 Trading Strategies
 - [StochRSI Strategy](../strategies/stoch_rsi_strategy.py)
@@ -32,10 +32,10 @@ Welcome to the comprehensive documentation for the Alpaca StochRSI-EMA Trading B
 - [Volume Confirmation](VOLUME_CONFIRMATION_IMPLEMENTATION.md)
 
 ### 🏗️ Architecture & Design
-- [System Architecture](ARCHITECTURE/)
-- [API Specification](EPIC1_API_SPECIFICATION.yaml)
-- [Microservices Architecture](EPIC_3_MICROSERVICES_ARCHITECTURE.md)
-- [Source Tree Structure](sourcetree.md)
+- [System Architecture](architecture/)
+- [API Specification](EPICS/Epic_1/EPIC1_API_SPECIFICATION.yaml)
+- [Microservices Architecture](EPICS/Epic_3/EPIC_3_MICROSERVICES_ARCHITECTURE.md)
+- [Source Tree Structure](architecture/sourcetree.md)
 
 ### 📈 Epics & Features
 - [Epic 0 Completion](EPIC_0_COMPLETION_REPORT.md)
