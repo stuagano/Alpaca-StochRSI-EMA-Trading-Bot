@@ -35,45 +35,58 @@ from risk_management.enhanced_risk_manager import EnhancedRiskManager
 @pytest.fixture(scope="session")
 def test_config():
     """Test configuration with safe default values."""
-    config_data = {
-        "strategy": "StochRSI",
-        "timeframe": "1Min",
-        "candle_lookback_period": 100,
-        "sleep_time_between_trades": 1,
-        "max_trades_active": 3,
-        "investment_amount": 10000,
-        "trade_capital_percent": 2.0,
-        "stop_loss": 5.0,
-        "limit_price": 10.0,
-        "extended_hours": False,
-        "activate_trailing_stop_loss_at": 5.0,
-        "indicators": {
-            "stochRSI": {
-                "enabled": True,
-                "rsi_period": 14,
-                "stoch_period": 14,
-                "d_period": 3,
-                "k_period": 3,
-                "oversold": 20,
-                "overbought": 80
-            },
-            "ema": {
-                "enabled": True,
-                "fast_period": 12,
-                "slow_period": 26
-            }
-        },
-        "risk_management": {
-            "use_atr_position_sizing": True,
-            "use_atr_stop_loss": True,
-            "atr_period": 14,
-            "atr_multiplier": 2.0,
-            "max_daily_loss": 0.05,
-            "max_position_size": 0.10,
-            "max_positions": 5
-        }
-    }
-    return TradingConfig(**config_data)
+    from config.unified_config import (
+        StochRSIConfig, EMAConfig, IndicatorsConfig, 
+        RiskManagementConfig
+    )
+    
+    # Create nested configuration objects
+    stoch_rsi_config = StochRSIConfig(
+        enabled=True,
+        lower_band=20,
+        upper_band=80,
+        K=3,
+        D=3,
+        rsi_length=14,
+        stoch_length=14
+    )
+    
+    ema_config = EMAConfig(
+        enabled=True,
+        fast_period=12,
+        slow_period=26
+    )
+    
+    indicators_config = IndicatorsConfig(
+        stochRSI=stoch_rsi_config,
+        EMA=ema_config
+    )
+    
+    risk_config = RiskManagementConfig(
+        use_atr_position_sizing=True,
+        use_atr_stop_loss=True,
+        atr_period=14,
+        atr_multiplier=2.0,
+        max_daily_loss=0.05,
+        max_position_size=0.10
+    )
+    
+    # Create the main config with nested objects
+    return TradingConfig(
+        strategy="StochRSI",
+        timeframe="1Min",
+        candle_lookback_period=100,
+        sleep_time_between_trades=1,
+        max_trades_active=3,
+        investment_amount=10000,
+        trade_capital_percent=2.0,
+        stop_loss=5.0,
+        limit_price=10.0,
+        extended_hours=False,
+        activate_trailing_stop_loss_at=5.0,
+        indicators=indicators_config,
+        risk_management=risk_config
+    )
 
 
 # Database Fixtures

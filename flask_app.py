@@ -2325,3 +2325,10 @@ if __name__ == '__main__':
         logger.error(f"❌ Failed to start real-time streaming thread: {e}")
     
     socketio.run(app, host='0.0.0.0', port=port)
+
+
+def create_app(test_config=None):
+    """Application factory for testing."""
+    if test_config:
+        app.config.update(test_config)
+    return app

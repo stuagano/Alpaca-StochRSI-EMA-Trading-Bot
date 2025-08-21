@@ -1,5 +1,5 @@
 import yaml
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Dict, Any, Optional
 from enum import Enum
 import os
@@ -449,31 +449,31 @@ class RiskConfig(BaseModel):
     # VALIDATION METHODS
     # ============================================================================
     
-    @validator('max_position_size')
+    @field_validator('max_position_size')
     def validate_max_position_size(cls, v, values):
         """Ensure max position size is reasonable"""
-        if 'max_portfolio_exposure' in values and v > values['max_portfolio_exposure']:
+        if hasattr(values, 'data') and 'max_portfolio_exposure' in values.data and v > values.data['max_portfolio_exposure']:
             raise ValueError("Max position size cannot exceed max portfolio exposure")
         return v
     
-    @validator('min_stop_loss_distance')
+    @field_validator('min_stop_loss_distance')
     def validate_stop_loss_distances(cls, v, values):
         """Ensure stop loss distances are logical"""
-        if 'max_stop_loss_distance' in values and v >= values['max_stop_loss_distance']:
+        if hasattr(values, 'data') and 'max_stop_loss_distance' in values.data and v >= values.data['max_stop_loss_distance']:
             raise ValueError("Minimum stop loss distance must be less than maximum")
         return v
     
-    @validator('trailing_activation_threshold')
+    @field_validator('trailing_activation_threshold')
     def validate_trailing_threshold(cls, v, values):
         """Ensure trailing activation threshold is reasonable"""
-        if 'trailing_stop_distance' in values and v <= values['trailing_stop_distance']:
+        if hasattr(values, 'data') and 'trailing_stop_distance' in values.data and v <= values.data['trailing_stop_distance']:
             raise ValueError("Trailing activation threshold should be larger than trailing distance")
         return v
     
-    @validator('alert_threshold_critical')
+    @field_validator('alert_threshold_critical')
     def validate_alert_thresholds(cls, v, values):
         """Ensure alert thresholds are logical"""
-        if 'alert_threshold_warning' in values and v <= values['alert_threshold_warning']:
+        if hasattr(values, 'data') and 'alert_threshold_warning' in values.data and v <= values.data['alert_threshold_warning']:
             raise ValueError("Critical alert threshold must be higher than warning threshold")
         return v
     
