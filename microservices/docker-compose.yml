@@ -1,27 +1,59 @@
 version: '3.8'
 
 services:
-  # API Gateway - Central entry point
+  # Database Services
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: trading_user
+      POSTGRES_PASSWORD: trading_pass
+      POSTGRES_DB: trading_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trading_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trading-network
+
+  # Cache and Message Queue
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trading-network
+
+  # API Gateway
   api-gateway:
     build: ./services/api-gateway
     ports:
-      - "6000:6000"
+      - "8000:8000"
     environment:
-      - POSITION_SERVICE_URL=http://position-management:6001
-      - TRADING_SERVICE_URL=http://trading-execution:6002
-      - SIGNAL_SERVICE_URL=http://signal-processing:6003
-      - RISK_SERVICE_URL=http://risk-management:6004
-      - MARKET_DATA_SERVICE_URL=http://market-data:6005
+      DATABASE_URL: postgresql://trading_user:trading_pass@postgres:5432/trading_db
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
+      SERVICE_POSITION_URL: http://position-management:8001
+      SERVICE_TRADING_URL: http://trading-execution:8002
+      SERVICE_SIGNAL_URL: http://signal-processing:8003
+      SERVICE_RISK_URL: http://risk-management:8004
     depends_on:
-      - position-management
-      - trading-execution
-      - signal-processing
-      - risk-management
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - trading-network
 
@@ -29,17 +61,16 @@ services:
   position-management:
     build: ./services/position-management
     ports:
-      - "6001:6001"
+      - "8001:8001"
     environment:
-      - DATABASE_URL=sqlite+aiosqlite:///./data/position_management.db
-      - PORT=6001
-    volumes:
-      - ./data/position-management:/app/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6001/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      DATABASE_URL: postgresql://trading_user:trading_pass@postgres:5432/trading_db
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - trading-network
 
@@ -47,23 +78,19 @@ services:
   trading-execution:
     build: ./services/trading-execution
     ports:
-      - "6002:6002"
+      - "8002:8002"
     environment:
-      - DATABASE_URL=sqlite+aiosqlite:///./data/trading_execution.db
-      - POSITION_SERVICE_URL=http://position-management:6001
-      - PORT=6002
-      - ALPACA_API_KEY=${ALPACA_API_KEY}
-      - ALPACA_SECRET_KEY=${ALPACA_SECRET_KEY}
-      - ALPACA_BASE_URL=${ALPACA_BASE_URL:-https://paper-api.alpaca.markets}
-    volumes:
-      - ./data/trading-execution:/app/data
+      DATABASE_URL: postgresql://trading_user:trading_pass@postgres:5432/trading_db
+      REDIS_URL: redis://redis:6379
+      ALPACA_API_KEY: ${ALPACA_API_KEY}
+      ALPACA_SECRET_KEY: ${ALPACA_SECRET_KEY}
+      ALPACA_BASE_URL: ${ALPACA_BASE_URL:-https://paper-api.alpaca.markets}
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
     depends_on:
-      - position-management
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6002/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - trading-network
 
@@ -71,17 +98,16 @@ services:
   signal-processing:
     build: ./services/signal-processing
     ports:
-      - "6003:6003"
+      - "8003:8003"
     environment:
-      - DATABASE_URL=sqlite+aiosqlite:///./data/signal_processing.db
-      - PORT=6003
-    volumes:
-      - ./data/signal-processing:/app/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6003/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      DATABASE_URL: postgresql://trading_user:trading_pass@postgres:5432/trading_db
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - trading-network
 
@@ -89,97 +115,23 @@ services:
   risk-management:
     build: ./services/risk-management
     ports:
-      - "6004:6004"
+      - "8004:8004"
     environment:
-      - DATABASE_URL=sqlite+aiosqlite:///./data/risk_management.db
-      - POSITION_SERVICE_URL=http://position-management:6001
-      - PORT=6004
-    volumes:
-      - ./data/risk-management:/app/data
+      DATABASE_URL: postgresql://trading_user:trading_pass@postgres:5432/trading_db
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
     depends_on:
-      - position-management
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6004/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - trading-network
-
-  # Market Data Service (placeholder)
-  market-data:
-    image: nginx:alpine
-    ports:
-      - "6005:80"
-    command: /bin/sh -c "echo '{\"service\":\"market-data\",\"status\":\"healthy\",\"message\":\"Placeholder service\"}' > /usr/share/nginx/html/health && nginx -g 'daemon off;'"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - trading-network
-
-  # Redis for caching and message queue
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - trading-network
-
-  # Monitoring with Prometheus (optional)
-  prometheus:
-    image: prom/prometheus:latest
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus-data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
-      - '--web.enable-lifecycle'
-    networks:
-      - trading-network
-    profiles:
-      - monitoring
-
-  # Grafana for visualization (optional)
-  grafana:
-    image: grafana/grafana:latest
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
-      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
-    depends_on:
-      - prometheus
-    networks:
-      - trading-network
-    profiles:
-      - monitoring
-
-volumes:
-  redis-data:
-  prometheus-data:
-  grafana-data:
 
 networks:
   trading-network:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
+
+volumes:
+  postgres_data:
+  redis_data:
