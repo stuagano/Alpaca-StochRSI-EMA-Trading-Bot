@@ -14,6 +14,82 @@ database:
   pool_timeout: 30
   url: sqlite:///database/trading_data.db
 end_date: 1 Jan, 2023
+epic1:
+  dynamic_stochrsi:
+    band_adjustment_sensitivity: 1.0
+    base_volatility_window: 100
+    default_lower_band: 20
+    default_upper_band: 80
+    enable_adaptive_bands: true
+    enable_trend_filtering: true
+    enabled: true
+    max_lower_band: 30
+    max_upper_band: 90
+    min_lower_band: 10
+    min_upper_band: 70
+    volatility_window: 20
+  enable_enhanced_websocket: true
+  enable_epic1_api_endpoints: true
+  enabled: true
+  fallback_to_epic0: true
+  multi_timeframe:
+    auto_update_interval: 60000
+    consensus_threshold: 0.75
+    enable_performance_tracking: true
+    enable_real_time_validation: true
+    enabled: true
+    max_concurrent_validations: 10
+    timeframe_weights:
+      15m: 0.3
+      1d: 0.3
+      1h: 0.4
+    timeframes:
+    - 15m
+    - 1h
+    - 1d
+    trend_analysis_periods:
+      15m: 20
+      1d: 20
+      1h: 20
+  performance:
+    auto_parameter_optimization: false
+    enable_adaptive_learning: true
+    enable_strategy_comparison: true
+    enabled: true
+    min_trades_for_analysis: 10
+    optimization_frequency_hours: 24
+    performance_window_days: 30
+    track_signal_outcomes: true
+  require_epic1_consensus: false
+  signal_quality:
+    enable_quality_filtering: true
+    enable_recommendations: true
+    enabled: true
+    max_volatility_penalty: 0.3
+    minimum_quality_score: 0.6
+    quality_weights:
+      data_completeness: 0.25
+      data_freshness: 0.1
+      signal_reliability: 0.2
+      volatility: 0.25
+      volume_consistency: 0.2
+    volatility_penalty_multiplier: 5.0
+    volume_bonus_multiplier: 0.1
+    volume_consistency_bonus_threshold: 0.5
+  volume_confirmation:
+    confirmation_threshold: 1.2
+    enable_relative_volume: true
+    enabled: true
+    relative_volume_threshold: 1.5
+    require_volume_confirmation: true
+    volume_ma_period: 20
+    volume_strength_levels:
+      high: 1.0
+      low: -1.0
+      normal: 0.0
+      very_high: 2.0
+      very_low: -2.0
+    volume_trend_periods: 5
 exchange: CBSE
 extended_hours: true
 indicators:
@@ -34,6 +110,8 @@ indicators:
   stochRSI:
     D: 3
     K: 3
+    atr_period: 14
+    dynamic_bands_enabled: true
     enabled: true
     lower_band: 35
     rsi_length: 14
@@ -42,6 +120,14 @@ indicators:
     upper_band: 100
 investment_amount: 10000
 limit_price: 0.5
+volume_confirmation:
+  enabled: true
+  volume_period: 20
+  relative_volume_period: 50
+  volume_confirmation_threshold: 1.2
+  min_volume_ratio: 1.0
+  profile_periods: 100
+  require_volume_confirmation: true
 logging:
   backup_count: 5
   file_path: logs/trading_bot.log

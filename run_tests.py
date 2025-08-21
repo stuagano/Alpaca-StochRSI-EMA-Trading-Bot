@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-Comprehensive test runner for the trading bot system.
-Provides various test execution options and reporting capabilities.
+Epic 1 Trading System - Unified Test Runner
+Consolidated test runner for all Epic 1 testing needs
 """
 
-import argparse
 import subprocess
 import sys
 import os
-from pathlib import Path
+import time
 import json
+import argparse
 from datetime import datetime
-
+from pathlib import Path
 
 class TestRunner:
     """Advanced test runner with multiple execution modes."""

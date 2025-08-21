@@ -1,4 +1,4 @@
-# Claude Code Configuration - SPARC Development Environment
+# Claude Code Configuration - BMAD Development Environment
 
 ## 🚨 CRITICAL: CONCURRENT EXECUTION & FILE MANAGEMENT
 
@@ -26,22 +26,61 @@
 - `/scripts` - Utility scripts
 - `/examples` - Example code
 
+### 📚 Documentation Management (BMAD Method)
+
+**CRITICAL DOCUMENTATION RULES:**
+1. **ALWAYS check for existing documentation** before creating new files
+2. **UPDATE existing docs** instead of creating duplicates
+3. **Follow BMAD method**: Build → Measure → Analyze → Document
+4. **NEVER create new docs** when an existing file covers the same topic
+
+**Documentation Structure:**
+```
+/docs/
+├── API/              # API specifications and endpoints
+├── ARCHITECTURE/     # System design and architecture
+├── DEPLOYMENT/       # Deployment guides and configs
+├── EPICS/           # Epic-specific documentation
+├── GUIDES/          # User and developer guides
+├── IMPLEMENTATION/   # Implementation details
+├── TESTING/         # Testing strategies and reports
+└── README.md        # Main documentation index
+```
+
+**Before Creating ANY Documentation:**
+1. Search existing docs with: `Grep -i "topic" docs/`
+2. Check if topic exists in any current file
+3. If exists → UPDATE that file
+4. If new topic → Place in appropriate subfolder
+5. NEVER duplicate information across files
+
+### 🌳 Source Tree Maintenance
+
+**CRITICAL: Keep `/docs/sourcetree.md` Updated**
+1. **UPDATE sourcetree.md** whenever:
+   - New directories are created
+   - Major files are added or moved
+   - Project structure changes
+   - New modules/components are introduced
+2. **ALWAYS check sourcetree.md** before asking about project structure
+3. **Use sourcetree.md** as the single source of truth for project layout
+
 ## Project Overview
 
-This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Completion) methodology with Claude-Flow orchestration for systematic Test-Driven Development.
+This project uses BMAD (Build, Measure, Analyze, Document) methodology with Claude-Flow orchestration for systematic iterative development and continuous improvement.
 
-## SPARC Commands
+## BMAD Commands
 
 ### Core Commands
-- `npx claude-flow sparc modes` - List available modes
-- `npx claude-flow sparc run <mode> "<task>"` - Execute specific mode
-- `npx claude-flow sparc tdd "<feature>"` - Run complete TDD workflow
-- `npx claude-flow sparc info <mode>` - Get mode details
+- `npx claude-flow bmad build "<feature>"` - Build new features or components
+- `npx claude-flow bmad measure "<metrics>"` - Measure performance and quality
+- `npx claude-flow bmad analyze "<data>"` - Analyze results and patterns
+- `npx claude-flow bmad document "<topic>"` - Document findings and implementations
 
-### Batchtools Commands
-- `npx claude-flow sparc batch <modes> "<task>"` - Parallel execution
-- `npx claude-flow sparc pipeline "<task>"` - Full pipeline processing
-- `npx claude-flow sparc concurrent <mode> "<tasks-file>"` - Multi-task processing
+### Workflow Commands
+- `npx claude-flow bmad cycle "<task>"` - Run complete BMAD cycle
+- `npx claude-flow bmad iterate "<feature>"` - Iterative improvement
+- `npx claude-flow bmad optimize "<component>"` - Performance optimization
 
 ### Build Commands
 - `npm run build` - Build project
@@ -49,13 +88,12 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 - `npm run lint` - Linting
 - `npm run typecheck` - Type checking
 
-## SPARC Workflow Phases
+## BMAD Workflow Phases
 
-1. **Specification** - Requirements analysis (`sparc run spec-pseudocode`)
-2. **Pseudocode** - Algorithm design (`sparc run spec-pseudocode`)
-3. **Architecture** - System design (`sparc run architect`)
-4. **Refinement** - TDD implementation (`sparc tdd`)
-5. **Completion** - Integration (`sparc run integration`)
+1. **Build** - Rapid prototyping and feature implementation
+2. **Measure** - Performance metrics, test coverage, quality indicators
+3. **Analyze** - Data analysis, bottleneck identification, pattern recognition
+4. **Document** - Update docs, capture learnings, maintain knowledge base
 
 ## Code Style & Best Practices
 
@@ -82,8 +120,8 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 ### GitHub & Repository
 `github-modes`, `pr-manager`, `code-review-swarm`, `issue-tracker`, `release-manager`, `workflow-automation`, `project-board-sync`, `repo-architect`, `multi-repo-swarm`
 
-### SPARC Methodology
-`sparc-coord`, `sparc-coder`, `specification`, `pseudocode`, `architecture`, `refinement`
+### BMAD Methodology
+`bmad-builder`, `bmad-measurer`, `bmad-analyzer`, `bmad-documenter`, `iteration-coordinator`
 
 ### Specialized Development
 `backend-dev`, `mobile-dev`, `ml-developer`, `cicd-engineer`, `api-docs`, `system-architect`, `code-analyzer`, `base-template-generator`

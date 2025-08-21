@@ -1,0 +1,17 @@
+{
+  "$ref": "./.project-config.json",
+  "extension_type": "gemini_enterprise_architect",
+  "auto_discover": true,
+  "scan_directories": {
+    "$ref": "./.project-config.json#/extensions/gemini_enterprise_architect/scan_directories"
+  },
+  "status_sources": {
+    "$ref": "./.project-config.json#/extensions/gemini_enterprise_architect/status_sources"
+  },
+  "bmad": {
+    "$ref": "./.project-config.json#/bmad"
+  },
+  "metrics": {
+    "$ref": "./.project-config.json#/metrics"
+  }
+}

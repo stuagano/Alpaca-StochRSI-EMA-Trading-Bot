@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Epic 1 Trading Dashboard - StochRSI & Volume Confirmation</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+    
+    <!-- Suppress browser extension errors -->
+    <script>
+        // Suppress Chrome extension runtime.lastError warnings
+        window.addEventListener('error', function(e) {
+            if (e.message && e.message.includes('Extension context invalidated')) {
+                e.preventDefault();
+                return true;
+            }
+            if (e.message && e.message.includes('runtime.lastError')) {
+                e.preventDefault();
+                return true;
+            }
+            if (e.message && e.message.includes('Could not establish connection')) {
+                e.preventDefault();
+                return true;
+            }
+        });
+        
+        // Override console.error for extension errors
+        const originalError = console.error;
+        console.error = function(...args) {
+            const message = args.join(' ');
+            if (message.includes('runtime.lastError') || 
+                message.includes('Extension context') ||
+                message.includes('Could not establish connection')) {
+                return; // Suppress extension errors
+            }
+            originalError.apply(console, args);
+        };
+        
+        // Clean console on load
+        setTimeout(() => {
+            if (typeof console.clear === 'function') {
+                console.clear();
+                console.log('🎯 Epic 1 Trading Dashboard - Console Cleaned');
+            }
+        }, 1000);
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body { 
+            background: #0a0a0a;
+            color: #ffffff;
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            overflow-x: hidden;
+        }
+
+        .trading-header {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+            border-bottom: 2px solid #333;
+            padding: 15px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-live { background: #00ff88; }
+        .status-paused { background: #ff6b35; }
+        .status-closed { background: #666; }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 300px 1fr 300px;
+            grid-template-rows: auto 1fr;
+            gap: 20px;
+            height: calc(100vh - 80px);
+            padding: 20px;
+        }
+
+        .widget {
+            background: linear-gradient(145deg, #1a1a1a, #0f0f0f);
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .widget:hover {
+            border-color: #00ff88;
+            box-shadow: 0 8px 32px rgba(0, 255, 136, 0.1);
+        }
+
+        .widget-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #333;
+        }
+
+        .widget-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .chart-container {
+            grid-column: 2;
+            grid-row: 1 / -1;
+            background: #111;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #333;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .timeframe-selector {
+            display: flex;
+            gap: 8px;
+        }
+
+        .timeframe-btn {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .timeframe-btn:hover, .timeframe-btn.active {
+            background: #00ff88;
+            color: #000;
+            border-color: #00ff88;
+        }
+
+        .indicator-selector {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .form-check-input {
+            background-color: #333;
+            border-color: #555;
+        }
+
+        .form-check-input:checked {
+            background-color: #00ff88;
+            border-color: #00ff88;
+        }
+
+        #tradingview-chart {
+            width: 100%;
+            height: calc(100% - 80px);
+            background: #111;
+            border-radius: 8px;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            color: #888;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .profit { color: #00ff88; }
+        .loss { color: #ff4757; }
+
+        .position-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #222;
+        }
+
+        .position-symbol {
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .position-shares {
+            color: #888;
+            font-size: 12px;
+        }
+
+        .signal-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .signal-buy { background: rgba(0, 255, 136, 0.2); color: #00ff88; }
+        .signal-sell { background: rgba(255, 71, 87, 0.2); color: #ff4757; }
+        .signal-hold { background: rgba(255, 183, 77, 0.2); color: #ffb74d; }
+
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-start {
+            background: linear-gradient(45deg, #00ff88, #00cc6a);
+            border: none;
+            color: #000;
+        }
+
+        .btn-stop {
+            background: linear-gradient(45deg, #ff4757, #c44569);
+            border: none;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #333;
+            border-radius: 50%;
+            border-top-color: #00ff88;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .sidebar-left {
+            grid-column: 1;
+            grid-row: 1 / -1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .sidebar-right {
+            grid-column: 3;
+            grid-row: 1 / -1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .scrollable-content {
+            max-height: 300px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #333 #111;
+        }
+
+        .scrollable-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .scrollable-content::-webkit-scrollbar-track {
+            background: #111;
+        }
+
+        .scrollable-content::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 3px;
+        }
+
+        .epic1-badge {
+            background: linear-gradient(45deg, #00ff88, #00cc6a);
+            color: #000;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+
+        @media (max-width: 1200px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto;
+            }
+            
+            .chart-container {
+                grid-column: 1;
+                grid-row: 2;
+                height: 400px;
+            }
+            
+            .sidebar-left, .sidebar-right {
+                grid-column: 1;
+                display: flex;
+                flex-direction: row;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="trading-header">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-8">
+                    <div class="d-flex align-items-center">
+                        <h4 class="mb-0">
+                            <i class="bi bi-graph-up-arrow me-2"></i>
+                            Epic 1 Trading Dashboard
+                            <span class="epic1-badge">LIVE</span>
+                        </h4>
+                        <nav class="ms-4">
+                            <a href="/" class="btn btn-sm btn-outline-light me-1">📊 Main</a>
+                            <a href="/backtest" class="btn btn-sm btn-outline-light me-1">🧪 Backtesting</a>
+                            <a href="/debug/positions" class="btn btn-sm btn-outline-light me-1">🔍 Debug</a>
+                            <a href="/tests/frontend" class="btn btn-sm btn-outline-light">✅ Tests</a>
+                        </nav>
+                    </div>
+                </div>
+                <div class="col-4 text-end">
+                    <div class="connection-status">
+                        <span class="status-indicator status-live" id="connectionStatus"></span>
+                        <span id="connectionText">Connected</span>
+                        <span class="ms-3" id="marketTime"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Grid -->
+    <div class="dashboard-grid">
+        <!-- Left Sidebar -->
+        <div class="sidebar-left">
+            <!-- Account Summary -->
+            <div class="widget">
+                <div class="widget-header">
+                    <div class="widget-title">
+                        <i class="bi bi-wallet2 me-2"></i>Account Summary
+                    </div>
+                    <div class="loading-spinner" id="accountLoader" style="display: none;"></div>
+                </div>
+                <div id="accountData">
+                    <div class="mb-3">
+                        <div class="metric-value" id="portfolioValue">$0.00</div>
+                        <div class="metric-label">Portfolio Value</div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="metric-value" id="buyingPower">$0.00</div>
+                        <div class="metric-label">Buying Power</div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="metric-value" id="dayPL">$0.00</div>
+                        <div class="metric-label">Day P&L</div>
+                    </div>
+                    <div>
+                        <div class="metric-value" id="cashAvailable">$0.00</div>
+                        <div class="metric-label">Cash Available</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bot Control -->
+            <div class="widget">
+                <div class="widget-header">
+                    <div class="widget-title">
+                        <i class="bi bi-robot me-2"></i>Bot Control
+                    </div>
+                    <div id="botStatus" class="signal-badge signal-hold">READY</div>
+                </div>
+                <div class="control-buttons">
+                    <button class="btn btn-start btn-sm flex-fill" onclick="startBot()">
+                        <i class="bi bi-play-fill me-1"></i>Start
+                    </button>
+                    <button class="btn btn-stop btn-sm flex-fill" onclick="stopBot()">
+                        <i class="bi bi-stop-fill me-1"></i>Stop
+                    </button>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        StochRSI + Volume Confirmation
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart Container -->
+        <div class="chart-container">
+            <div class="chart-header">
+                <div>
+                    <h5 class="mb-0">
+                        <span id="currentSymbol">AAPL</span>
+                        <span id="currentPrice" class="ms-2 text-success">$0.00</span>
+                        <span id="priceChange" class="ms-2 small"></span>
+                    </h5>
+                </div>
+                <div class="timeframe-selector">
+                    <button class="timeframe-btn" data-timeframe="1Min">1M</button>
+                    <button class="timeframe-btn active" data-timeframe="15Min">15M</button>
+                    <button class="timeframe-btn" data-timeframe="1Hour">1H</button>
+                    <button class="timeframe-btn" data-timeframe="1Day">1D</button>
+                </div>
+                <div class="indicator-selector">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="maCrossoverToggle" checked>
+                        <label class="form-check-label" for="maCrossoverToggle">MA Crossover</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="stochRsiToggle" checked>
+                        <label class="form-check-label" for="stochRsiToggle">StochRSI</label>
+                    </div>
+                </div>
+            </div>
+            <div id="tradingview-chart"></div>
+        </div>
+
+        <!-- Right Sidebar -->
+        <div class="sidebar-right">
+            <!-- Current Positions -->
+            <div class="widget">
+                <div class="widget-header">
+                    <div class="widget-title">
+                        <i class="bi bi-briefcase me-2"></i>Positions
+                    </div>
+                    <div class="loading-spinner" id="positionsLoader" style="display: none;"></div>
+                </div>
+                <div class="scrollable-content" id="positionsContainer">
+                    <div class="text-center text-muted py-3">
+                        <i class="bi bi-inbox"></i>
+                        <div>No positions</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trading Signals -->
+            <div class="widget">
+                <div class="widget-header">
+                    <div class="widget-title">
+                        <i class="bi bi-lightning me-2"></i>Signals
+                    </div>
+                    <div class="loading-spinner" id="signalsLoader" style="display: none;"></div>
+                </div>
+                <div id="signalsContainer">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>StochRSI</span>
+                            <span id="stochRSIValue" class="signal-badge signal-hold">--</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Volume</span>
+                            <span id="volumeConfirmation" class="signal-badge signal-hold">--</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Signal Quality</span>
+                            <span id="signalQuality" class="signal-badge signal-hold">--</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><strong>Action</strong></span>
+                            <span id="actionSignal" class="signal-badge signal-hold">WAIT</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables
+        let socket;
+        let chart;
+        let candlestickSeries;
+        let emaFastSeries;
+        let emaSlowSeries;
+        let stochRsiPane;
+        let stochRsiKSeries;
+        let stochRsiDSeries;
+        let currentSymbol = 'AAPL';
+        let currentTimeframe = '15Min';
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeWebSocket();
+            initializeChart();
+            loadInitialData();
+            setupEventListeners();
+            setupIndicatorToggles(); // Enable indicator toggles
+            setupTimeframeButtons(); // Setup timeframe switching
+            startDataRefresh();
+            updateMarketTime();
+            
+            console.log('📊 Epic 1 Dashboard initialized');
+        });
+
+        // WebSocket initialization
+        function initializeWebSocket() {
+            socket = io();
+            
+            socket.on('connect', function() {
+                console.log('✅ WebSocket connected');
+                updateConnectionStatus(true);
+                socket.emit('subscribe', {symbol: currentSymbol});
+            });
+            
+            socket.on('disconnect', function() {
+                console.log('❌ WebSocket disconnected');
+                updateConnectionStatus(false);
+            });
+            
+            socket.on('price_update', function(data) {
+                if (data.symbol === currentSymbol && data.price) {
+                    updateCurrentPrice(data.price);
+                }
+            });
+        }
+
+        // Chart initialization
+        function initializeChart() {
+            try {
+                const chartContainer = document.getElementById('tradingview-chart');
+                chart = LightweightCharts.createChart(chartContainer, {
+                    width: chartContainer.clientWidth,
+                    height: chartContainer.clientHeight,
+                    layout: {
+                        background: { color: '#111111' },
+                        textColor: '#ffffff',
+                    },
+                    grid: {
+                        vertLines: { color: '#333333' },
+                        horzLines: { color: '#333333' },
+                    },
+                    crosshair: {
+                        mode: LightweightCharts.CrosshairMode.Normal,
+                    },
+                    rightPriceScale: {
+                        borderColor: '#333333',
+                        textColor: '#ffffff',
+                    },
+                    timeScale: {
+                        borderColor: '#333333',
+                        textColor: '#ffffff',
+                    },
+                });
+
+                candlestickSeries = chart.addCandlestickSeries({
+                    upColor: '#00ff88',
+                    downColor: '#ff4757',
+                    borderDownColor: '#ff4757',
+                    borderUpColor: '#00ff88',
+                    wickDownColor: '#ff4757',
+                    wickUpColor: '#00ff88',
+                });
+
+                // Add EMA series
+                emaFastSeries = chart.addLineSeries({ color: '#00BFFF', lineWidth: 2 });
+                emaSlowSeries = chart.addLineSeries({ color: '#FFA500', lineWidth: 2 });
+
+                // Add StochRSI pane
+                stochRsiPane = chart.addPane();
+                stochRsiKSeries = chart.addLineSeries({ pane: 1, color: '#FFD700', lineWidth: 1 });
+                stochRsiDSeries = chart.addLineSeries({ pane: 1, color: '#ADFF2F', lineWidth: 1 });
+
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    if (chart && chartContainer) {
+                        chart.resize(chartContainer.clientWidth, chartContainer.clientHeight);
+                    }
+                });
+
+                console.log('✅ Chart initialized successfully');
+            } catch (error) {
+                console.error('❌ Chart initialization error:', error);
+            }
+        }
+
+        // Load initial data
+        function loadInitialData() {
+            loadAccountData();
+            loadPositions();
+            loadSignals();
+            loadChartData();
+            loadIndicatorData();
+        }
+
+        // Event Listeners
+        function setupEventListeners() {
+            setupTimeframeButtons();
+            setupIndicatorToggles();
+        }
+
+        // Account data
+        function loadAccountData() {
+            console.log('📊 Loading account data...');
+            document.getElementById('accountLoader').style.display = 'inline-block';
+            
+            fetch('/api/account')
+                .then(response => {
+                    console.log('📊 Account API response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('📊 Account API response data:', data);
+                    updateAccountDisplay(data);
+                })
+                .catch(error => {
+                    console.error('❌ Account data error:', error);
+                    showAccountError();
+                })
+                .finally(() => {
+                    document.getElementById('accountLoader').style.display = 'none';
+                });
+        }
+
+        function updateAccountDisplay(accountData) {
+            console.log('💰 Account data received:', accountData);
+            
+            if (!accountData || !accountData.success) {
+                console.error('❌ Invalid account data structure');
+                showAccountError();
+                return;
+            }
+            
+            // Extract account data - API returns data directly in the response object
+            const portfolioValue = parseFloat(accountData.balance || accountData.portfolio_value || accountData.equity || 0);
+            const buyingPower = parseFloat(accountData.buying_power || 0);
+            const cash = parseFloat(accountData.cash || 0);
+            const dayPL = parseFloat(accountData.unrealized_pl || accountData.day_change || 0);
+            
+            console.log('💰 Parsed account values:', {
+                portfolioValue, buyingPower, cash, dayPL
+            });
+            
+            document.getElementById('portfolioValue').textContent = formatCurrency(portfolioValue);
+            document.getElementById('buyingPower').textContent = formatCurrency(buyingPower);
+            document.getElementById('cashAvailable').textContent = formatCurrency(cash);
+            document.getElementById('dayPL').textContent = formatCurrency(dayPL);
+            document.getElementById('dayPL').className = `metric-value ${dayPL >= 0 ? 'profit' : 'loss'}`;
+        }
+
+        function showAccountError() {
+            document.getElementById('portfolioValue').textContent = 'Error';
+            document.getElementById('buyingPower').textContent = 'Error';
+            document.getElementById('cashAvailable').textContent = 'Error';
+            document.getElementById('dayPL').textContent = 'Error';
+        }
+
+        // Positions
+        function loadPositions() {
+            console.log('📈 Loading positions data...');
+            document.getElementById('positionsLoader').style.display = 'inline-block';
+            
+            fetch('/api/positions')
+                .then(response => {
+                    console.log('📈 Positions API response status:', response.status);
+                    console.log('📈 Positions API response headers:', response.headers);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('📈 Positions API response data:', data);
+                    console.log('📈 Positions API response type:', typeof data);
+                    console.log('📈 Positions data keys:', Object.keys(data || {}));
+                    
+                    updatePositionsDisplay(data);
+                })
+                .catch(error => {
+                    console.error('❌ Positions loading error:', error);
+                    showPositionsError();
+                })
+                .finally(() => {
+                    document.getElementById('positionsLoader').style.display = 'none';
+                });
+        }
+
+        function updatePositionsDisplay(positionsData) {
+            console.log('📈 Raw positions data received:', positionsData);
+            console.log('📈 Data type:', typeof positionsData);
+            console.log('📈 Data keys:', Object.keys(positionsData || {}));
+            
+            const container = document.getElementById('positionsContainer');
+            
+            // Handle the API response structure: { success: true, positions: [...] }
+            let positions = [];
+            
+            if (positionsData && positionsData.positions && Array.isArray(positionsData.positions)) {
+                positions = positionsData.positions;
+                console.log('✅ Found positions array in response');
+            } else if (Array.isArray(positionsData)) {
+                positions = positionsData;
+                console.log('✅ Data is direct array');
+            } else {
+                console.error('❌ Invalid positions data structure:', positionsData);
+                showPositionsError();
+                return;
+            }
+            
+            console.log('📈 Extracted positions array:', positions);
+            console.log('📈 Positions array length:', positions ? positions.length : 0);
+            
+            if (!positions || !Array.isArray(positions) || positions.length === 0) {
+                console.log('📈 No positions to display');
+                container.innerHTML = `
+                    <div class="text-center text-muted py-3">
+                        <i class="bi bi-inbox"></i>
+                        <div>No positions found</div>
+                    </div>
+                `;
+                return;
+            }
+
+            console.log('📈 Processing positions for display...');
+            
+            const positionsHtml = positions.map((position, index) => {
+                console.log(`📈 Processing position ${index + 1}:`, position);
+                
+                const qty = parseFloat(position.qty || 0);
+                const marketValue = parseFloat(position.market_value || 0);
+                const unrealizedPL = parseFloat(position.unrealized_pl || 0);
+                const unrealizedPLPercent = parseFloat(position.unrealized_plpc || 0) * 100;
+                const avgEntryPrice = parseFloat(position.avg_entry_price || 0);
+                const currentPrice = parseFloat(position.current_price || position.market_value / qty || 0);
+                
+                console.log(`📈 Position ${position.symbol} parsed:`, {
+                    qty, marketValue, unrealizedPL, unrealizedPLPercent, avgEntryPrice, currentPrice
+                });
+                
+                const plClass = unrealizedPL >= 0 ? 'profit' : 'loss';
+                const side = position.side === 'short' ? 'SHORT' : 'LONG';
+                const sideClass = position.side === 'short' ? 'text-warning' : '';
+                
+                return `
+                    <div class="position-item">
+                        <div>
+                            <div class="position-symbol">
+                                ${position.symbol} 
+                                <span class="badge bg-secondary ms-1 ${sideClass}">${side}</span>
+                            </div>
+                            <div class="position-shares">${Math.abs(qty)} shares @ $${avgEntryPrice.toFixed(2)}</div>
+                            <div class="position-shares">Current: $${currentPrice.toFixed(2)}</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="${plClass}">${formatCurrency(unrealizedPL)}</div>
+                            <div class="${plClass} small">${unrealizedPLPercent >= 0 ? '+' : ''}${unrealizedPLPercent.toFixed(2)}%</div>
+                            <div class="small text-muted">MV: ${formatCurrency(marketValue)}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            console.log('📈 Generated positions HTML, updating container...');
+            container.innerHTML = positionsHtml;
+            console.log('✅ Positions display updated successfully');
+        }
+
+        function showPositionsError() {
+            document.getElementById('positionsContainer').innerHTML = `
+                <div class="text-center text-muted py-3">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <div>Error loading positions</div>
+                </div>
+            `;
+        }
+
+        // Trading signals
+        function loadSignals() {
+            document.getElementById('signalsLoader').style.display = 'inline-block';
+            
+            fetch(`/api/signals/current?symbol=${currentSymbol}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('⚡ Signals data:', data);
+                    updateSignalsDisplay(data);
+                })
+                .catch(error => {
+                    console.error('❌ Signals error:', error);
+                    showSignalsError();
+                })
+                .finally(() => {
+                    document.getElementById('signalsLoader').style.display = 'none';
+                });
+        }
+
+        function updateSignalsDisplay(signalData) {
+            if (!signalData) {
+                showSignalsError();
+                return;
+            }
+
+            // Update StochRSI
+            const stochRSI = signalData.stoch_rsi_value || '--';
+            const stochRSIElement = document.getElementById('stochRSIValue');
+            stochRSIElement.textContent = typeof stochRSI === 'number' ? stochRSI.toFixed(2) : stochRSI;
+            
+            // Update Volume Confirmation
+            const volumeConfirmed = signalData.volume_confirmed || false;
+            const volumeElement = document.getElementById('volumeConfirmation');
+            volumeElement.textContent = volumeConfirmed ? 'CONFIRMED' : 'PENDING';
+            volumeElement.className = `signal-badge ${volumeConfirmed ? 'signal-buy' : 'signal-hold'}`;
+            
+            // Update Signal Quality
+            const quality = signalData.signal_quality || 'LOW';
+            const qualityElement = document.getElementById('signalQuality');
+            qualityElement.textContent = quality.toUpperCase();
+            qualityElement.className = `signal-badge signal-${quality.toLowerCase() === 'high' ? 'buy' : quality.toLowerCase() === 'medium' ? 'hold' : 'sell'}`;
+            
+            // Update Action Signal
+            const action = signalData.action || 'WAIT';
+            const actionElement = document.getElementById('actionSignal');
+            actionElement.textContent = action.toUpperCase();
+            actionElement.className = `signal-badge signal-${action.toLowerCase() === 'buy' ? 'buy' : action.toLowerCase() === 'sell' ? 'sell' : 'hold'}`;
+        }
+
+        function showSignalsError() {
+            ['stochRSIValue', 'volumeConfirmation', 'signalQuality', 'actionSignal'].forEach(id => {
+                document.getElementById(id).textContent = 'ERROR';
+                document.getElementById(id).className = 'signal-badge signal-sell';
+            });
+        }
+
+        // Chart data
+        function loadChartData() {
+            const endpoints = [
+                `/api/v2/chart-data/${currentSymbol}?timeframe=${currentTimeframe}&limit=1000`,
+                `/api/chart-data/${currentSymbol}?timeframe=${currentTimeframe}`,
+                `/api/v2/chart-data/${currentSymbol}?timeframe=${currentTimeframe}`
+            ];
+            
+            tryLoadChartData(endpoints, 0);
+        }
+
+        function tryLoadChartData(endpoints, index) {
+            if (index >= endpoints.length) {
+                console.error('❌ All chart endpoints failed');
+                return;
+            }
+            
+            console.log(`📡 Trying endpoint ${index + 1}/${endpoints.length}: ${endpoints[index]}`);
+            
+            fetch(endpoints[index])
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('📈 Chart response:', data);
+                    
+                    let chartData = [];
+                    
+                    if (data.candlestick_data && Array.isArray(data.candlestick_data)) {
+                        chartData = data.candlestick_data.map(candle => ({
+                            time: new Date(candle.timestamp).getTime() / 1000,
+                            open: parseFloat(candle.open),
+                            high: parseFloat(candle.high),
+                            low: parseFloat(candle.low),
+                            close: parseFloat(candle.close)
+                        }));
+                    } else if (data.data && Array.isArray(data.data)) {
+                        chartData = data.data;
+                    } else if (Array.isArray(data)) {
+                        chartData = data;
+                    }
+                    
+                    if (chartData.length > 0) {
+                        console.log(`✅ Chart data loaded: ${chartData.length} candles`);
+                        updateChart(chartData);
+                        
+                        // Update current price
+                        const lastCandle = chartData[chartData.length - 1];
+                        if (lastCandle && lastCandle.close) {
+                            updateCurrentPrice(lastCandle.close);
+                        }
+                        
+                        // Load indicator data after chart data is loaded
+                        loadIndicatorData();
+                    } else {
+                        throw new Error('No chart data found');
+                    }
+                })
+                .catch(error => {
+                    console.warn(`⚠️ Endpoint ${index + 1} failed:`, error.message);
+                    tryLoadChartData(endpoints, index + 1);
+                });
+        }
+
+        function loadIndicatorData() {
+            fetch(`/api/chart_indicators/${currentSymbol}?timeframe=${currentTimeframe}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderMAIndicators(data.indicators);
+                        renderStochRSIIndicator(data.indicators);
+                    }
+                });
+        }
+
+        function renderMAIndicators(indicators) {
+            if (indicators.ema_fast && indicators.ema_slow) {
+                emaFastSeries.setData(indicators.ema_fast);
+                emaSlowSeries.setData(indicators.ema_slow);
+            }
+        }
+
+        function renderStochRSIIndicator(indicators) {
+            if (indicators.stochRSI_K && indicators.stochRSI_D) {
+                stochRsiKSeries.setData(indicators.stochRSI_K);
+                stochRsiDSeries.setData(indicators.stochRSI_D);
+            }
+        }
+
+        function updateChart(data) {
+            if (candlestickSeries && data && data.length > 0) {
+                try {
+                    candlestickSeries.setData(data);
+                    chart.timeScale().fitContent();
+                } catch (error) {
+                    console.error('❌ Chart update error:', error);
+                }
+            }
+        }
+
+        function updateCurrentPrice(price) {
+            const priceElement = document.getElementById('currentPrice');
+            const changeElement = document.getElementById('priceChange');
+            
+            if (price && priceElement) {
+                const formattedPrice = typeof price === 'number' ? price.toFixed(2) : parseFloat(price).toFixed(2);
+                priceElement.textContent = `$${formattedPrice}`;
+                
+                // You could add price change calculation here if you store previous price
+                changeElement.textContent = '';
+            }
+        }
+
+        // Timeframe handling
+        function setupTimeframeButtons() {
+            document.querySelectorAll('.timeframe-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // Remove active class from all buttons
+                    document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active'));
+                    // Add active class to clicked button
+                    this.classList.add('active');
+                    
+                    currentTimeframe = this.dataset.timeframe;
+                    loadChartData();
+                });
+            });
+        }
+
+        function setupIndicatorToggles() {
+            document.getElementById('maCrossoverToggle').addEventListener('change', (e) => {
+                emaFastSeries.applyOptions({ visible: e.target.checked });
+                emaSlowSeries.applyOptions({ visible: e.target.checked });
+            });
+
+            document.getElementById('stochRsiToggle').addEventListener('change', (e) => {
+                stochRsiKSeries.applyOptions({ visible: e.target.checked });
+                stochRsiDSeries.applyOptions({ visible: e.target.checked });
+            });
+        }
+
+        // Bot control
+        function startBot() {
+            fetch('/api/bot/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('🤖 Bot start response:', data);
+                if (data.success) {
+                    updateBotStatus('RUNNING');
+                    console.log('✅ Bot started successfully');
+                } else {
+                    console.error('❌ Bot start failed:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('❌ Bot start error:', error);
+            });
+        }
+
+        function stopBot() {
+            fetch('/api/bot/stop', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('🤖 Bot stop response:', data);
+                if (data.success) {
+                    updateBotStatus('STOPPED');
+                    console.log('✅ Bot stopped successfully');
+                } else {
+                    console.error('❌ Bot stop failed:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('❌ Bot stop error:', error);
+            });
+        }
+
+        function updateBotStatus(status) {
+            const statusElement = document.getElementById('botStatus');
+            statusElement.textContent = status;
+            
+            if (status === 'RUNNING') {
+                statusElement.className = 'signal-badge signal-buy';
+            } else if (status === 'STOPPED') {
+                statusElement.className = 'signal-badge signal-sell';
+            } else {
+                statusElement.className = 'signal-badge signal-hold';
+            }
+        }
+
+        // Utility functions
+        function formatCurrency(value) {
+            if (typeof value !== 'number' || isNaN(value)) {
+                return '$0.00';
+            }
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2
+            }).format(value);
+        }
+
+        function updateConnectionStatus(connected) {
+            const statusElement = document.getElementById('connectionStatus');
+            const textElement = document.getElementById('connectionText');
+            
+            if (connected) {
+                statusElement.className = 'status-indicator status-live';
+                textElement.textContent = 'Connected';
+            } else {
+                statusElement.className = 'status-indicator status-paused';
+                textElement.textContent = 'Disconnected';
+            }
+        }
+
+        function updateMarketTime() {
+            const timeElement = document.getElementById('marketTime');
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            timeElement.textContent = timeString;
+        }
+
+        // Auto refresh data
+        function startDataRefresh() {
+            // Refresh account and positions every 30 seconds
+            setInterval(() => {
+                loadAccountData();
+                loadPositions();
+            }, 30000);
+            
+            // Refresh signals every 10 seconds
+            setInterval(() => {
+                loadSignals();
+            }, 10000);
+            
+            // Update time every second
+            setInterval(updateMarketTime, 1000);
+            
+            // Refresh chart data every 60 seconds
+            setInterval(() => {
+                loadChartData();
+            }, 60000);
+        }
+
+        // Debug functions for testing
+        window.debugDashboard = {
+            testPositionsAPI: function() {
+                console.log('🧪 Testing positions API...');
+                fetch('/api/positions')
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('🧪 Debug positions response:', data);
+                        updatePositionsDisplay(data);
+                    })
+                    .catch(error => console.error('🧪 Debug positions error:', error));
+            },
+            testAccountAPI: function() {
+                console.log('🧪 Testing account API...');
+                fetch('/api/account')
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('🧪 Debug account response:', data);
+                        updateAccountDisplay(data);
+                    })
+                    .catch(error => console.error('🧪 Debug account error:', error));
+            },
+            refreshAll: function() {
+                console.log('🧪 Refreshing all data...');
+                loadInitialData();
+            }
+        };
+        
+        console.log('🚀 Epic 1 Trading Dashboard script loaded');
+        
+        // Debug function to manually test positions API
+        window.testPositionsAPI = async function() {
+            console.log('🔧 Manual positions API test...');
+            try {
+                const response = await fetch('/api/positions');
+                console.log('🔧 Response status:', response.status);
+                const data = await response.json();
+                console.log('🔧 Response data:', data);
+                console.log('🔧 Calling updatePositionsDisplay...');
+                updatePositionsDisplay(data);
+            } catch (error) {
+                console.error('🔧 Manual test error:', error);
+            }
+        };
+        
+        // Auto-test positions after 5 seconds
+        setTimeout(() => {
+            console.log('⏰ Auto-testing positions...');
+            window.testPositionsAPI();
+        }, 5000);
+        console.log('🧪 Debug functions available: window.debugDashboard.testPositionsAPI(), testAccountAPI(), refreshAll()');
+        
+        // Auto-run positions test after 2 seconds for immediate debugging
+        setTimeout(() => {
+            console.log('🧪 Auto-running positions test...');
+            window.debugDashboard.testPositionsAPI();
+        }, 2000);
+    </script>
+</body>
+</html>

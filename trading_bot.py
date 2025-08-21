@@ -76,11 +76,14 @@ class TradingBot:
             if not price:
                 return
 
+            stop_loss_price = self.enhanced_risk_manager._calculate_dynamic_stop_loss(ticker, price)
+
             # Enhanced risk management: Calculate optimal position size
             if self.enable_enhanced_risk_management:
                 optimal_size_recommendation = self.enhanced_risk_manager.calculate_optimal_position_size(
                     symbol=ticker,
-                    entry_price=price
+                    entry_price=price,
+                    stop_loss_price=stop_loss_price
                 )
                 
                 # Use portfolio value to convert percentage to shares
@@ -88,7 +91,6 @@ class TradingBot:
                 quantity = (optimal_size_recommendation.risk_adjusted_size * portfolio_value) / price
                 
                 # Additional validation
-                stop_loss_price = self.calculate_stop_loss(price, df)
                 validation_result = self.enhanced_risk_manager.validate_position_size(
                     symbol=ticker,
                     proposed_size=quantity,
@@ -111,8 +113,8 @@ class TradingBot:
                 
             else:
                 # Legacy position sizing
-                quantity = self.calculate_position_size(price, df)
-                stop_loss_price = self.calculate_stop_loss(price, df)
+                quantity = (config.investment_amount * (config.trade_capital_percent * 0.01)) / price
+                stop_loss_price = price * (1 - (config.stop_loss * 0.01))
 
             if quantity <= 0:
                 logger.warning(f"Invalid quantity calculated for {ticker}: {quantity}")
@@ -156,33 +158,7 @@ class TradingBot:
         except Exception as e:
             logger.error(f"Error placing buy order for {ticker}: {e}")
 
-    def calculate_position_size(self, price, df):
-        cash_to_use = config.investment_amount
-        
-        if self.risk_management_params.get('use_atr_position_sizing', False):
-            atr_period = self.risk_management_params.get('atr_period', 14)
-            df.ta.atr(length=atr_period, append=True)
-            atr_value = df[f'ATRr_{atr_period}'].iloc[-1]
 
-            if atr_value > 0:
-                risk_per_share = atr_value
-                risk_amount = cash_to_use * (config.trade_capital_percent * 0.01)
-                return risk_amount / risk_per_share
-
-        return (cash_to_use * (config.trade_capital_percent * 0.01)) / price
-
-    def calculate_stop_loss(self, price, df):
-        if self.risk_management_params.get('use_atr_stop_loss', False):
-            atr_period = self.risk_management_params.get('atr_period', 14)
-            atr_multiplier = self.risk_management_params.get('atr_multiplier', 2.0)
-            
-            df.ta.atr(length=atr_period, append=True)
-            atr_value = df[f'ATRr_{atr_period}'].iloc[-1]
-            
-            if atr_value > 0:
-                return price - (atr_value * atr_multiplier)
-        
-        return price * (1 - (config.stop_loss * 0.01))
 
     def sell(self, ticker, quantity, buy_price, highest_price, reason: str = "manual"):
         try:
@@ -214,7 +190,7 @@ class TradingBot:
 
             # Update enhanced risk manager with current price
             if self.enable_enhanced_risk_management:
-                trailing_stop_trigger = self.enhanced_risk_manager.update_position_price(ticker, curr_price)
+                stop_loss_triggered, trailing_stop_trigger = self.enhanced_risk_manager.check_stop_loss_and_trailing_stop(ticker, curr_price)
                 
                 # Check if trailing stop was triggered
                 if trailing_stop_trigger:
@@ -227,22 +203,33 @@ class TradingBot:
                         reason="trailing_stop"
                     )
                     continue
+                
+                if stop_loss_triggered:
+                    logger.info(f"Stop loss triggered for {ticker}")
+                    self.sell(
+                        ticker, 
+                        position.qty, 
+                        float(position.avg_entry_price), 
+                        curr_price,
+                        reason="stop_loss"
+                    )
+                    continue
+            else:
+                try:
+                    order = self.api.get_order_by_client_order_id(position.client_order_id)
+                    client_order_id = order.client_order_id
+                    parts = client_order_id.split('_')
+                    stop_loss_price = float(parts[1])
+                    target_price = float(parts[3])
 
-            try:
-                order = self.api.get_order_by_client_order_id(position.client_order_id)
-                client_order_id = order.client_order_id
-                parts = client_order_id.split('_')
-                stop_loss_price = float(parts[1])
-                target_price = float(parts[3])
+                    if curr_price <= stop_loss_price or curr_price >= target_price:
+                        reason = "stop_loss" if curr_price <= stop_loss_price else "target_price"
+                        self.sell(ticker, position.qty, float(position.avg_entry_price), curr_price, reason=reason)
 
-                if curr_price <= stop_loss_price or curr_price >= target_price:
-                    reason = "stop_loss" if curr_price <= stop_loss_price else "target_price"
-                    self.sell(ticker, position.qty, float(position.avg_entry_price), curr_price, reason=reason)
-
-            except Exception as e:
-                logger.error(f"Could not parse client_order_id for {ticker}: {e}")
-                # Fallback or logging for orders placed without the new client_order_id format
-                pass
+                except Exception as e:
+                    logger.error(f"Could not parse client_order_id for {ticker}: {e}")
+                    # Fallback or logging for orders placed without the new client_order_id format
+                    pass
 
 
 

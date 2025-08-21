@@ -66,8 +66,8 @@ def streaming_status(data):
 
 if __name__ == '__main__':
     try:
-        print("🔌 Connecting to Flask server at http://localhost:8765...")
-        sio.connect('http://localhost:8765')
+        print("🔌 Connecting to Flask server at http://localhost:9765...")
+        sio.connect('http://localhost:9765')
         
         # Keep running for 30 seconds
         print("⏰ Listening for 30 seconds...")

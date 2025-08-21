@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Positions Debug</title>
+    <style>
+        body { font-family: monospace; background: #111; color: #0f0; padding: 20px; }
+        .success { color: #0f0; }
+        .error { color: #f00; }
+        .data { color: #ff0; background: #333; padding: 10px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Positions API Debug</h1>
+    <button onclick="testPositions()">Test Positions API</button>
+    <div id="results"></div>
+
+    <script>
+        async function testPositions() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>🔄 Testing positions API...</p>';
+            
+            try {
+                console.log('📡 Fetching positions from /api/positions...');
+                const response = await fetch('/api/positions');
+                
+                console.log('📊 Response status:', response.status);
+                resultsDiv.innerHTML += `<p class="success">✅ HTTP ${response.status}</p>`;
+                
+                const data = await response.json();
+                console.log('📦 Raw response data:', data);
+                resultsDiv.innerHTML += `<div class="data">Raw API Response:<br>${JSON.stringify(data, null, 2)}</div>`;
+                
+                // Test data extraction
+                if (data && data.positions && Array.isArray(data.positions)) {
+                    console.log('✅ Positions array found:', data.positions.length, 'positions');
+                    resultsDiv.innerHTML += `<p class="success">✅ Found ${data.positions.length} positions</p>`;
+                    
+                    // Generate HTML for each position
+                    let positionsHtml = '';
+                    data.positions.forEach((position, index) => {
+                        console.log(`📈 Position ${index + 1}:`, position);
+                        
+                        const qty = parseFloat(position.qty || 0);
+                        const avgEntryPrice = parseFloat(position.avg_entry_price || 0);
+                        const currentPrice = parseFloat(position.current_price || 0);
+                        const unrealizedPL = parseFloat(position.unrealized_pl || 0);
+                        const unrealizedPLPercent = parseFloat(position.unrealized_plpc || 0) * 100;
+                        
+                        const plClass = unrealizedPL >= 0 ? 'success' : 'error';
+                        
+                        positionsHtml += `
+                            <div style="border: 1px solid #444; padding: 10px; margin: 5px 0;">
+                                <strong>${position.symbol} (${position.side.toUpperCase()})</strong><br>
+                                Quantity: ${Math.abs(qty)} shares<br>
+                                Avg Entry: $${avgEntryPrice.toFixed(2)}<br>
+                                Current: $${currentPrice.toFixed(2)}<br>
+                                P&L: <span class="${plClass}">$${unrealizedPL.toFixed(2)} (${unrealizedPLPercent >= 0 ? '+' : ''}${unrealizedPLPercent.toFixed(2)}%)</span>
+                            </div>
+                        `;
+                    });
+                    
+                    resultsDiv.innerHTML += `<div class="data">Formatted Positions:<br>${positionsHtml}</div>`;
+                } else {
+                    console.error('❌ No positions array found in response');
+                    resultsDiv.innerHTML += `<p class="error">❌ No positions array found</p>`;
+                }
+                
+            } catch (error) {
+                console.error('❌ Error fetching positions:', error);
+                resultsDiv.innerHTML += `<p class="error">❌ Error: ${error.message}</p>`;
+            }
+        }
+        
+        // Auto-test on page load
+        window.addEventListener('load', testPositions);
+    </script>
+</body>
+</html>

@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Test Suite - Epic 1 Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Consolas', 'Monaco', monospace;
+            background: #0a0a0a;
+            color: #ffffff;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+            border-radius: 10px;
+            border: 2px solid #00ff88;
+        }
+
+        .test-controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .test-btn {
+            background: linear-gradient(45deg, #00ff88, #00cc6a);
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .test-btn:hover {
+            background: linear-gradient(45deg, #00cc6a, #00aa55);
+            transform: translateY(-2px);
+        }
+
+        .test-btn:disabled {
+            background: #666;
+            color: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-container {
+            max-height: 70vh;
+            overflow-y: auto;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .test-result {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-left: 4px solid #666;
+            background: #1a1a1a;
+            border-radius: 5px;
+        }
+
+        .test-result.pass {
+            border-left-color: #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .test-result.fail {
+            border-left-color: #ff4757;
+            background: rgba(255, 71, 87, 0.1);
+        }
+
+        .test-result.warn {
+            border-left-color: #ffb74d;
+            background: rgba(255, 183, 77, 0.1);
+        }
+
+        .test-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .test-details {
+            font-size: 14px;
+            color: #ccc;
+            margin-bottom: 10px;
+        }
+
+        .test-data {
+            background: #000;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            overflow-x: auto;
+            border: 1px solid #333;
+        }
+
+        .summary {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #1a1a1a;
+            border: 2px solid #00ff88;
+            padding: 15px;
+            border-radius: 10px;
+            min-width: 200px;
+        }
+
+        .summary-item {
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #333;
+            border-radius: 50%;
+            border-top-color: #00ff88;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .timestamp {
+            color: #666;
+            font-size: 11px;
+            float: right;
+        }
+
+        .metric-value {
+            color: #00ff88;
+            font-weight: bold;
+        }
+
+        .metric-value.warning {
+            color: #ffb74d;
+        }
+
+        .metric-value.error {
+            color: #ff4757;
+        }
+
+        #dashboardFrame {
+            border: 2px solid #00ff88;
+            border-radius: 10px;
+            margin: 20px 0;
+            background: #1a1a1a;
+        }
+        
+        #dashboardFrame.loading {
+            opacity: 0.5;
+        }
+
+        @media (max-width: 768px) {
+            .summary {
+                position: relative;
+                top: auto;
+                right: auto;
+                margin-bottom: 20px;
+            }
+            
+            .test-controls {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧪 Epic 1 Dashboard Frontend Test Suite</h1>
+        <p>Comprehensive frontend testing and validation</p>
+    </div>
+
+    <div class="summary" id="summaryPanel">
+        <h3>📊 Test Summary</h3>
+        <div class="summary-item">
+            <span>Total Tests:</span>
+            <span id="totalTests">0</span>
+        </div>
+        <div class="summary-item">
+            <span>✅ Passed:</span>
+            <span id="passedTests" class="metric-value">0</span>
+        </div>
+        <div class="summary-item">
+            <span>❌ Failed:</span>
+            <span id="failedTests" class="metric-value error">0</span>
+        </div>
+        <div class="summary-item">
+            <span>⚠️ Warnings:</span>
+            <span id="warningTests" class="metric-value warning">0</span>
+        </div>
+        <div class="summary-item">
+            <span>Success Rate:</span>
+            <span id="successRate" class="metric-value">0%</span>
+        </div>
+    </div>
+
+    <div class="test-controls">
+        <button class="test-btn" onclick="runAllTests()">🚀 Run All Tests</button>
+        <button class="test-btn" onclick="runAPITests()">📡 API Tests</button>
+        <button class="test-btn" onclick="runUITests()">🎨 UI Tests</button>
+        <button class="test-btn" onclick="runPerformanceTests()">⚡ Performance Tests</button>
+        <button class="test-btn" onclick="runWebSocketTests()">🔗 WebSocket Tests</button>
+        <button class="test-btn" onclick="clearResults()">🧹 Clear Results</button>
+    </div>
+
+    <!-- Dashboard iframe for testing actual UI elements -->
+    <iframe id="dashboardFrame" src="/" style="display:none;" width="100%" height="600"></iframe>
+
+    <div class="results-container" id="resultsContainer">
+        <p style="text-align: center; color: #666; padding: 40px;">
+            Click "Run All Tests" to start the comprehensive test suite
+        </p>
+    </div>
+
+    <script>
+        // Global test state
+        let testResults = [];
+        let testSummary = {
+            total: 0,
+            passed: 0,
+            failed: 0,
+            warnings: 0
+        };
+
+        // Test logging function
+        function logTest(testName, status, details = "", data = null, duration = null) {
+            const timestamp = new Date().toISOString();
+            const result = {
+                test: testName,
+                status: status,
+                details: details,
+                data: data,
+                duration: duration,
+                timestamp: timestamp
+            };
+
+            testResults.push(result);
+            displayTestResult(result);
+            updateSummary();
+        }
+
+        // Display test result in UI
+        function displayTestResult(result) {
+            const container = document.getElementById('resultsContainer');
+            const resultDiv = document.createElement('div');
+            
+            let statusClass = 'fail';
+            let emoji = '❌';
+            
+            if (result.status === 'PASS') {
+                statusClass = 'pass';
+                emoji = '✅';
+            } else if (result.status === 'WARN') {
+                statusClass = 'warn';
+                emoji = '⚠️';
+            }
+            
+            resultDiv.className = `test-result ${statusClass}`;
+            
+            let content = `
+                <div class="test-title">${emoji} ${result.test}</div>
+                <div class="timestamp">${new Date(result.timestamp).toLocaleTimeString()}</div>
+            `;
+            
+            if (result.details) {
+                content += `<div class="test-details">${result.details}</div>`;
+            }
+            
+            if (result.duration) {
+                content += `<div class="test-details">⏱️ Duration: ${result.duration}ms</div>`;
+            }
+            
+            if (result.data) {
+                content += `<div class="test-data">${JSON.stringify(result.data, null, 2)}</div>`;
+            }
+            
+            resultDiv.innerHTML = content;
+            container.appendChild(resultDiv);
+            
+            // Scroll to bottom
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Update test summary
+        function updateSummary() {
+            testSummary.total = testResults.length;
+            testSummary.passed = testResults.filter(r => r.status === 'PASS').length;
+            testSummary.failed = testResults.filter(r => r.status === 'FAIL').length;
+            testSummary.warnings = testResults.filter(r => r.status === 'WARN').length;
+            
+            const successRate = testSummary.total > 0 
+                ? (testSummary.passed / testSummary.total * 100).toFixed(1)
+                : 0;
+
+            document.getElementById('totalTests').textContent = testSummary.total;
+            document.getElementById('passedTests').textContent = testSummary.passed;
+            document.getElementById('failedTests').textContent = testSummary.failed;
+            document.getElementById('warningTests').textContent = testSummary.warnings;
+            document.getElementById('successRate').textContent = successRate + '%';
+            
+            // Update success rate color
+            const successRateElement = document.getElementById('successRate');
+            if (successRate >= 90) {
+                successRateElement.className = 'metric-value';
+            } else if (successRate >= 75) {
+                successRateElement.className = 'metric-value warning';
+            } else {
+                successRateElement.className = 'metric-value error';
+            }
+        }
+
+        // Clear test results
+        function clearResults() {
+            testResults = [];
+            testSummary = { total: 0, passed: 0, failed: 0, warnings: 0 };
+            document.getElementById('resultsContainer').innerHTML = `
+                <p style="text-align: center; color: #666; padding: 40px;">
+                    Results cleared. Click any test button to start testing.
+                </p>
+            `;
+            updateSummary();
+        }
+
+        // API Tests
+        async function runAPITests() {
+            logTest("API Test Suite", "INFO", "Starting API endpoint tests...");
+            
+            const endpoints = [
+                { url: '/api/bot/status', name: 'Bot Status API' },
+                { url: '/api/positions/summary', name: 'Positions Summary API' },
+                { url: '/api/orders/active', name: 'Active Orders API' },
+                { url: '/api/v2/chart-data/AAPL?timeframe=15Min&limit=100', name: 'Chart Data API' },
+                { url: '/api/account', name: 'Account API' }
+            ];
+
+            for (const endpoint of endpoints) {
+                const startTime = Date.now();
+                try {
+                    const response = await fetch(endpoint.url);
+                    const duration = Date.now() - startTime;
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        logTest(endpoint.name, "PASS", 
+                              `HTTP ${response.status}, ${duration}ms`, 
+                              data, duration);
+                    } else {
+                        logTest(endpoint.name, "FAIL", 
+                              `HTTP ${response.status}`, null, duration);
+                    }
+                } catch (error) {
+                    const duration = Date.now() - startTime;
+                    logTest(endpoint.name, "FAIL", error.message, null, duration);
+                }
+            }
+        }
+
+        // UI Tests
+        async function runUITests() {
+            logTest("UI Test Suite", "INFO", "Starting UI component tests...");
+            
+            // Get the iframe and wait for it to load
+            const iframe = document.getElementById('dashboardFrame');
+            iframe.style.display = 'block';
+            
+            // Wait for iframe to load
+            await new Promise(resolve => {
+                if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
+                    resolve();
+                } else {
+                    iframe.onload = resolve;
+                    // Reload the iframe to ensure it loads
+                    iframe.src = iframe.src || '/';
+                }
+            });
+            
+            // Wait a bit more for JavaScript to initialize
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Get the iframe document
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            const iframeWin = iframe.contentWindow;
+            
+            // Test essential DOM elements in iframe
+            const essentialElements = [
+                'portfolioValue',
+                'buyingPower', 
+                'cashAvailable',
+                'dayPL',
+                'positionsContainer',
+                'signalsContainer',
+                'tradingview-chart',
+                'currentSymbol',
+                'currentPrice'
+            ];
+
+            essentialElements.forEach(elementId => {
+                const element = iframeDoc.getElementById(elementId);
+                if (element) {
+                    logTest(`UI Element: ${elementId}`, "PASS", 
+                           `Element found in dashboard: ${element.tagName.toLowerCase()}`);
+                } else {
+                    logTest(`UI Element: ${elementId}`, "FAIL", "Element not found in dashboard DOM");
+                }
+            });
+
+            // Test CSS classes in iframe
+            const testClasses = ['metric-value', 'position-item', 'signal-badge'];
+            testClasses.forEach(className => {
+                const elements = iframeDoc.getElementsByClassName(className);
+                if (elements.length > 0) {
+                    logTest(`CSS Class: ${className}`, "PASS", 
+                           `Found ${elements.length} elements in dashboard`);
+                } else {
+                    logTest(`CSS Class: ${className}`, "WARN", "No elements found in dashboard");
+                }
+            });
+
+            // Test JavaScript functions in iframe
+            const testFunctions = [
+                'loadAccountData',
+                'loadPositions', 
+                'loadSignals',
+                'loadChartData',
+                'startBot',
+                'stopBot'
+            ];
+
+            testFunctions.forEach(funcName => {
+                if (iframeWin && typeof iframeWin[funcName] === 'function') {
+                    logTest(`JS Function: ${funcName}`, "PASS", "Function exists and callable in dashboard");
+                } else {
+                    logTest(`JS Function: ${funcName}`, "FAIL", "Function not found in dashboard");
+                }
+            });
+            
+            // Hide iframe after tests
+            iframe.style.display = 'none';
+        }
+
+        // Performance Tests
+        async function runPerformanceTests() {
+            logTest("Performance Test Suite", "INFO", "Starting performance tests...");
+            
+            // Page load performance
+            if (window.performance && window.performance.timing) {
+                const timing = window.performance.timing;
+                const loadTime = timing.loadEventEnd - timing.navigationStart;
+                const domReady = timing.domContentLoadedEventEnd - timing.navigationStart;
+                
+                if (loadTime < 3000) {
+                    logTest("Page Load Time", "PASS", `${loadTime}ms - Good performance`);
+                } else if (loadTime < 5000) {
+                    logTest("Page Load Time", "WARN", `${loadTime}ms - Acceptable performance`);
+                } else {
+                    logTest("Page Load Time", "FAIL", `${loadTime}ms - Poor performance`);
+                }
+                
+                logTest("DOM Ready Time", "INFO", `${domReady}ms`);
+            }
+
+            // Memory usage (if available)
+            if (window.performance && window.performance.memory) {
+                const memory = window.performance.memory;
+                const usedMB = (memory.usedJSHeapSize / 1024 / 1024).toFixed(2);
+                const totalMB = (memory.totalJSHeapSize / 1024 / 1024).toFixed(2);
+                
+                if (usedMB < 50) {
+                    logTest("Memory Usage", "PASS", `${usedMB}MB used of ${totalMB}MB`);
+                } else if (usedMB < 100) {
+                    logTest("Memory Usage", "WARN", `${usedMB}MB used of ${totalMB}MB`);
+                } else {
+                    logTest("Memory Usage", "FAIL", `${usedMB}MB used - High memory usage`);
+                }
+            }
+
+            // Network performance test
+            const startTime = Date.now();
+            try {
+                await fetch('/api/account');
+                const networkTime = Date.now() - startTime;
+                
+                if (networkTime < 500) {
+                    logTest("Network Performance", "PASS", `${networkTime}ms - Excellent`);
+                } else if (networkTime < 1000) {
+                    logTest("Network Performance", "WARN", `${networkTime}ms - Good`);
+                } else {
+                    logTest("Network Performance", "FAIL", `${networkTime}ms - Poor`);
+                }
+            } catch (error) {
+                logTest("Network Performance", "FAIL", `Network error: ${error.message}`);
+            }
+        }
+
+        // WebSocket Tests
+        async function runWebSocketTests() {
+            logTest("WebSocket Test Suite", "INFO", "Starting WebSocket tests...");
+            
+            // Get the iframe
+            const iframe = document.getElementById('dashboardFrame');
+            iframe.style.display = 'block';
+            
+            // Wait for iframe to load
+            await new Promise(resolve => {
+                if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
+                    resolve();
+                } else {
+                    iframe.onload = resolve;
+                    iframe.src = iframe.src || '/';
+                }
+            });
+            
+            // Wait for JavaScript to initialize
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Get the iframe window
+            const iframeWin = iframe.contentWindow;
+            
+            if (iframeWin && typeof iframeWin.io !== 'undefined') {
+                logTest("Socket.IO Library", "PASS", "Socket.IO library loaded in dashboard");
+                
+                // Test connection using iframe's io
+                const testSocket = iframeWin.io();
+                
+                testSocket.on('connect', () => {
+                    logTest("WebSocket Connection", "PASS", "Successfully connected from dashboard");
+                    
+                    // Test subscription
+                    testSocket.emit('subscribe', { symbol: 'AAPL' });
+                });
+                
+                testSocket.on('subscribed', (data) => {
+                    logTest("WebSocket Subscription", "PASS", 
+                           `Dashboard subscribed to ${data.symbol}`, data);
+                    testSocket.disconnect();
+                });
+                
+                testSocket.on('connect_error', (error) => {
+                    logTest("WebSocket Connection", "FAIL", `Dashboard connection error: ${error}`);
+                });
+                
+                testSocket.on('disconnect', (reason) => {
+                    logTest("WebSocket Disconnect", "INFO", `Dashboard disconnected: ${reason}`);
+                });
+                
+                // Set timeout for connection test
+                setTimeout(() => {
+                    if (!testSocket.connected) {
+                        logTest("WebSocket Connection", "FAIL", "Dashboard connection timeout");
+                        testSocket.disconnect();
+                    }
+                }, 5000);
+                
+            } else {
+                logTest("Socket.IO Library", "FAIL", "Socket.IO library not found in dashboard");
+            }
+            
+            // Hide iframe after tests
+            iframe.style.display = 'none';
+        }
+
+        // Data validation tests
+        async function runDataValidationTests() {
+            logTest("Data Validation Suite", "INFO", "Starting data validation tests...");
+            
+            // Test account data structure
+            try {
+                const response = await fetch('/api/account');
+                const accountData = await response.json();
+                
+                const requiredFields = ['balance', 'buying_power', 'cash', 'success'];
+                const missingFields = requiredFields.filter(field => !(field in accountData));
+                
+                if (missingFields.length === 0) {
+                    logTest("Account Data Validation", "PASS", 
+                           "All required fields present", accountData);
+                } else {
+                    logTest("Account Data Validation", "FAIL", 
+                           `Missing fields: ${missingFields.join(', ')}`, accountData);
+                }
+            } catch (error) {
+                logTest("Account Data Validation", "FAIL", error.message);
+            }
+            
+            // Test positions data structure
+            try {
+                const response = await fetch('/api/positions');
+                const positionsData = await response.json();
+                
+                if (positionsData.success && Array.isArray(positionsData.positions)) {
+                    logTest("Positions Data Validation", "PASS", 
+                           `Valid structure with ${positionsData.positions.length} positions`);
+                    
+                    // Validate individual position structure if positions exist
+                    if (positionsData.positions.length > 0) {
+                        const position = positionsData.positions[0];
+                        const requiredFields = ['symbol', 'qty', 'side', 'avg_entry_price'];
+                        const missingFields = requiredFields.filter(field => !(field in position));
+                        
+                        if (missingFields.length === 0) {
+                            logTest("Position Structure Validation", "PASS", 
+                                   "Position data structure valid", position);
+                        } else {
+                            logTest("Position Structure Validation", "FAIL", 
+                                   `Missing position fields: ${missingFields.join(', ')}`);
+                        }
+                    }
+                } else {
+                    logTest("Positions Data Validation", "FAIL", 
+                           "Invalid positions data structure", positionsData);
+                }
+            } catch (error) {
+                logTest("Positions Data Validation", "FAIL", error.message);
+            }
+        }
+
+        // Chart functionality tests
+        async function runChartTests() {
+            logTest("Chart Test Suite", "INFO", "Starting chart functionality tests...");
+            
+            // Get the iframe and wait for it to load
+            const iframe = document.getElementById('dashboardFrame');
+            iframe.style.display = 'block';
+            
+            // Wait for iframe to load
+            await new Promise(resolve => {
+                if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
+                    resolve();
+                } else {
+                    iframe.onload = resolve;
+                    iframe.src = iframe.src || '/';
+                }
+            });
+            
+            // Wait for JavaScript to initialize
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Get the iframe document and window
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            const iframeWin = iframe.contentWindow;
+            
+            // Test TradingView library in iframe
+            if (iframeWin && typeof iframeWin.LightweightCharts !== 'undefined') {
+                logTest("TradingView Library", "PASS", "LightweightCharts library loaded in dashboard");
+                
+                // Test chart container in iframe
+                const chartContainer = iframeDoc.getElementById('tradingview-chart');
+                if (chartContainer) {
+                    logTest("Chart Container", "PASS", "Chart container element exists in dashboard");
+                    
+                    // Test if chart is initialized (basic check)
+                    if (chartContainer.children.length > 0) {
+                        logTest("Chart Initialization", "PASS", "Chart appears to be initialized in dashboard");
+                    } else {
+                        logTest("Chart Initialization", "WARN", "Chart container empty in dashboard");
+                    }
+                } else {
+                    logTest("Chart Container", "FAIL", "Chart container not found in dashboard");
+                }
+            } else {
+                logTest("TradingView Library", "FAIL", "LightweightCharts library not loaded in dashboard");
+            }
+            
+            // Test timeframe buttons in iframe
+            const timeframeButtons = iframeDoc.querySelectorAll('.timeframe-btn');
+            if (timeframeButtons.length > 0) {
+                logTest("Timeframe Controls", "PASS", 
+                       `Found ${timeframeButtons.length} timeframe buttons in dashboard`);
+            } else {
+                logTest("Timeframe Controls", "FAIL", "No timeframe buttons found in dashboard");
+            }
+            
+            // Hide iframe after tests
+            iframe.style.display = 'none';
+        }
+
+        // Run all tests
+        async function runAllTests() {
+            clearResults();
+            
+            logTest("Comprehensive Test Suite", "INFO", 
+                   "Starting complete Epic 1 Dashboard test suite...");
+            
+            // Disable buttons during testing
+            const buttons = document.querySelectorAll('.test-btn');
+            buttons.forEach(btn => btn.disabled = true);
+            
+            try {
+                // Run test suites in sequence
+                await runUITests();
+                await runChartTests();
+                await runAPITests();
+                await runDataValidationTests();
+                await runPerformanceTests();
+                await runWebSocketTests();
+                
+                // Final summary
+                setTimeout(() => {
+                    const successRate = testSummary.total > 0 
+                        ? (testSummary.passed / testSummary.total * 100).toFixed(1)
+                        : 0;
+                        
+                    if (successRate >= 90) {
+                        logTest("Overall System Status", "PASS", 
+                               `🎉 PRODUCTION READY - ${successRate}% success rate`);
+                    } else if (successRate >= 75) {
+                        logTest("Overall System Status", "WARN", 
+                               `⚠️ Minor issues detected - ${successRate}% success rate`);
+                    } else {
+                        logTest("Overall System Status", "FAIL", 
+                               `🚨 Critical issues detected - ${successRate}% success rate`);
+                    }
+                }, 2000);
+                
+            } finally {
+                // Re-enable buttons
+                setTimeout(() => {
+                    buttons.forEach(btn => btn.disabled = false);
+                }, 3000);
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            logTest("Frontend Test Suite", "INFO", "Test suite initialized and ready");
+            
+            // Auto-run basic tests after a short delay
+            setTimeout(() => {
+                logTest("Auto-Test", "INFO", "Running basic connectivity test...");
+                runAPITests();
+            }, 2000);
+        });
+
+        // Export test results function
+        window.exportTestResults = function() {
+            const report = {
+                timestamp: new Date().toISOString(),
+                summary: testSummary,
+                results: testResults,
+                userAgent: navigator.userAgent,
+                url: window.location.href
+            };
+            
+            const blob = new Blob([JSON.stringify(report, null, 2)], 
+                                { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `dashboard-test-results-${new Date().getTime()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        };
+
+        console.log("🧪 Epic 1 Frontend Test Suite Loaded");
+        console.log("📊 Functions available:");
+        console.log("- runAllTests() - Complete test suite");
+        console.log("- runAPITests() - API endpoint tests");  
+        console.log("- runUITests() - UI component tests");
+        console.log("- runPerformanceTests() - Performance analysis");
+        console.log("- runWebSocketTests() - WebSocket connectivity");
+        console.log("- exportTestResults() - Export results to JSON");
+    </script>
+</body>
+</html>

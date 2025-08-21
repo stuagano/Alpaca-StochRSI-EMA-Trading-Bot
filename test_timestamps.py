@@ -53,7 +53,7 @@ def test_endpoint(endpoint, description):
         print(f"💥 Unexpected error: {e}")
 
 def main():
-    base_url = "http://localhost:8765"
+    base_url = "http://localhost:9765"
     
     print("🎯 Timestamp Format Verification Test")
     print("=" * 50)

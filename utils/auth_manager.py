@@ -115,23 +115,34 @@ class EnvironmentManager:
         Returns:
             List of allowed origins
         """
-        origins_str = self.get_env("CORS_ALLOWED_ORIGINS", "http://localhost:8765")
+        origins_str = self.get_env("CORS_ALLOWED_ORIGINS", "http://localhost:9765")
         return [origin.strip() for origin in origins_str.split(",") if origin.strip()]
     
-    def get_required_env(self, key: str) -> str:
+    def get_required_env(self, key: str, allow_fallback: bool = True) -> str:
         """
-        Get required environment variable
+        Get required environment variable with fallback support
         
         Args:
             key: Environment variable name
+            allow_fallback: Allow fallback values for development
             
         Returns:
             Environment variable value
             
         Raises:
-            ValueError: If required environment variable is missing
+            ValueError: If required environment variable is missing and no fallback
         """
         value = os.getenv(key)
+        if not value and allow_fallback:
+            # Provide safe fallbacks for development
+            fallbacks = {
+                "FLASK_SECRET_KEY": "dev-secret-key-change-in-production-32chars",
+                "JWT_SECRET_KEY": "dev-jwt-secret-change-in-production-32chars"
+            }
+            value = fallbacks.get(key)
+            if value:
+                logger.warning(f"Using fallback value for {key} - not secure for production")
+        
         if not value:
             raise ValueError(f"Required environment variable {key} is not set")
         return value
@@ -241,29 +252,41 @@ def require_auth(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # DEVELOPMENT MODE: Skip authentication
-        if os.getenv('SKIP_AUTH', 'true').lower() == 'true':
-            request.current_user = {'id': 'dev_user', 'role': 'admin'}
-            return f(*args, **kwargs)
-        
-        token = None
-        
-        # Check for token in Authorization header
-        if 'Authorization' in request.headers:
-            auth_header = request.headers['Authorization']
-            try:
-                token = auth_header.split(" ")[1]  # Bearer <token>
-            except IndexError:
-                return jsonify({'error': 'Invalid authorization header format'}), 401
-        
-        # Check for token in query parameters (fallback)
-        if not token:
-            token = request.args.get('token')
-        
-        if not token:
-            return jsonify({'error': 'Authentication token is missing'}), 401
-        
         try:
+            # DEVELOPMENT MODE: Skip authentication if SKIP_AUTH is true
+            skip_auth = os.getenv('SKIP_AUTH', 'false').lower() in ('true', '1', 'yes')
+            flask_env = os.getenv('FLASK_ENV', 'production').lower()
+            
+            if skip_auth or flask_env == 'development':
+                # Create mock user for development
+                if not hasattr(request, 'current_user'):
+                    request.current_user = {
+                        'id': 'dev_user', 
+                        'username': 'developer',
+                        'role': 'admin',
+                        'dev_mode': True
+                    }
+                logger.debug("Authentication bypassed for development mode")
+                return f(*args, **kwargs)
+            
+            # Production authentication flow
+            token = None
+            
+            # Check for token in Authorization header
+            if 'Authorization' in request.headers:
+                auth_header = request.headers['Authorization']
+                try:
+                    token = auth_header.split(" ")[1]  # Bearer <token>
+                except IndexError:
+                    return jsonify({'error': 'Invalid authorization header format'}), 401
+            
+            # Check for token in query parameters (fallback)
+            if not token:
+                token = request.args.get('token')
+            
+            if not token:
+                return jsonify({'error': 'Authentication token is missing'}), 401
+            
             # Get JWT manager from app config
             jwt_secret = current_app.config.get('JWT_SECRET_KEY')
             if not jwt_secret:
@@ -277,11 +300,16 @@ def require_auth(f):
                 return jsonify({'error': 'Invalid or expired token'}), 401
             
             # Add user info to request context
-            request.current_user = payload.get('user_data')
+            request.current_user = payload.get('user_data', {})
             
         except Exception as e:
-            logger.error(f"Token verification error: {e}")
-            return jsonify({'error': 'Token verification failed'}), 401
+            logger.error(f"Authentication error: {e}")
+            # In development, allow access even if auth fails
+            if os.getenv('FLASK_ENV', 'production').lower() == 'development':
+                logger.warning("Authentication failed but allowing access in development mode")
+                request.current_user = {'id': 'dev_user_fallback', 'role': 'admin', 'error': str(e)}
+                return f(*args, **kwargs)
+            return jsonify({'error': 'Authentication failed'}), 401
         
         return f(*args, **kwargs)
     

@@ -73,7 +73,7 @@ APCA_API_SECRET_KEY=your_alpaca_api_secret_key
 ### Step 4: Configure CORS (Optional)
 ```bash
 # Add to .env for custom origins:
-CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8765
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:9765
 ```
 
 ## 🔒 Protected API Endpoints
@@ -93,22 +93,22 @@ All these endpoints now require JWT authentication:
 ### 1. Get Authentication Token
 ```bash
 # Development demo login
-curl -X POST http://localhost:8765/api/auth/login \
+curl -X POST http://localhost:9765/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username": "demo", "password": "demo123"}'
 
 # Or get demo token directly (development only)
-curl http://localhost:8765/api/auth/demo-token
+curl http://localhost:9765/api/auth/demo-token
 ```
 
 ### 2. Use Token in Requests
 ```bash
 # Include in Authorization header
 curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  http://localhost:8765/api/account
+  http://localhost:9765/api/account
 
 # Or as query parameter
-curl "http://localhost:8765/api/account?token=YOUR_JWT_TOKEN"
+curl "http://localhost:9765/api/account?token=YOUR_JWT_TOKEN"
 ```
 
 ## 📊 Security Monitoring
@@ -116,7 +116,7 @@ curl "http://localhost:8765/api/account?token=YOUR_JWT_TOKEN"
 ### Security Status Endpoint
 ```bash
 curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  http://localhost:8765/api/security/status
+  http://localhost:9765/api/security/status
 ```
 
 This endpoint provides:
@@ -128,7 +128,7 @@ This endpoint provides:
 ### Configuration Template
 ```bash
 curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  http://localhost:8765/api/security/config-template
+  http://localhost:9765/api/security/config-template
 ```
 
 Returns secure configuration templates and guidelines.

@@ -1,0 +1,3 @@
+# /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca StochRSI-EMA-Trading-Bot/docs/bmad-success-metrics
+
+Content goes here...

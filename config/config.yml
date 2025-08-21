@@ -28,6 +28,13 @@ indicators:
     rsi_length: 14
     stoch_length: 14
     source: "Close"
+    # Dynamic band adjustment settings
+    dynamic_bands_enabled: true
+    atr_period: 20
+    atr_sensitivity: 1.5
+    band_adjustment_factor: 0.3
+    min_band_width: 10
+    max_band_width: 50
   stoch:
     enabled: true
     lower_band: 35
@@ -49,3 +56,13 @@ risk_management:
   atr_period: 14
   atr_multiplier: 2.0
   use_atr_position_sizing: true
+
+# Volume Confirmation
+volume_confirmation:
+  enabled: true
+  volume_period: 20
+  relative_volume_period: 50
+  volume_confirmation_threshold: 1.2
+  min_volume_ratio: 1.0
+  profile_periods: 100
+  require_volume_confirmation: true

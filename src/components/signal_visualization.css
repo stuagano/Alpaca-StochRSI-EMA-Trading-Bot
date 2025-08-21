@@ -1,0 +1,465 @@
+/**
+ * CSS Styles for Trading Signal Visualization Components
+ * =====================================================
+ */
+
+/* Chart Container Styles */
+.signal-chart-wrapper {
+    background: #16213e;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.chart-header h5 {
+    color: #eee;
+    margin: 0;
+}
+
+.chart-controls .btn {
+    margin-left: 5px;
+}
+
+.chart-container {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #0f3460;
+}
+
+/* Chart Legend */
+.chart-legend {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    padding: 10px;
+    background: rgba(15, 52, 96, 0.3);
+    border-radius: 5px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #d9d9d9;
+    font-size: 0.875rem;
+}
+
+.signal-marker {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.signal-marker.buy { color: #10B981; }
+.signal-marker.sell { color: #EF4444; }
+.signal-marker.oversold { color: #F59E0B; }
+.signal-marker.overbought { color: #8B5CF6; }
+
+/* Signal Strength Indicator */
+.signal-strength-indicator {
+    background: #16213e;
+    border: 1px solid #0f3460;
+    color: #eee;
+}
+
+.signal-strength-indicator .card-header {
+    background: linear-gradient(135deg, #0f3460, #16213e);
+    border-bottom: 1px solid #0f3460;
+}
+
+.strength-gauge {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.strength-details .strength-component {
+    margin-bottom: 15px;
+}
+
+.strength-component .progress {
+    background-color: #2B2B43;
+    border-radius: 2px;
+}
+
+.strength-component .progress-bar {
+    background-color: #10B981;
+    transition: width 0.3s ease;
+}
+
+.strength-component .progress-bar.bg-info {
+    background-color: #3B82F6 !important;
+}
+
+.strength-component .progress-bar.bg-warning {
+    background-color: #F59E0B !important;
+}
+
+/* Signal History Table */
+.signal-history-table {
+    background: #16213e;
+    border: 1px solid #0f3460;
+    color: #eee;
+}
+
+.signal-history-table .card-header {
+    background: linear-gradient(135deg, #0f3460, #16213e);
+    border-bottom: 1px solid #0f3460;
+}
+
+.history-controls .btn-group .btn {
+    border-color: #0f3460;
+    color: #eee;
+}
+
+.history-controls .btn-group .btn:hover {
+    background-color: #0f3460;
+}
+
+.history-controls .btn-group .btn.active {
+    background-color: #667eea;
+    border-color: #667eea;
+}
+
+.signal-history-table table {
+    color: #eee;
+}
+
+.signal-history-table .table-dark {
+    --bs-table-bg: transparent;
+    --bs-table-border-color: #0f3460;
+}
+
+.signal-history-table thead th {
+    background-color: #0f3460;
+    border-color: #0f3460;
+    color: #eee;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+}
+
+.signal-history-table tbody tr:hover {
+    background-color: rgba(15, 52, 96, 0.3);
+}
+
+.signal-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+/* Signal Strength Bar in Table */
+.strength-bar-small {
+    position: relative;
+    width: 60px;
+    height: 16px;
+    background-color: #2B2B43;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.strength-fill {
+    height: 100%;
+    border-radius: 8px;
+    transition: width 0.3s ease;
+}
+
+.strength-text {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Performance Tracker */
+.performance-tracker {
+    background: #16213e;
+    border: 1px solid #0f3460;
+    color: #eee;
+}
+
+.performance-tracker .card-header {
+    background: linear-gradient(135deg, #0f3460, #16213e);
+    border-bottom: 1px solid #0f3460;
+}
+
+.performance-stat {
+    padding: 15px;
+    border-radius: 8px;
+    background: rgba(15, 52, 96, 0.3);
+    margin-bottom: 10px;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Alert System */
+.alert-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1050;
+    width: 300px;
+}
+
+.alert-container .alert {
+    margin-bottom: 10px;
+    background: #1a1a2e;
+    border: 1px solid #0f3460;
+    color: #eee;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.alert-container .alert h6 {
+    color: #eee;
+    margin: 0;
+}
+
+.alert-container .alert small {
+    color: #9ca3af;
+}
+
+.alert-container .alert .btn-close {
+    filter: invert(1);
+}
+
+/* Alert Settings */
+.alert-settings .card {
+    background: #16213e;
+    border: 1px solid #0f3460;
+    color: #eee;
+}
+
+.alert-settings .card-header {
+    background: linear-gradient(135deg, #0f3460, #16213e);
+    border-bottom: 1px solid #0f3460;
+}
+
+.alert-settings .form-check-input:checked {
+    background-color: #667eea;
+    border-color: #667eea;
+}
+
+.alert-settings .form-range::-webkit-slider-thumb {
+    background: #667eea;
+}
+
+.alert-settings .form-range::-moz-range-thumb {
+    background: #667eea;
+    border: none;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .signal-chart-wrapper {
+        padding: 15px;
+    }
+    
+    .chart-header {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .chart-controls {
+        width: 100%;
+    }
+    
+    .chart-controls .btn-group {
+        width: 100%;
+    }
+    
+    .chart-controls .btn {
+        flex: 1;
+    }
+    
+    .strength-gauge canvas {
+        width: 150px !important;
+        height: 75px !important;
+    }
+    
+    .performance-stat {
+        margin-bottom: 15px;
+    }
+    
+    .legend-item {
+        flex-basis: 50%;
+        justify-content: center;
+    }
+    
+    .alert-container {
+        left: 10px;
+        right: 10px;
+        width: auto;
+    }
+}
+
+@media (max-width: 576px) {
+    .signal-history-table .table-responsive {
+        font-size: 0.875rem;
+    }
+    
+    .strength-bar-small {
+        width: 50px;
+        height: 14px;
+    }
+    
+    .strength-text {
+        font-size: 0.6rem;
+    }
+    
+    .signal-badge {
+        font-size: 0.75rem;
+    }
+    
+    .performance-tracker .row {
+        flex-direction: column;
+    }
+    
+    .performance-stat {
+        text-align: center !important;
+    }
+}
+
+/* Animation Classes */
+.signal-pulse {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.05);
+    }
+}
+
+.signal-fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.signal-slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+    }
+    to {
+        transform: translateX(0);
+    }
+}
+
+/* Utility Classes */
+.text-oversold { color: #F59E0B !important; }
+.text-overbought { color: #8B5CF6 !important; }
+.bg-oversold { background-color: #F59E0B !important; }
+.bg-overbought { background-color: #8B5CF6 !important; }
+
+/* Custom Scrollbars */
+.signal-history-table .table-responsive::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.signal-history-table .table-responsive::-webkit-scrollbar-track {
+    background: #1a1a2e;
+}
+
+.signal-history-table .table-responsive::-webkit-scrollbar-thumb {
+    background: #0f3460;
+    border-radius: 4px;
+}
+
+.signal-history-table .table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #667eea;
+}
+
+/* Loading States */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #667eea;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Error States */
+.signal-error {
+    background-color: rgba(239, 68, 68, 0.1);
+    border-left: 4px solid #EF4444;
+    padding: 10px;
+    border-radius: 4px;
+    color: #FEE2E2;
+}
+
+/* Success States */
+.signal-success {
+    background-color: rgba(16, 185, 129, 0.1);
+    border-left: 4px solid #10B981;
+    padding: 10px;
+    border-radius: 4px;
+    color: #D1FAE5;
+}
+
+/* Dark Mode Enhancements */
+.dark-mode .signal-chart-wrapper,
+.dark-mode .signal-strength-indicator,
+.dark-mode .signal-history-table,
+.dark-mode .performance-tracker {
+    background: #0f172a;
+    border-color: #1e293b;
+}
+
+.dark-mode .chart-legend {
+    background: rgba(30, 41, 59, 0.5);
+}
+
+.dark-mode .table-dark {
+    --bs-table-bg: #0f172a;
+    --bs-table-border-color: #1e293b;
+}

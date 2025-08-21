@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Trading Dashboard Debug Tool</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .result { background: #f5f5f5; padding: 10px; margin: 10px 0; font-family: monospace; }
+        .error { background: #ffeeee; color: red; }
+        .success { background: #eeffee; color: green; }
+        button { padding: 10px 15px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Trading Dashboard Frontend Debug Tool</h1>
+    
+    <div class="test-section">
+        <h3>API Endpoint Tests</h3>
+        <button onclick="testPositionsAPI()">Test /api/positions</button>
+        <button onclick="testAccountAPI()">Test /api/account</button>
+        <button onclick="testSignalsAPI()">Test /api/signals/AAPL</button>
+        <div id="apiResults" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>WebSocket Tests</h3>
+        <button onclick="testWebSocketConnection()">Test WebSocket Connection</button>
+        <button onclick="subscribeToUpdates()">Subscribe to Real-time Updates</button>
+        <div id="wsResults" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Position Data Structure Test</h3>
+        <button onclick="analyzePositionData()">Analyze Position Data</button>
+        <div id="positionResults" class="result"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script>
+        let socket;
+        
+        async function testPositionsAPI() {
+            const result = document.getElementById('apiResults');
+            try {
+                const response = await fetch('/api/positions');
+                const data = await response.json();
+                
+                result.className = 'result ' + (data.success ? 'success' : 'error');
+                result.innerHTML = `
+                    <h4>Positions API Response:</h4>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+                
+                if (data.success && data.positions && data.positions.length > 0) {
+                    const firstPos = data.positions[0];
+                    result.innerHTML += `
+                        <h4>First Position Field Analysis:</h4>
+                        <p>Has avg_entry_price: ${!!firstPos.avg_entry_price}</p>
+                        <p>Has avg_cost: ${!!firstPos.avg_cost}</p>
+                        <p>Has avg_cost_per_share: ${!!firstPos.avg_cost_per_share}</p>
+                        <p>All fields: ${Object.keys(firstPos).join(', ')}</p>
+                    `;
+                }
+            } catch (error) {
+                result.className = 'result error';
+                result.innerHTML = `Error: ${error.message}`;
+            }
+        }
+        
+        async function testAccountAPI() {
+            const result = document.getElementById('apiResults');
+            try {
+                const response = await fetch('/api/account');
+                const data = await response.json();
+                
+                result.className = 'result ' + (data.success ? 'success' : 'error');
+                result.innerHTML = `
+                    <h4>Account API Response:</h4>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                result.className = 'result error';
+                result.innerHTML = `Error: ${error.message}`;
+            }
+        }
+        
+        async function testSignalsAPI() {
+            const result = document.getElementById('apiResults');
+            try {
+                const response = await fetch('/api/signals/AAPL');
+                const data = await response.json();
+                
+                result.className = 'result ' + (data.success ? 'success' : 'error');
+                result.innerHTML = `
+                    <h4>Signals API Response:</h4>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                result.className = 'result error';
+                result.innerHTML = `Error: ${error.message}`;
+            }
+        }
+        
+        function testWebSocketConnection() {
+            const result = document.getElementById('wsResults');
+            result.innerHTML = 'Testing WebSocket connection...';
+            
+            socket = io({
+                transports: ['websocket', 'polling']
+            });
+            
+            socket.on('connect', function() {
+                result.className = 'result success';
+                result.innerHTML = 'WebSocket connected successfully!';
+            });
+            
+            socket.on('disconnect', function() {
+                result.className = 'result error';
+                result.innerHTML = 'WebSocket disconnected';
+            });
+            
+            socket.on('real_time_update', function(data) {
+                result.innerHTML += `<br>Received real-time update: ${new Date().toLocaleTimeString()}`;
+                if (data.positions) {
+                    result.innerHTML += `<br>Positions in update: ${data.positions.length}`;
+                }
+            });
+            
+            socket.on('position_update', function(data) {
+                result.innerHTML += `<br>Received position update: ${JSON.stringify(data)}`;
+            });
+        }
+        
+        function subscribeToUpdates() {
+            if (!socket) {
+                testWebSocketConnection();
+                setTimeout(() => {
+                    socket.emit('start_streaming', {interval: 5});
+                }, 1000);
+            } else {
+                socket.emit('start_streaming', {interval: 5});
+            }
+            
+            document.getElementById('wsResults').innerHTML += '<br>Subscribed to real-time updates';
+        }
+        
+        async function analyzePositionData() {
+            const result = document.getElementById('positionResults');
+            result.innerHTML = 'Analyzing position data structure...';
+            
+            try {
+                const response = await fetch('/api/positions');
+                const data = await response.json();
+                
+                if (data.success && data.positions && data.positions.length > 0) {
+                    const pos = data.positions[0];
+                    
+                    result.className = 'result success';
+                    result.innerHTML = `
+                        <h4>Position Data Analysis:</h4>
+                        <p><strong>Fields available:</strong> ${Object.keys(pos).join(', ')}</p>
+                        <p><strong>avg_entry_price:</strong> ${pos.avg_entry_price} (${typeof pos.avg_entry_price})</p>
+                        <p><strong>avg_cost:</strong> ${pos.avg_cost} (${typeof pos.avg_cost})</p>
+                        <p><strong>unrealized_pl:</strong> ${pos.unrealized_pl} (${typeof pos.unrealized_pl})</p>
+                        
+                        <h4>Frontend Compatibility Test:</h4>
+                        <p>Template field access test:</p>
+                        <code>position.avg_entry_price || position.avg_cost || 0 = ${pos.avg_entry_price || pos.avg_cost || 0}</code>
+                        
+                        <h4>Percentage Calculation Test:</h4>
+                        <code>
+                        ${((pos.unrealized_pl / (pos.qty * (pos.avg_entry_price || pos.avg_cost || 1))) * 100).toFixed(2)}%
+                        </code>
+                    `;
+                } else {
+                    result.className = 'result error';
+                    result.innerHTML = 'No positions available for analysis';
+                }
+            } catch (error) {
+                result.className = 'result error';
+                result.innerHTML = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

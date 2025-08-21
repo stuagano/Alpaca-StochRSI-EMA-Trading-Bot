@@ -21,3 +21,4 @@ This file provides guidelines and commands for agentic coding agents working in 
     - `UPPER_SNAKE_CASE` for constants.
 - **Error Handling:** Use `try-except` blocks for anticipated errors. Log errors appropriately.
 - **Docstrings:** Use Google-style docstrings for functions and classes.
+- **File Management:** Before creating a new file, check if a similar file already exists. If so, update the existing file instead of creating a new one. If you create a new file that replaces an old one, delete the old file.

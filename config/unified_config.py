@@ -32,6 +32,8 @@ class StochRSIConfig:
     rsi_length: int = 14
     stoch_length: int = 14
     source: str = "Close"
+    dynamic_bands_enabled: bool = True
+    atr_period: int = 14
 
 
 @dataclass
@@ -107,6 +109,115 @@ class APIConfig:
     rate_limit_window: int = 60  # seconds
 
 
+# Epic 1 Configuration Classes
+@dataclass
+class DynamicStochRSIConfig:
+    """Epic 1 Dynamic StochRSI configuration with adaptive bands."""
+    enabled: bool = True
+    enable_adaptive_bands: bool = True
+    volatility_window: int = 20
+    base_volatility_window: int = 100
+    min_lower_band: int = 10
+    max_lower_band: int = 30
+    min_upper_band: int = 70
+    max_upper_band: int = 90
+    default_lower_band: int = 20
+    default_upper_band: int = 80
+    band_adjustment_sensitivity: float = 1.0
+    enable_trend_filtering: bool = True
+
+
+@dataclass
+class VolumeConfirmationConfig:
+    """Epic 1 Volume Confirmation system configuration."""
+    enabled: bool = True
+    confirmation_threshold: float = 1.2
+    volume_ma_period: int = 20
+    enable_relative_volume: bool = True
+    relative_volume_threshold: float = 1.5
+    volume_trend_periods: int = 5
+    require_volume_confirmation: bool = True
+    volume_strength_levels: Dict[str, float] = field(default_factory=lambda: {
+        'very_low': -2.0,
+        'low': -1.0,
+        'normal': 0.0,
+        'high': 1.0,
+        'very_high': 2.0
+    })
+
+
+@dataclass
+class MultiTimeframeConfig:
+    """Epic 1 Multi-timeframe validation configuration."""
+    enabled: bool = True
+    timeframes: List[str] = field(default_factory=lambda: ['15m', '1h', '1d'])
+    enable_real_time_validation: bool = True
+    consensus_threshold: float = 0.75
+    enable_performance_tracking: bool = True
+    max_concurrent_validations: int = 10
+    auto_update_interval: int = 60000  # milliseconds
+    timeframe_weights: Dict[str, float] = field(default_factory=lambda: {
+        '15m': 0.3,
+        '1h': 0.4,
+        '1d': 0.3
+    })
+    trend_analysis_periods: Dict[str, int] = field(default_factory=lambda: {
+        '15m': 20,
+        '1h': 20,
+        '1d': 20
+    })
+
+
+@dataclass
+class SignalQualityConfig:
+    """Epic 1 Signal Quality assessment configuration."""
+    enabled: bool = True
+    enable_quality_filtering: bool = True
+    minimum_quality_score: float = 0.6
+    quality_weights: Dict[str, float] = field(default_factory=lambda: {
+        'volatility': 0.25,
+        'volume_consistency': 0.20,
+        'data_completeness': 0.25,
+        'signal_reliability': 0.20,
+        'data_freshness': 0.10
+    })
+    volatility_penalty_multiplier: float = 5.0
+    max_volatility_penalty: float = 0.3
+    volume_consistency_bonus_threshold: float = 0.5
+    volume_bonus_multiplier: float = 0.1
+    enable_recommendations: bool = True
+
+
+@dataclass
+class Epic1PerformanceConfig:
+    """Epic 1 Performance tracking and optimization configuration."""
+    enabled: bool = True
+    track_signal_outcomes: bool = True
+    enable_adaptive_learning: bool = True
+    performance_window_days: int = 30
+    min_trades_for_analysis: int = 10
+    enable_strategy_comparison: bool = True
+    auto_parameter_optimization: bool = False
+    optimization_frequency_hours: int = 24
+
+
+@dataclass
+class Epic1Config:
+    """Epic 1 feature configuration container."""
+    enabled: bool = True
+    dynamic_stochrsi: DynamicStochRSIConfig = field(default_factory=DynamicStochRSIConfig)
+    volume_confirmation: VolumeConfirmationConfig = field(default_factory=VolumeConfirmationConfig)
+    multi_timeframe: MultiTimeframeConfig = field(default_factory=MultiTimeframeConfig)
+    signal_quality: SignalQualityConfig = field(default_factory=SignalQualityConfig)
+    performance: Epic1PerformanceConfig = field(default_factory=Epic1PerformanceConfig)
+    
+    # Integration settings
+    require_epic1_consensus: bool = False
+    fallback_to_epic0: bool = True
+    enable_enhanced_websocket: bool = True
+    enable_epic1_api_endpoints: bool = True
+
+
 @dataclass
 class TradingConfig:
     """Core trading configuration."""
@@ -133,6 +244,9 @@ class TradingConfig:
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     api: APIConfig = field(default_factory=APIConfig)
+    
+    # Epic 1 Enhanced Features
+    epic1: Epic1Config = field(default_factory=Epic1Config)
 
 
 class UnifiedConfigManager:
@@ -233,6 +347,26 @@ class UnifiedConfigManager:
         
         if 'api' in config_dict:
             config_dict['api'] = APIConfig(**config_dict['api'])
+        
+        # Handle Epic1 configuration
+        epic1_config = {}
+        
+        # Check if epic1 section exists
+        if 'epic1' in config_dict:
+            epic1_config = config_dict['epic1']
+        
+        # Move volume_confirmation from root to epic1 if it exists at root level
+        if 'volume_confirmation' in config_dict:
+            volume_conf_data = config_dict.pop('volume_confirmation')
+            if isinstance(volume_conf_data, dict):
+                epic1_config['volume_confirmation'] = VolumeConfirmationConfig(**volume_conf_data)
+            else:
+                # If it's not a dict, create default config
+                epic1_config['volume_confirmation'] = VolumeConfirmationConfig()
+        
+        # Create Epic1Config if we have any epic1 settings
+        if epic1_config or 'volume_confirmation' in data:
+            config_dict['epic1'] = Epic1Config(**epic1_config) if isinstance(epic1_config, dict) else epic1_config
         
         return config_dict
     
@@ -402,6 +536,34 @@ class UnifiedConfigManager:
         
         if 'api' in config_dict and isinstance(config_dict['api'], dict):
             config_dict['api'] = APIConfig(**config_dict['api'])
+        
+        # Handle Epic1 configuration
+        if 'epic1' in config_dict and isinstance(config_dict['epic1'], dict):
+            epic1_data = config_dict['epic1']
+            epic1_config_dict = {}
+            
+            # Handle nested Epic1 configs
+            if 'volume_confirmation' in epic1_data and isinstance(epic1_data['volume_confirmation'], dict):
+                epic1_config_dict['volume_confirmation'] = VolumeConfirmationConfig(**epic1_data['volume_confirmation'])
+            
+            if 'dynamic_stochrsi' in epic1_data and isinstance(epic1_data['dynamic_stochrsi'], dict):
+                epic1_config_dict['dynamic_stochrsi'] = DynamicStochRSIConfig(**epic1_data['dynamic_stochrsi'])
+            
+            if 'multi_timeframe' in epic1_data and isinstance(epic1_data['multi_timeframe'], dict):
+                epic1_config_dict['multi_timeframe'] = MultiTimeframeConfig(**epic1_data['multi_timeframe'])
+            
+            if 'signal_quality' in epic1_data and isinstance(epic1_data['signal_quality'], dict):
+                epic1_config_dict['signal_quality'] = SignalQualityConfig(**epic1_data['signal_quality'])
+            
+            if 'performance' in epic1_data and isinstance(epic1_data['performance'], dict):
+                epic1_config_dict['performance'] = Epic1PerformanceConfig(**epic1_data['performance'])
+            
+            # Add any other Epic1 fields
+            for key, value in epic1_data.items():
+                if key not in epic1_config_dict:
+                    epic1_config_dict[key] = value
+            
+            config_dict['epic1'] = Epic1Config(**epic1_config_dict)
         
         return TradingConfig(**config_dict)
     

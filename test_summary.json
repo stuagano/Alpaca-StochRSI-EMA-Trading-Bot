@@ -1,0 +1,23 @@
+{
+  "test_suite": "Epic 1 Trading Dashboard",
+  "version": "1.0.0",
+  "timestamp": "2025-08-19T12:07:40.422546",
+  "server_status": "online",
+  "test_urls": {
+    "main_dashboard": "http://localhost:9765/",
+    "frontend_tests": "http://localhost:9765/tests/frontend",
+    "debug_positions": "http://localhost:9765/debug/positions",
+    "health_check": "http://localhost:9765/health"
+  },
+  "documentation": {
+    "main_docs": "docs/UNIFIED_DASHBOARD_DOCUMENTATION.md",
+    "test_report": "test_report.md",
+    "pine_script_ref": "docs/PINE_SCRIPT_TIME_REFERENCE.md",
+    "tradingview_patterns": "docs/TRADINGVIEW_PATTERNS_REFERENCE.md"
+  },
+  "test_files": {
+    "backend_suite": "tests/test_suite.py",
+    "frontend_suite": "tests/frontend_test_suite.html",
+    "debug_page": "debug_positions.html"
+  }
+}

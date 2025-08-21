@@ -59,7 +59,7 @@ def test_streaming():
     
     try:
         # Connect to the server
-        sio.connect('http://localhost:8765')
+        sio.connect('http://localhost:9765')
         
         # Wait for connection
         time.sleep(2)

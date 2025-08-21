@@ -447,10 +447,13 @@ class UnifiedDataManager:
         try:
             # EMA series
             if config['indicators'].get('EMA') == "True":
-                ema_period = config['indicators']['EMA_params']['ema_period']
-                if len(df) >= ema_period:
-                    ema = ta.trend.ema_indicator(df['close'], window=ema_period)
-                    indicators['EMA'] = ema.fillna(method='ffill').tolist()
+                fast_period = config['indicators']['EMA_params']['fast_period']
+                slow_period = config['indicators']['EMA_params']['slow_period']
+                if len(df) >= slow_period:
+                    ema_fast = ta.trend.ema_indicator(df['close'], window=fast_period)
+                    ema_slow = ta.trend.ema_indicator(df['close'], window=slow_period)
+                    indicators['EMA_fast'] = ema_fast.fillna(method='ffill').tolist()
+                    indicators['EMA_slow'] = ema_slow.fillna(method='ffill').tolist()
             
             # StochRSI series
             if config['indicators'].get('stochRSI') == "True":
