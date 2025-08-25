@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }} | Trading Platform</title>
+    
+    <!-- Core CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- Chart Libraries -->
+    <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    
+    <!-- WebSocket Support -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    
+    <style>
+        /* Unified Design System */
+        :root {
+            --primary-bg: #0a0a0a;
+            --secondary-bg: #1a1a1a;
+            --tertiary-bg: #2a2a2a;
+            --accent-green: #00ff88;
+            --accent-blue: #2196F3;
+            --accent-orange: #f7931e;
+            --accent-red: #ff4444;
+            --text-primary: #ffffff;
+            --text-secondary: #aaa;
+            --border-color: #333;
+            --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--primary-bg) 0%, var(--secondary-bg) 100%);
+            color: var(--text-primary);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+        }
+
+        /* Unified Header */
+        .unified-header {
+            background: linear-gradient(135deg, var(--secondary-bg) 0%, var(--tertiary-bg) 100%);
+            border-bottom: 2px solid var(--accent-green);
+            padding: 15px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .unified-nav {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .nav-brand {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--accent-green);
+            text-decoration: none;
+            margin-right: 30px;
+        }
+
+        .nav-brand:hover {
+            color: var(--accent-green);
+            text-decoration: none;
+        }
+
+        .nav-link {
+            padding: 8px 16px;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.3s;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background: var(--accent-green);
+            color: #000;
+            text-decoration: none;
+        }
+
+        .status-indicators {
+            margin-left: auto;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-online {
+            background: rgba(0, 255, 136, 0.2);
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green);
+        }
+
+        .status-training {
+            background: rgba(33, 150, 243, 0.2);
+            color: var(--accent-blue);
+            border: 1px solid var(--accent-blue);
+        }
+
+        .status-indicator-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* Unified Content Layout */
+        .page-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--accent-green);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .page-description {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .page-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-action {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-green), #00cc66);
+            color: #000;
+        }
+
+        .btn-secondary {
+            background: var(--tertiary-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--card-shadow);
+        }
+
+        /* Unified Card System */
+        .unified-card {
+            background: linear-gradient(145deg, var(--secondary-bg), #0f0f0f);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .card-action {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .card-action:hover {
+            border-color: var(--accent-green);
+            color: var(--accent-green);
+        }
+
+        /* Unified Grid System */
+        .unified-grid {
+            display: grid;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .grid-1 { grid-template-columns: 1fr; }
+        .grid-2 { grid-template-columns: 1fr 1fr; }
+        .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+        .grid-sidebar { grid-template-columns: 1fr 300px; }
+        .grid-main { grid-template-columns: 300px 1fr; }
+
+        @media (max-width: 768px) {
+            .grid-2, .grid-3, .grid-4, .grid-sidebar, .grid-main {
+                grid-template-columns: 1fr;
+            }
+            
+            .unified-nav {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .status-indicators {
+                margin-left: 0;
+                margin-top: 10px;
+            }
+        }
+
+        /* Unified Metrics */
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .metric-card {
+            background: var(--tertiary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .metric-card:hover {
+            border-color: var(--accent-green);
+            transform: translateY(-2px);
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .metric-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-change {
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .metric-positive { color: var(--accent-green); }
+        .metric-negative { color: var(--accent-red); }
+        .metric-neutral { color: var(--accent-blue); }
+
+        /* Unified Loading States */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        .loading-spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--border-color);
+            border-top: 3px solid var(--accent-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Unified Alerts */
+        .unified-alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert-success {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid var(--accent-green);
+            color: var(--accent-green);
+        }
+
+        .alert-warning {
+            background: rgba(247, 147, 30, 0.1);
+            border: 1px solid var(--accent-orange);
+            color: var(--accent-orange);
+        }
+
+        .alert-error {
+            background: rgba(255, 68, 68, 0.1);
+            border: 1px solid var(--accent-red);
+            color: var(--accent-red);
+        }
+
+        .alert-info {
+            background: rgba(33, 150, 243, 0.1);
+            border: 1px solid var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        /* Chart Container */
+        .chart-container {
+            background: #0f0f0f;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            min-height: 300px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Unified Header -->
+    <header class="unified-header">
+        <div class="container-fluid">
+            <nav class="unified-nav">
+                <a href="/" class="nav-brand">
+                    <i class="bi bi-graph-up-arrow"></i> Trading Platform
+                </a>
+                
+                <a href="/" class="nav-link {{ 'active' if current_page == 'navigation' else '' }}">
+                    <i class="bi bi-house-door"></i> Home
+                </a>
+                <a href="/dashboard" class="nav-link {{ 'active' if current_page == 'dashboard' else '' }}">
+                    <i class="bi bi-speedometer2"></i> Dashboard
+                </a>
+                <a href="/training" class="nav-link {{ 'active' if current_page == 'training' else '' }}">
+                    <i class="bi bi-mortarboard"></i> AI Training
+                </a>
+                <a href="/portfolio" class="nav-link {{ 'active' if current_page == 'portfolio' else '' }}">
+                    <i class="bi bi-briefcase"></i> Portfolio
+                </a>
+                <a href="/trading" class="nav-link {{ 'active' if current_page == 'trading' else '' }}">
+                    <i class="bi bi-graph-up"></i> Trading
+                </a>
+                <a href="/analytics" class="nav-link {{ 'active' if current_page == 'analytics' else '' }}">
+                    <i class="bi bi-bar-chart"></i> Analytics
+                </a>
+                <a href="/backtesting" class="nav-link {{ 'active' if current_page == 'backtesting' else '' }}">
+                    <i class="bi bi-clock-history"></i> Backtesting
+                </a>
+                <a href="/config" class="nav-link {{ 'active' if current_page == 'config' else '' }}">
+                    <i class="bi bi-gear"></i> Config
+                </a>
+                <a href="/monitoring" class="nav-link {{ 'active' if current_page == 'monitoring' else '' }}">
+                    <i class="bi bi-activity"></i> Monitoring
+                </a>
+                
+                <div class="status-indicators">
+                    <div class="status-badge status-online">
+                        <span class="status-indicator-dot"></span>
+                        <span id="marketStatus">Market Open</span>
+                    </div>
+                    <div class="status-badge status-training">
+                        <span class="status-indicator-dot"></span>
+                        <span id="trainingStatus">AI Ready</span>
+                    </div>
+                    <div class="status-badge status-online">
+                        <span class="status-indicator-dot"></span>
+                        <span id="servicesStatus">Services Online</span>
+                    </div>
+                    <span id="currentTime" style="font-size: 12px; color: var(--text-secondary);"></span>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Page Content -->
+    <main class="page-container">
+        <!-- Page Header -->
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">
+                    <i class="bi bi-{{ page_icon }}"></i>
+                    {{ page_title }}
+                </h1>
+                <div class="page-description">{{ page_description }}</div>
+            </div>
+            <div class="page-actions">
+                {% if page_actions %}
+                    {% for action in page_actions %}
+                    <a href="{{ action.url }}" class="btn-action {{ action.class }}">
+                        <i class="bi bi-{{ action.icon }}"></i>
+                        {{ action.label }}
+                    </a>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Page Content Block -->
+        <div class="page-content">
+            {% block content %}
+            <!-- Default content will be replaced by page-specific content -->
+            <div class="unified-card">
+                <div class="card-header">
+                    <div class="card-title">Welcome to the Trading Platform</div>
+                </div>
+                <p>This is the unified dashboard framework. Each page will override this content block.</p>
+            </div>
+            {% endblock %}
+        </div>
+    </main>
+
+    <!-- Unified JavaScript -->
+    <script>
+        // Configuration - Dynamic based on template variables
+        const API_CONFIG = {
+            gateway: '{{ api_gateway_url }}',
+            training: '{{ training_service_url }}',
+            frontend: window.location.origin
+        };
+
+        // Global state management
+        const AppState = {
+            currentPage: '{{ current_page }}',
+            services: {
+                market: 'unknown',
+                training: 'unknown',
+                services: 'unknown'
+            },
+            user: {
+                authenticated: true
+            }
+        };
+
+        // Unified service status checker
+        async function checkServiceStatus() {
+            try {
+                // Check main services
+                const services = ['frontend', 'training', 'gateway'];
+                const statuses = {};
+                
+                for (const service of services) {
+                    try {
+                        const url = service === 'frontend' ? '/health' : 
+                                   service === 'training' ? API_CONFIG.training + '/health' :
+                                   API_CONFIG.gateway + '/health';
+                        
+                        const response = await fetch(url);
+                        statuses[service] = response.ok ? 'online' : 'offline';
+                    } catch (e) {
+                        statuses[service] = 'offline';
+                    }
+                }
+                
+                // Update UI
+                updateServiceStatus(statuses);
+                
+            } catch (error) {
+                console.error('Service status check failed:', error);
+            }
+        }
+
+        function updateServiceStatus(statuses) {
+            const servicesElement = document.getElementById('servicesStatus');
+            const onlineCount = Object.values(statuses).filter(s => s === 'online').length;
+            const totalCount = Object.keys(statuses).length;
+            
+            if (servicesElement) {
+                servicesElement.textContent = `${onlineCount}/${totalCount} Online`;
+            }
+        }
+
+        // Update time display
+        function updateTime() {
+            const timeElement = document.getElementById('currentTime');
+            if (timeElement) {
+                timeElement.textContent = new Date().toLocaleTimeString();
+            }
+        }
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            updateTime();
+            setInterval(updateTime, 1000);
+            
+            checkServiceStatusEnhanced();
+            setInterval(checkServiceStatusEnhanced, 30000); // Check every 30 seconds
+            
+            // Initialize WebSocket connections
+            initializeWebSockets();
+            
+            // Page-specific initialization
+            if (typeof initializePage === 'function') {
+                initializePage();
+            }
+        });
+
+        // Utility functions for pages
+        function showAlert(message, type = 'info') {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `unified-alert alert-${type}`;
+            alertDiv.innerHTML = `
+                <i class="bi bi-${type === 'success' ? 'check-circle' : 
+                              type === 'warning' ? 'exclamation-triangle' :
+                              type === 'error' ? 'x-circle' : 'info-circle'}"></i>
+                <span>${message}</span>
+            `;
+            
+            const container = document.querySelector('.page-content');
+            container.insertBefore(alertDiv, container.firstChild);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => alertDiv.remove(), 5000);
+        }
+
+        function showLoading(container) {
+            container.innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    Loading...
+                </div>
+            `;
+        }
+
+        // WebSocket Connection Manager
+        class WebSocketManager {
+            constructor() {
+                this.connections = new Map();
+                this.reconnectAttempts = new Map();
+                this.maxReconnectAttempts = 5;
+            }
+
+            connect(serviceName, url, callbacks = {}) {
+                try {
+                    const ws = new WebSocket(url);
+                    
+                    ws.onopen = () => {
+                        console.log(`✅ WebSocket connected to ${serviceName}`);
+                        this.reconnectAttempts.set(serviceName, 0);
+                        if (callbacks.onOpen) callbacks.onOpen(ws);
+                    };
+
+                    ws.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            if (callbacks.onMessage) callbacks.onMessage(data, ws);
+                        } catch (e) {
+                            console.error(`Error parsing WebSocket message from ${serviceName}:`, e);
+                        }
+                    };
+
+                    ws.onclose = () => {
+                        console.log(`🔌 WebSocket disconnected from ${serviceName}`);
+                        this.connections.delete(serviceName);
+                        
+                        // Auto-reconnect logic
+                        const attempts = this.reconnectAttempts.get(serviceName) || 0;
+                        if (attempts < this.maxReconnectAttempts) {
+                            setTimeout(() => {
+                                console.log(`🔄 Attempting to reconnect to ${serviceName} (${attempts + 1}/${this.maxReconnectAttempts})`);
+                                this.reconnectAttempts.set(serviceName, attempts + 1);
+                                this.connect(serviceName, url, callbacks);
+                            }, Math.pow(2, attempts) * 1000); // Exponential backoff
+                        }
+                        
+                        if (callbacks.onClose) callbacks.onClose();
+                    };
+
+                    ws.onerror = (error) => {
+                        console.error(`❌ WebSocket error for ${serviceName}:`, error);
+                        if (callbacks.onError) callbacks.onError(error);
+                    };
+
+                    this.connections.set(serviceName, ws);
+                    return ws;
+
+                } catch (error) {
+                    console.error(`Failed to create WebSocket connection to ${serviceName}:`, error);
+                }
+            }
+
+            disconnect(serviceName) {
+                const ws = this.connections.get(serviceName);
+                if (ws) {
+                    ws.close();
+                    this.connections.delete(serviceName);
+                }
+            }
+
+            send(serviceName, data) {
+                const ws = this.connections.get(serviceName);
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify(data));
+                    return true;
+                }
+                return false;
+            }
+
+            isConnected(serviceName) {
+                const ws = this.connections.get(serviceName);
+                return ws && ws.readyState === WebSocket.OPEN;
+            }
+        }
+
+        // Global WebSocket manager
+        window.wsManager = new WebSocketManager();
+
+        // Real-time data management
+        const RealTimeData = {
+            prices: new Map(),
+            portfolioData: {},
+            signals: {},
+            
+            updatePrice(symbol, price, change) {
+                this.prices.set(symbol, { price, change, timestamp: Date.now() });
+                this.notifyPriceUpdate(symbol, price, change);
+            },
+            
+            updatePortfolio(data) {
+                this.portfolioData = { ...data, timestamp: Date.now() };
+                this.notifyPortfolioUpdate(data);
+            },
+            
+            updateSignals(data) {
+                this.signals = { ...data, timestamp: Date.now() };
+                this.notifySignalsUpdate(data);
+            },
+            
+            notifyPriceUpdate(symbol, price, change) {
+                document.dispatchEvent(new CustomEvent('priceUpdate', {
+                    detail: { symbol, price, change }
+                }));
+            },
+            
+            notifyPortfolioUpdate(data) {
+                document.dispatchEvent(new CustomEvent('portfolioUpdate', {
+                    detail: data
+                }));
+            },
+            
+            notifySignalsUpdate(data) {
+                document.dispatchEvent(new CustomEvent('signalsUpdate', {
+                    detail: data
+                }));
+            }
+        };
+
+        // Connect to market data WebSocket for real-time prices
+        function connectToMarketData() {
+            const marketDataWs = 'ws://localhost:9005/ws/prices';
+            
+            window.wsManager.connect('market-data', marketDataWs, {
+                onOpen: (ws) => {
+                    console.log('📈 Connected to market data stream');
+                    // Subscribe to major symbols
+                    const symbols = ['AAPL', 'MSFT', 'GOOGL', 'TSLA', 'SPY'];
+                    ws.send(JSON.stringify({
+                        action: 'subscribe',
+                        symbols: symbols
+                    }));
+                },
+                
+                onMessage: (data) => {
+                    if (data.type === 'price_update') {
+                        RealTimeData.updatePrice(data.symbol, data.price, data.change_pct);
+                    } else if (data.type === 'market_summary') {
+                        document.dispatchEvent(new CustomEvent('marketSummary', {
+                            detail: data
+                        }));
+                    }
+                },
+                
+                onError: (error) => {
+                    console.error('Market data WebSocket error:', error);
+                }
+            });
+        }
+
+        // Connect to training service WebSocket for AI updates
+        function connectToTrainingService() {
+            const trainingWs = 'ws://localhost:9011/ws/status';
+            
+            window.wsManager.connect('training', trainingWs, {
+                onOpen: () => {
+                    console.log('🧠 Connected to training service');
+                },
+                
+                onMessage: (data) => {
+                    if (data.type === 'training_update') {
+                        document.dispatchEvent(new CustomEvent('trainingUpdate', {
+                            detail: data
+                        }));
+                    } else if (data.type === 'model_prediction') {
+                        document.dispatchEvent(new CustomEvent('modelPrediction', {
+                            detail: data
+                        }));
+                    }
+                },
+                
+                onError: (error) => {
+                    console.error('Training service WebSocket error:', error);
+                }
+            });
+        }
+
+        // Initialize WebSocket connections
+        function initializeWebSockets() {
+            try {
+                connectToMarketData();
+                connectToTrainingService();
+            } catch (error) {
+                console.error('Failed to initialize WebSocket connections:', error);
+            }
+        }
+
+        // Enhanced service status with WebSocket info
+        async function checkServiceStatusEnhanced() {
+            try {
+                await checkServiceStatus(); // Call existing function
+                
+                // Update WebSocket status
+                const wsStatuses = {
+                    marketData: window.wsManager.isConnected('market-data'),
+                    training: window.wsManager.isConnected('training')
+                };
+                
+                // Update UI with WebSocket status
+                const statusElement = document.getElementById('servicesStatus');
+                if (statusElement) {
+                    const connectedWs = Object.values(wsStatuses).filter(Boolean).length;
+                    const totalWs = Object.keys(wsStatuses).length;
+                    statusElement.textContent += ` | WS: ${connectedWs}/${totalWs}`;
+                }
+                
+            } catch (error) {
+                console.error('Enhanced service status check failed:', error);
+            }
+        }
+
+        // Export for page-specific usage
+        window.AppState = AppState;
+        window.API_CONFIG = API_CONFIG;
+        window.showAlert = showAlert;
+        window.showLoading = showLoading;
+        window.RealTimeData = RealTimeData;
+        window.initializeWebSockets = initializeWebSockets;
+    </script>
+
+    {% block scripts %}
+    <!-- Page-specific scripts will be injected here -->
+    {% endblock %}
+</body>
+</html>

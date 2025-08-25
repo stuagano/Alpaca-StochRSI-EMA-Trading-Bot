@@ -40,15 +40,15 @@ services:
   api-gateway:
     build: ./services/api-gateway
     ports:
-      - "8000:8000"
+      - "9000:9000"
     environment:
       DATABASE_URL: postgresql://trading_user:trading_pass@postgres:5432/trading_db
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
-      SERVICE_POSITION_URL: http://position-management:8001
-      SERVICE_TRADING_URL: http://trading-execution:8002
-      SERVICE_SIGNAL_URL: http://signal-processing:8003
-      SERVICE_RISK_URL: http://risk-management:8004
+      SERVICE_POSITION_URL: http://position-management:9001
+      SERVICE_TRADING_URL: http://trading-execution:9002
+      SERVICE_SIGNAL_URL: http://signal-processing:9003
+      SERVICE_RISK_URL: http://risk-management:9004
     depends_on:
       postgres:
         condition: service_healthy
@@ -61,7 +61,7 @@ services:
   position-management:
     build: ./services/position-management
     ports:
-      - "8001:8001"
+      - "9001:9001"
     environment:
       DATABASE_URL: postgresql://trading_user:trading_pass@postgres:5432/trading_db
       REDIS_URL: redis://redis:6379
@@ -78,7 +78,7 @@ services:
   trading-execution:
     build: ./services/trading-execution
     ports:
-      - "8002:8002"
+      - "9002:9002"
     environment:
       DATABASE_URL: postgresql://trading_user:trading_pass@postgres:5432/trading_db
       REDIS_URL: redis://redis:6379
@@ -98,7 +98,7 @@ services:
   signal-processing:
     build: ./services/signal-processing
     ports:
-      - "8003:8003"
+      - "9003:9003"
     environment:
       DATABASE_URL: postgresql://trading_user:trading_pass@postgres:5432/trading_db
       REDIS_URL: redis://redis:6379
@@ -115,7 +115,7 @@ services:
   risk-management:
     build: ./services/risk-management
     ports:
-      - "8004:8004"
+      - "9004:9004"
     environment:
       DATABASE_URL: postgresql://trading_user:trading_pass@postgres:5432/trading_db
       REDIS_URL: redis://redis:6379
@@ -128,6 +128,156 @@ services:
     networks:
       - trading-network
 
+  # Market Data Service
+  market-data:
+    build: ./services/market-data
+    ports:
+      - "9005:9005"
+    environment:
+      DATABASE_URL: postgresql://trading_user:trading_pass@postgres:5432/trading_db
+      REDIS_URL: redis://redis:6379
+      ALPACA_API_KEY: ${ALPACA_API_KEY}
+      ALPACA_SECRET_KEY: ${ALPACA_SECRET_KEY}
+      ALPACA_BASE_URL: ${ALPACA_BASE_URL:-https://paper-api.alpaca.markets}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - trading-network
+
+  # Historical Data Service
+  historical-data:
+    build: ./services/historical-data
+    ports:
+      - "9006:9006"
+    environment:
+      DATABASE_URL: postgresql://trading_user:trading_pass@postgres:5432/trading_db
+      REDIS_URL: redis://redis:6379
+      MARKET_DATA_SERVICE_URL: http://market-data:9005
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      market-data:
+        condition: service_started
+    networks:
+      - trading-network
+
+  # Analytics Service
+  analytics:
+    build: ./services/analytics
+    ports:
+      - "9007:9007"
+    environment:
+      DATABASE_URL: postgresql://trading_user:trading_pass@postgres:5432/trading_db
+      REDIS_URL: redis://redis:6379
+      POSITION_SERVICE_URL: http://position-management:9001
+      MARKET_DATA_SERVICE_URL: http://market-data:9005
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      position-management:
+        condition: service_started
+    networks:
+      - trading-network
+
+  # Notification Service
+  notification:
+    build: ./services/notification
+    ports:
+      - "9008:9008"
+    environment:
+      DATABASE_URL: postgresql://trading_user:trading_pass@postgres:5432/trading_db
+      REDIS_URL: redis://redis:6379
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM:-trading-bot@example.com}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - trading-network
+
+  # Configuration Service
+  configuration:
+    build: ./services/configuration
+    ports:
+      - "9009:9009"
+    environment:
+      DATABASE_URL: postgresql://trading_user:trading_pass@postgres:5432/trading_db
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - trading-network
+
+  # Health Monitor Service
+  health-monitor:
+    build: ./services/health-monitor
+    ports:
+      - "9010:9010"
+    environment:
+      DATABASE_URL: postgresql://trading_user:trading_pass@postgres:5432/trading_db
+      REDIS_URL: redis://redis:6379
+      SERVICES_TO_MONITOR: api-gateway:9000,position-management:9001,trading-execution:9002,signal-processing:9003,risk-management:9004,market-data:9005,historical-data:9006,analytics:9007,notification:9008,configuration:9009,training:9011
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - trading-network
+
+  # Training Service - Collaborative Human-AI Strategy Development
+  training:
+    build: ./services/training
+    ports:
+      - "9011:9011"
+    environment:
+      DATABASE_PATH: /app/data/training.db
+      REDIS_URL: redis://redis:6379
+      API_GATEWAY_URL: http://api-gateway:9000
+      MARKET_DATA_SERVICE_URL: http://market-data:9005
+      HISTORICAL_DATA_SERVICE_URL: http://historical-data:9006
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
+    volumes:
+      - training_data:/app/data
+      - ./services/training/database:/app/database:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+      market-data:
+        condition: service_started
+      historical-data:
+        condition: service_started
+    networks:
+      - trading-network
+
+  # Frontend Service
+  frontend:
+    build: ./services/frontend
+    ports:
+      - "9100:9100"
+    environment:
+      API_GATEWAY_URL: http://api-gateway:9000
+      WEBSOCKET_URL: ws://api-gateway:9000/ws
+    depends_on:
+      - api-gateway
+    networks:
+      - trading-network
+
 networks:
   trading-network:
     driver: bridge
@@ -135,3 +285,4 @@ networks:
 volumes:
   postgres_data:
   redis_data:
+  training_data:

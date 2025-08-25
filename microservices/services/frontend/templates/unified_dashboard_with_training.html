@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Dashboard with AI Training</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body { 
+            background: #0a0a0a;
+            color: #ffffff;
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            overflow-x: hidden;
+        }
+
+        .trading-header {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+            border-bottom: 2px solid #333;
+            padding: 15px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .dashboard-tabs {
+            display: flex;
+            gap: 10px;
+            padding: 10px 20px;
+            background: #151515;
+            border-bottom: 1px solid #333;
+        }
+
+        .tab-button {
+            padding: 10px 20px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #888;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tab-button.active {
+            background: linear-gradient(135deg, #00ff88, #00cc66);
+            color: #000;
+            border-color: #00ff88;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .widget {
+            background: linear-gradient(145deg, #1a1a1a, #0f0f0f);
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+        }
+
+        .widget-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #333;
+        }
+
+        .metric-card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+        }
+
+        .strategy-card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .strategy-card:hover {
+            border-color: #00ff88;
+            transform: translateY(-2px);
+        }
+
+        .ai-recommendation {
+            background: linear-gradient(135deg, #1a3a52, #0f1f2e);
+            border: 1px solid #2196F3;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .confidence-bar {
+            height: 20px;
+            background: #1a1a1a;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b35, #f7931e, #00ff88);
+            transition: width 0.5s ease;
+        }
+
+        .decision-panel {
+            background: #151515;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .btn-action {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .btn-buy {
+            background: linear-gradient(135deg, #00ff88, #00cc66);
+            color: #000;
+        }
+
+        .btn-sell {
+            background: linear-gradient(135deg, #ff6b35, #ff4422);
+            color: #fff;
+        }
+
+        .btn-hold {
+            background: linear-gradient(135deg, #666, #888);
+            color: #fff;
+        }
+
+        .backtest-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .chart-container {
+            height: 400px;
+            background: #0f0f0f;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 20px 0;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-live { background: #00ff88; }
+        .status-training { background: #2196F3; }
+        .status-backtest { background: #f7931e; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="trading-header">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-md-3">
+                    <h4 class="mb-0">
+                        <i class="bi bi-graph-up-arrow"></i> Trading Dashboard
+                    </h4>
+                </div>
+                <div class="col-md-6 text-center">
+                    <span id="marketStatus" class="badge bg-success">
+                        <span class="status-indicator status-live"></span>
+                        Market Open
+                    </span>
+                    <span class="ms-3">Training Service: <span id="trainingStatus" class="badge bg-primary">Connected</span></span>
+                    <span class="ms-3">Microservices: <span id="servicesStatus" class="badge bg-success">All Online</span></span>
+                </div>
+                <div class="col-md-3 text-end">
+                    <span id="currentTime"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="dashboard-tabs">
+        <button class="tab-button active" onclick="switchTab('live-trading')">
+            <i class="bi bi-activity"></i> Live Trading
+        </button>
+        <button class="tab-button" onclick="switchTab('training')">
+            <i class="bi bi-mortarboard"></i> AI Training
+        </button>
+        <button class="tab-button" onclick="switchTab('backtesting')">
+            <i class="bi bi-clock-history"></i> Backtesting
+        </button>
+        <button class="tab-button" onclick="switchTab('collaboration')">
+            <i class="bi bi-people"></i> Collaboration
+        </button>
+        <button class="tab-button" onclick="switchTab('analytics')">
+            <i class="bi bi-bar-chart"></i> Analytics
+        </button>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="container-fluid">
+        <!-- Live Trading Tab -->
+        <div id="live-trading" class="tab-content active">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="widget">
+                        <div class="widget-header">
+                            <h5>Price Chart</h5>
+                            <select id="symbolSelect" class="form-select form-select-sm" style="width: 150px;">
+                                <option value="AAPL">AAPL</option>
+                                <option value="MSFT">MSFT</option>
+                                <option value="GOOGL">GOOGL</option>
+                                <option value="TSLA">TSLA</option>
+                                <option value="SPY">SPY</option>
+                            </select>
+                        </div>
+                        <div id="priceChart" class="chart-container"></div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="widget">
+                        <div class="widget-header">
+                            <h5>Positions</h5>
+                        </div>
+                        <div id="positionsList"></div>
+                    </div>
+                    <div class="widget">
+                        <div class="widget-header">
+                            <h5>Recent Trades</h5>
+                        </div>
+                        <div id="tradesList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Training Tab -->
+        <div id="training" class="tab-content">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="widget">
+                        <div class="widget-header">
+                            <h5>Training Scenarios</h5>
+                        </div>
+                        <div id="scenariosList">
+                            <div class="strategy-card" onclick="startScenario('bull_market_basics')">
+                                <h6>Bull Market Basics</h6>
+                                <p class="text-muted small">Learn trend-following in uptrends</p>
+                                <span class="badge bg-success">Beginner</span>
+                            </div>
+                            <div class="strategy-card" onclick="startScenario('volatile_market_mastery')">
+                                <h6>Volatile Market Mastery</h6>
+                                <p class="text-muted small">Navigate high-volatility conditions</p>
+                                <span class="badge bg-warning">Intermediate</span>
+                            </div>
+                            <div class="strategy-card" onclick="startScenario('bear_market_survival')">
+                                <h6>Bear Market Survival</h6>
+                                <p class="text-muted small">Capital preservation strategies</p>
+                                <span class="badge bg-danger">Expert</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="widget">
+                        <div class="widget-header">
+                            <h5>Learning Progress</h5>
+                        </div>
+                        <div id="learningChart" class="chart-container"></div>
+                    </div>
+                    <div class="widget">
+                        <div class="widget-header">
+                            <h5>Recent Insights</h5>
+                        </div>
+                        <div id="insightsList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Backtesting Tab -->
+        <div id="backtesting" class="tab-content">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="widget">
+                        <div class="widget-header">
+                            <h5>Backtest Configuration</h5>
+                        </div>
+                        <form id="backtestForm">
+                            <div class="mb-3">
+                                <label class="form-label">Symbol</label>
+                                <select id="backtestSymbol" class="form-select">
+                                    <option value="AAPL">AAPL</option>
+                                    <option value="MSFT">MSFT</option>
+                                    <option value="GOOGL">GOOGL</option>
+                                    <option value="TSLA">TSLA</option>
+                                    <option value="SPY">SPY</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Strategy</label>
+                                <select id="backtestStrategy" class="form-select">
+                                    <option value="stoch_rsi_ema">StochRSI + EMA</option>
+                                    <option value="bollinger_mean_reversion">Bollinger Bands</option>
+                                    <option value="momentum_breakout">Momentum Breakout</option>
+                                    <option value="multi_timeframe_trend">Multi-Timeframe</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Period (days)</label>
+                                <input type="number" id="backtestDays" class="form-control" value="180">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Initial Capital</label>
+                                <input type="number" id="backtestCapital" class="form-control" value="10000">
+                            </div>
+                            <button type="submit" class="btn btn-action btn-buy w-100">
+                                Run Backtest
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="col-md-9">
+                    <div class="widget">
+                        <div class="widget-header">
+                            <h5>Backtest Results</h5>
+                        </div>
+                        <div id="backtestResults" class="backtest-results"></div>
+                        <div id="backtestChart" class="chart-container"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Collaboration Tab -->
+        <div id="collaboration" class="tab-content">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="widget">
+                        <div class="widget-header">
+                            <h5>Market Analysis</h5>
+                        </div>
+                        <div id="marketAnalysis"></div>
+                    </div>
+                    <div class="widget">
+                        <div class="widget-header">
+                            <h5>Technical Indicators</h5>
+                        </div>
+                        <div id="indicatorsList"></div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="widget">
+                        <div class="widget-header">
+                            <h5>AI Recommendation</h5>
+                        </div>
+                        <div class="ai-recommendation">
+                            <h6>AI Analysis</h6>
+                            <div id="aiRecommendation"></div>
+                            <div class="confidence-bar">
+                                <div id="aiConfidence" class="confidence-fill" style="width: 0%"></div>
+                            </div>
+                            <p class="small">Confidence: <span id="aiConfidenceValue">0%</span></p>
+                        </div>
+                    </div>
+                    <div class="decision-panel">
+                        <h5>Your Decision</h5>
+                        <div class="mb-3">
+                            <textarea id="decisionReasoning" class="form-control" rows="3" 
+                                placeholder="Explain your reasoning..."></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label>Confidence Level</label>
+                            <input type="range" id="humanConfidence" class="form-range" min="0" max="100" value="50">
+                            <span id="humanConfidenceValue">50%</span>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button onclick="submitDecision('buy')" class="btn btn-action btn-buy flex-fill">
+                                <i class="bi bi-arrow-up-circle"></i> BUY
+                            </button>
+                            <button onclick="submitDecision('hold')" class="btn btn-action btn-hold flex-fill">
+                                <i class="bi bi-pause-circle"></i> HOLD
+                            </button>
+                            <button onclick="submitDecision('sell')" class="btn btn-action btn-sell flex-fill">
+                                <i class="bi bi-arrow-down-circle"></i> SELL
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Tab -->
+        <div id="analytics" class="tab-content">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="widget">
+                        <div class="widget-header">
+                            <h5>Performance Metrics</h5>
+                        </div>
+                        <div class="backtest-results">
+                            <div class="metric-card">
+                                <div class="metric-value" id="totalBacktests">0</div>
+                                <div class="metric-label">Total Backtests</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-value" id="avgReturn">0%</div>
+                                <div class="metric-label">Average Return</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-value" id="bestStrategy">-</div>
+                                <div class="metric-label">Best Strategy</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-value" id="winRate">0%</div>
+                                <div class="metric-label">Win Rate</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="widget">
+                        <div class="widget-header">
+                            <h5>Strategy Comparison</h5>
+                        </div>
+                        <div id="strategyComparisonChart" class="chart-container"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = 'http://localhost:9000';  // API Gateway
+        const TRAINING_SERVICE = 'http://localhost:9011';  // Training service
+        const WS_URL = 'ws://localhost:9011/ws';
+        const FRONTEND_URL = 'http://localhost:9100';  // Main frontend
+
+        // WebSocket connections
+        let trainingSocket = null;
+        let marketSocket = null;
+
+        // Charts
+        let priceChart = null;
+        let indicatorChart = null;
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+            connectWebSockets();
+            loadInitialData();
+            setupEventListeners();
+            updateTime();
+            setInterval(updateTime, 1000);
+        });
+
+        // Tab switching
+        function switchTab(tabName) {
+            // Update buttons
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName).classList.add('active');
+            
+            // Load tab-specific data
+            if (tabName === 'training') {
+                loadTrainingScenarios();
+                loadRecentInsights();
+            } else if (tabName === 'backtesting') {
+                loadBacktestHistory();
+            } else if (tabName === 'collaboration') {
+                loadMarketAnalysis();
+            } else if (tabName === 'analytics') {
+                loadPerformanceMetrics();
+            }
+        }
+
+        // Initialize charts
+        function initializeCharts() {
+            // Price chart using Lightweight Charts
+            const chartContainer = document.getElementById('priceChart');
+            if (chartContainer) {
+                priceChart = LightweightCharts.createChart(chartContainer, {
+                    width: chartContainer.clientWidth,
+                    height: 400,
+                    layout: {
+                        background: { color: '#0f0f0f' },
+                        textColor: '#d1d4dc',
+                    },
+                    grid: {
+                        vertLines: { color: '#2a2a2a' },
+                        horzLines: { color: '#2a2a2a' },
+                    },
+                });
+                
+                const candlestickSeries = priceChart.addCandlestickSeries();
+                // Load initial data
+                loadChartData('AAPL');
+            }
+        }
+
+        // WebSocket connections
+        function connectWebSockets() {
+            // Connect to training service WebSocket
+            const symbol = document.getElementById('symbolSelect')?.value || 'AAPL';
+            trainingSocket = new WebSocket(`${WS_URL}/collaborate/${symbol}`);
+            
+            trainingSocket.onopen = () => {
+                console.log('Connected to training WebSocket');
+                document.getElementById('trainingStatus').textContent = 'Connected';
+                document.getElementById('trainingStatus').className = 'badge bg-success';
+            };
+            
+            trainingSocket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            };
+            
+            trainingSocket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                document.getElementById('trainingStatus').textContent = 'Error';
+                document.getElementById('trainingStatus').className = 'badge bg-danger';
+            };
+            
+            trainingSocket.onclose = () => {
+                console.log('WebSocket disconnected');
+                document.getElementById('trainingStatus').textContent = 'Disconnected';
+                document.getElementById('trainingStatus').className = 'badge bg-secondary';
+                // Reconnect after 5 seconds
+                setTimeout(connectWebSockets, 5000);
+            };
+        }
+
+        // Handle WebSocket messages
+        function handleWebSocketMessage(data) {
+            if (data.type === 'market_analysis') {
+                updateMarketAnalysis(data.data);
+            } else if (data.type === 'decision_result') {
+                showDecisionResult(data.data);
+            } else if (data.type === 'new_decision') {
+                updateRecentDecisions(data);
+            }
+        }
+
+        // Load initial data
+        async function loadInitialData() {
+            try {
+                // Load strategies
+                const strategies = await fetch(`${TRAINING_SERVICE}/api/strategies`).then(r => r.json());
+                if (strategies.status === 'success') {
+                    updateStrategyList(strategies.data);
+                }
+                
+                // Load recent backtests
+                const backtests = await fetch(`${TRAINING_SERVICE}/api/backtest/history`).then(r => r.json());
+                if (backtests.status === 'success') {
+                    updateBacktestHistory(backtests.data);
+                }
+            } catch (error) {
+                console.error('Error loading initial data:', error);
+            }
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Backtest form
+            const backtestForm = document.getElementById('backtestForm');
+            if (backtestForm) {
+                backtestForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    await runBacktest();
+                });
+            }
+            
+            // Confidence slider
+            const confidenceSlider = document.getElementById('humanConfidence');
+            if (confidenceSlider) {
+                confidenceSlider.addEventListener('input', (e) => {
+                    document.getElementById('humanConfidenceValue').textContent = e.target.value + '%';
+                });
+            }
+            
+            // Symbol selector
+            const symbolSelect = document.getElementById('symbolSelect');
+            if (symbolSelect) {
+                symbolSelect.addEventListener('change', (e) => {
+                    loadChartData(e.target.value);
+                    // Reconnect WebSocket with new symbol
+                    if (trainingSocket) {
+                        trainingSocket.close();
+                    }
+                    connectWebSockets();
+                });
+            }
+        }
+
+        // Run backtest
+        async function runBacktest() {
+            const symbol = document.getElementById('backtestSymbol').value;
+            const strategy = document.getElementById('backtestStrategy').value;
+            const days = document.getElementById('backtestDays').value;
+            const capital = document.getElementById('backtestCapital').value;
+            
+            try {
+                const response = await fetch(`${TRAINING_SERVICE}/api/backtest`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        strategy: strategy,
+                        initial_capital: parseFloat(capital),
+                        start_date: new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.status === 'success') {
+                    displayBacktestResults(result.data);
+                }
+            } catch (error) {
+                console.error('Backtest error:', error);
+                alert('Error running backtest: ' + error.message);
+            }
+        }
+
+        // Display backtest results
+        function displayBacktestResults(data) {
+            const resultsDiv = document.getElementById('backtestResults');
+            resultsDiv.innerHTML = `
+                <div class="metric-card">
+                    <div class="metric-value ${data.total_return >= 0 ? 'text-success' : 'text-danger'}">
+                        ${data.total_return >= 0 ? '+' : ''}${data.total_return.toFixed(2)}%
+                    </div>
+                    <div class="metric-label">Total Return</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${data.total_trades}</div>
+                    <div class="metric-label">Total Trades</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${data.win_rate.toFixed(1)}%</div>
+                    <div class="metric-label">Win Rate</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${data.sharpe_ratio.toFixed(2)}</div>
+                    <div class="metric-label">Sharpe Ratio</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${data.max_drawdown.toFixed(2)}%</div>
+                    <div class="metric-label">Max Drawdown</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">$${data.total_pnl?.toFixed(2) || '0.00'}</div>
+                    <div class="metric-label">Total P&L</div>
+                </div>
+            `;
+        }
+
+        // Submit collaborative decision
+        async function submitDecision(decision) {
+            const symbol = document.getElementById('symbolSelect').value;
+            const reasoning = document.getElementById('decisionReasoning').value;
+            const confidence = document.getElementById('humanConfidence').value;
+            
+            if (!reasoning) {
+                alert('Please explain your reasoning');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${TRAINING_SERVICE}/api/collaborate/decision`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        human_decision: decision,
+                        human_reasoning: reasoning,
+                        confidence: parseFloat(confidence)
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.status === 'success') {
+                    showDecisionResult(result.data);
+                }
+            } catch (error) {
+                console.error('Decision submission error:', error);
+                alert('Error submitting decision: ' + error.message);
+            }
+        }
+
+        // Show decision result
+        function showDecisionResult(data) {
+            alert(`
+                Final Decision: ${data.final_decision.action}
+                Your Decision: ${data.human_decision}
+                AI Decision: ${data.ai_analysis.recommendation}
+                Synthesis: ${data.final_decision.reasoning}
+            `);
+            
+            // Clear form
+            document.getElementById('decisionReasoning').value = '';
+            document.getElementById('humanConfidence').value = 50;
+            document.getElementById('humanConfidenceValue').textContent = '50%';
+        }
+
+        // Load market analysis
+        async function loadMarketAnalysis() {
+            const symbol = document.getElementById('symbolSelect').value;
+            
+            try {
+                const response = await fetch(`${TRAINING_SERVICE}/api/collaborate/current/${symbol}`);
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    updateMarketAnalysis(result.data);
+                }
+            } catch (error) {
+                console.error('Error loading market analysis:', error);
+            }
+        }
+
+        // Update market analysis display
+        function updateMarketAnalysis(data) {
+            // Update indicators
+            const indicatorsDiv = document.getElementById('indicatorsList');
+            if (indicatorsDiv && data.indicators) {
+                indicatorsDiv.innerHTML = Object.entries(data.indicators).map(([key, value]) => `
+                    <div class="metric-card">
+                        <div class="metric-value">${typeof value === 'number' ? value.toFixed(2) : value}</div>
+                        <div class="metric-label">${key}</div>
+                    </div>
+                `).join('');
+            }
+            
+            // Update AI recommendation
+            if (data.recommendation) {
+                document.getElementById('aiRecommendation').innerHTML = `
+                    <h6>Action: ${data.recommendation}</h6>
+                    <p>${data.reasoning}</p>
+                `;
+                
+                const confidence = data.confidence || 0;
+                document.getElementById('aiConfidence').style.width = confidence + '%';
+                document.getElementById('aiConfidenceValue').textContent = confidence + '%';
+            }
+        }
+
+        // Load performance metrics
+        async function loadPerformanceMetrics() {
+            try {
+                const response = await fetch(`${TRAINING_SERVICE}/api/metrics/performance?days=30`);
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    const metrics = result.data;
+                    document.getElementById('totalBacktests').textContent = metrics.backtests.total_backtests || 0;
+                    document.getElementById('avgReturn').textContent = 
+                        (metrics.backtests.avg_return || 0).toFixed(2) + '%';
+                    document.getElementById('winRate').textContent = 
+                        (metrics.backtests.avg_win_rate || 0).toFixed(1) + '%';
+                }
+            } catch (error) {
+                console.error('Error loading performance metrics:', error);
+            }
+        }
+
+        // Update time
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = now.toLocaleTimeString();
+        }
+
+        // Placeholder functions for additional features
+        function loadChartData(symbol) {
+            console.log('Loading chart data for', symbol);
+        }
+
+        function loadTrainingScenarios() {
+            console.log('Loading training scenarios');
+        }
+
+        function loadRecentInsights() {
+            console.log('Loading recent insights');
+        }
+
+        function loadBacktestHistory() {
+            console.log('Loading backtest history');
+        }
+
+        function updateStrategyList(strategies) {
+            console.log('Updating strategy list', strategies);
+        }
+
+        function updateBacktestHistory(backtests) {
+            console.log('Updating backtest history', backtests);
+        }
+
+        function startScenario(scenarioId) {
+            console.log('Starting scenario', scenarioId);
+        }
+    </script>
+</body>
+</html>

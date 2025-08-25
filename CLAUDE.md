@@ -6,6 +6,7 @@
 1. ALL operations MUST be concurrent/parallel in a single message
 2. **NEVER save working files, text/mds and tests to the root folder**
 3. ALWAYS organize files in appropriate subdirectories
+4. **CONSISTENT PORT USAGE** - Frontend is on port 9100, microservices on 9000-9012
 
 ### ⚡ GOLDEN RULE: "1 MESSAGE = ALL RELATED OPERATIONS"
 
@@ -68,6 +69,54 @@
 ## Project Overview
 
 This project uses BMAD (Build, Measure, Analyze, Document) methodology with Claude-Flow orchestration for systematic iterative development and continuous improvement.
+
+## 🏗️ Microservices Architecture (CRITICAL)
+
+**PORT ALLOCATION:**
+- **Frontend (Main):** 9100 - Primary React-based trading platform
+- **API Gateway:** 9000 - Central routing and authentication
+- **Position Management:** 9001 - Portfolio tracking
+- **Trading Execution:** 9002 - Order execution and Alpaca API
+- **Signal Processing:** 9003 - Technical indicators and signals
+- **Risk Management:** 9004 - Risk controls and limits
+- **Market Data:** 9005 - Live data feeds
+- **Historical Data:** 9006 - Data storage and retrieval
+- **Analytics:** 9007 - Performance metrics
+- **Notification:** 9008 - Alerts and messaging
+- **Configuration:** 9009 - System settings
+- **Health Monitor:** 9010 - Service monitoring
+- **Training Service:** 9011 - AI collaborative trading
+- **Crypto Trading:** 9012 - 24/7 cryptocurrency trading (NEW)
+
+**MAIN ENTRY POINTS:**
+- **Primary:** http://localhost:9100/ (Frontend Service)
+- **API Gateway:** http://localhost:9000/
+- **Training AI:** http://localhost:9011/
+- **Training Docs:** http://localhost:9011/docs
+- **Crypto API:** http://localhost:9012/ - 24/7 cryptocurrency trading
+- **Crypto Health:** http://localhost:9012/health
+
+## 🪙 Crypto Trading Features (NEW)
+
+**24/7 Cryptocurrency Trading:**
+- **Supported Pairs:** BTC/USD, ETH/USD, LTC/USD, BCH/USD, LINK/USD, UNI/USD, AAVE/USD, MKR/USD, MATIC/USD, AVAX/USD, BTC/USDT, ETH/USDT, BTC/USDC, ETH/USDC
+- **Trading Hours:** 24/7 - Never closes (crypto markets are always open)
+- **Order Types:** Market, Limit orders with fractional support
+- **Min Order:** 0.0001 (fractional orders)
+- **Max Order:** $200,000 per order
+- **Settlement:** T+0 (instant settlement)
+- **Margin:** Not allowed for crypto
+- **Shorting:** Not allowed for crypto
+- **Real-time:** WebSocket streaming for live quotes and data
+- **API Endpoints:**
+  - `/api/crypto/assets` - Available crypto assets
+  - `/api/crypto/positions` - Current crypto positions
+  - `/api/crypto/orders` - Submit crypto orders
+  - `/api/crypto/quotes/{symbol}` - Real-time crypto quotes
+  - `/api/crypto/bars/{symbol}` - Historical crypto price data
+  - `/api/crypto/signals/{symbol}` - Crypto trading signals
+  - `/api/crypto/account` - Crypto account information
+  - `/crypto/stream` - WebSocket for real-time data
 
 ## BMAD Commands
 

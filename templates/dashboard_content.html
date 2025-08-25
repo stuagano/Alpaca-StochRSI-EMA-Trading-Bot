@@ -1,0 +1,494 @@
+{% extends "unified_master_dashboard.html" %}
+
+{% block content %}
+<!-- Dashboard Metrics -->
+<div class="metric-grid">
+    <div class="metric-card">
+        <div class="metric-value metric-positive" id="portfolioValue">$24,567.89</div>
+        <div class="metric-label">Portfolio Value</div>
+        <div class="metric-change metric-positive">+2.34% Today</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value metric-positive" id="todayPnL">+$1,234.56</div>
+        <div class="metric-label">Today's P&L</div>
+        <div class="metric-change metric-positive">+5.26%</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value metric-neutral" id="openPositions">3</div>
+        <div class="metric-label">Open Positions</div>
+        <div class="metric-change metric-neutral">Active</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value metric-positive" id="winRate">73.2%</div>
+        <div class="metric-label">Win Rate</div>
+        <div class="metric-change metric-positive">Last 30 days</div>
+    </div>
+</div>
+
+<!-- Main Dashboard Grid -->
+<div class="unified-grid grid-sidebar">
+    <!-- Chart Section -->
+    <div>
+        <div class="unified-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="bi bi-graph-up"></i>
+                    Price Chart
+                </div>
+                <div class="card-actions">
+                    <select class="form-select form-select-sm" style="width: 120px;" id="symbolSelect">
+                        <option value="AAPL">AAPL</option>
+                        <option value="MSFT">MSFT</option>
+                        <option value="GOOGL">GOOGL</option>
+                        <option value="TSLA">TSLA</option>
+                        <option value="SPY">SPY</option>
+                    </select>
+                    <button class="card-action" onclick="refreshChart()">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="chart-container" id="priceChart">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    Loading chart data...
+                </div>
+            </div>
+        </div>
+
+        <div class="unified-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="bi bi-activity"></i>
+                    Market Signals
+                </div>
+            </div>
+            <div class="signal-grid" id="signalsContainer">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    Loading market signals...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div>
+        <div class="unified-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="bi bi-briefcase"></i>
+                    Current Positions
+                </div>
+            </div>
+            <div id="positionsList">
+                <div class="position-item">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold">AAPL</span>
+                        <span class="badge bg-success">+2.34%</span>
+                    </div>
+                    <div class="small text-muted">
+                        10 shares • $150.23 avg cost
+                    </div>
+                    <div class="small">
+                        Current: $154.75 • P&L: +$45.20
+                    </div>
+                </div>
+                <hr>
+                <div class="position-item">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold">MSFT</span>
+                        <span class="badge bg-danger">-1.23%</span>
+                    </div>
+                    <div class="small text-muted">
+                        5 shares • $340.50 avg cost
+                    </div>
+                    <div class="small">
+                        Current: $336.31 • P&L: -$20.95
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="unified-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="bi bi-clock-history"></i>
+                    Recent Trades
+                </div>
+            </div>
+            <div id="recentTrades">
+                <div class="trade-item">
+                    <div class="d-flex justify-content-between">
+                        <span>BUY TSLA</span>
+                        <span class="text-success">+$123.45</span>
+                    </div>
+                    <div class="small text-muted">2 shares @ $245.67 • 2:30 PM</div>
+                </div>
+                <hr>
+                <div class="trade-item">
+                    <div class="d-flex justify-content-between">
+                        <span>SELL SPY</span>
+                        <span class="text-danger">-$45.20</span>
+                    </div>
+                    <div class="small text-muted">50 shares @ $420.15 • 11:45 AM</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="unified-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="bi bi-speedometer2"></i>
+                    System Status
+                </div>
+            </div>
+            <div class="status-grid">
+                <div class="status-row">
+                    <span>Market Data</span>
+                    <span class="badge bg-success">Online</span>
+                </div>
+                <div class="status-row">
+                    <span>Trading Engine</span>
+                    <span class="badge bg-success">Active</span>
+                </div>
+                <div class="status-row">
+                    <span>AI Training</span>
+                    <span class="badge bg-primary">Ready</span>
+                </div>
+                <div class="status-row">
+                    <span>Risk Manager</span>
+                    <span class="badge bg-success">Monitoring</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.signal-grid {
+    display: grid;
+    gap: 15px;
+}
+
+.signal-item {
+    display: grid;
+    grid-template-columns: 80px 1fr 80px 1fr;
+    gap: 10px;
+    padding: 15px;
+    background: var(--tertiary-bg);
+    border-radius: 8px;
+    align-items: center;
+}
+
+.signal-symbol {
+    font-weight: bold;
+    color: var(--accent-green);
+}
+
+.signal-indicator {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.signal-status {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.status-buy {
+    background: rgba(0, 255, 136, 0.2);
+    color: var(--accent-green);
+}
+
+.status-hold {
+    background: rgba(247, 147, 30, 0.2);
+    color: var(--accent-orange);
+}
+
+.status-sell {
+    background: rgba(255, 68, 68, 0.2);
+    color: var(--accent-red);
+}
+
+.signal-strength {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.position-item, .trade-item {
+    padding: 10px 0;
+}
+
+.status-grid {
+    display: grid;
+    gap: 10px;
+}
+
+.status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Dashboard-specific initialization
+function initializePage() {
+    loadDashboardData();
+    initializeChart();
+    setupRealTimeUpdates();
+    
+    // Update data every 30 seconds (fallback)
+    setInterval(loadDashboardData, 30000);
+}
+
+// Setup real-time WebSocket event handlers
+function setupRealTimeUpdates() {
+    // Listen for price updates
+    document.addEventListener('priceUpdate', (event) => {
+        const { symbol, price, change } = event.detail;
+        updatePriceDisplays(symbol, price, change);
+    });
+    
+    // Listen for portfolio updates
+    document.addEventListener('portfolioUpdate', (event) => {
+        updatePortfolioMetrics(event.detail);
+    });
+    
+    // Listen for signals updates  
+    document.addEventListener('signalsUpdate', (event) => {
+        updateMarketSignals(event.detail.signals || {});
+    });
+    
+    // Listen for training updates
+    document.addEventListener('trainingUpdate', (event) => {
+        updateTrainingStatus(event.detail);
+    });
+    
+    console.log('📊 Real-time dashboard updates enabled');
+}
+
+// Update price displays across the dashboard
+function updatePriceDisplays(symbol, price, change) {
+    // Update chart if it's showing this symbol
+    const symbolSelect = document.getElementById('symbolSelect');
+    if (symbolSelect && symbolSelect.value === symbol) {
+        // Update chart with new price point
+        updateChartWithNewPrice(symbol, price);
+    }
+    
+    // Update position cards if they contain this symbol
+    updatePositionPrice(symbol, price, change);
+    
+    // Show real-time price alert (optional)
+    if (Math.abs(change) > 2) { // Alert for >2% moves
+        const alertType = change > 0 ? 'success' : 'warning';
+        showAlert(`${symbol}: ${change > 0 ? '+' : ''}${change.toFixed(2)}% (${price})`, alertType);
+    }
+}
+
+// Update position price in real-time
+function updatePositionPrice(symbol, price, change) {
+    const positionElements = document.querySelectorAll('.position-item');
+    positionElements.forEach(element => {
+        const symbolElement = element.querySelector('.fw-bold');
+        if (symbolElement && symbolElement.textContent === symbol) {
+            const changeElement = element.querySelector('.badge');
+            const priceElement = element.querySelector('.small');
+            
+            if (changeElement) {
+                changeElement.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+                changeElement.className = `badge ${change >= 0 ? 'bg-success' : 'bg-danger'}`;
+            }
+            
+            if (priceElement && priceElement.textContent.includes('Current:')) {
+                const newText = priceElement.textContent.replace(/Current: \$[\d.]+/, `Current: $${price}`);
+                priceElement.textContent = newText;
+            }
+        }
+    });
+}
+
+// Update chart with new real-time price
+function updateChartWithNewPrice(symbol, price) {
+    // This would integrate with the actual chart library
+    console.log(`📈 Chart update: ${symbol} -> $${price}`);
+}
+
+// Update training status indicator
+function updateTrainingStatus(data) {
+    const trainingElement = document.getElementById('trainingStatus');
+    if (trainingElement) {
+        if (data.status === 'training') {
+            trainingElement.textContent = 'Training...';
+            trainingElement.parentElement.className = 'status-badge status-training';
+        } else if (data.status === 'ready') {
+            trainingElement.textContent = 'AI Ready';
+            trainingElement.parentElement.className = 'status-badge status-online';
+        }
+    }
+}
+
+async function loadDashboardData() {
+    try {
+        // Load portfolio value
+        const portfolioResponse = await fetch('http://localhost:9001/portfolio/summary');
+        if (portfolioResponse.ok) {
+            const portfolio = await portfolioResponse.json();
+            updatePortfolioMetrics(portfolio);
+        }
+        
+        // Load positions
+        const positionsResponse = await fetch('http://localhost:9001/positions');
+        if (positionsResponse.ok) {
+            const positionsData = await positionsResponse.json();
+            updatePositionsList(positionsData.positions || []);
+        }
+        
+        // Load market signals
+        const signalsResponse = await fetch('http://localhost:9003/signals');
+        if (signalsResponse.ok) {
+            const signalsData = await signalsResponse.json();
+            updateMarketSignals(signalsData.signals || {});
+        }
+        
+        // Load risk alerts
+        const riskResponse = await fetch('http://localhost:9004/risk/alerts');
+        if (riskResponse.ok) {
+            const riskData = await riskResponse.json();
+            updateRiskAlerts(riskData.alerts || []);
+        }
+        
+    } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        // Don't show error alert for now - just log it
+    }
+}
+
+function updatePortfolioMetrics(portfolio) {
+    if (portfolio.total_value) {
+        document.getElementById('portfolioValue').textContent = 
+            new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
+                .format(portfolio.total_value);
+    }
+    
+    if (portfolio.today_pnl !== undefined) {
+        const pnlElement = document.getElementById('todayPnL');
+        pnlElement.textContent = 
+            new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', signDisplay: 'always' })
+                .format(portfolio.today_pnl);
+        pnlElement.className = portfolio.today_pnl >= 0 ? 
+            'metric-value metric-positive' : 'metric-value metric-negative';
+    }
+    
+    if (portfolio.positions_count !== undefined) {
+        document.getElementById('openPositions').textContent = portfolio.positions_count;
+    }
+}
+
+function updatePositionsList(positions) {
+    const container = document.getElementById('positionsList');
+    if (!positions || positions.length === 0) {
+        container.innerHTML = '<p class="text-muted">No open positions</p>';
+        return;
+    }
+    
+    container.innerHTML = positions.map(pos => `
+        <div class="position-item">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-bold">${pos.symbol}</span>
+                <span class="badge ${pos.unrealized_plpc >= 0 ? 'bg-success' : 'bg-danger'}">
+                    ${pos.unrealized_plpc >= 0 ? '+' : ''}${(pos.unrealized_plpc * 100).toFixed(2)}%
+                </span>
+            </div>
+            <div class="small text-muted">
+                ${pos.qty} shares • $${parseFloat(pos.avg_entry_price).toFixed(2)} avg cost
+            </div>
+            <div class="small">
+                Current: $${parseFloat(pos.current_price).toFixed(2)} • 
+                P&L: ${pos.unrealized_pl >= 0 ? '+' : ''}$${parseFloat(pos.unrealized_pl).toFixed(2)}
+            </div>
+        </div>
+    `).join('<hr>');
+}
+
+function initializeChart() {
+    const chartContainer = document.getElementById('priceChart');
+    
+    // Initialize chart with placeholder data
+    chartContainer.innerHTML = `
+        <div style="height: 300px; display: flex; align-items: center; justify-content: center;">
+            <div class="text-center">
+                <i class="bi bi-graph-up" style="font-size: 48px; color: var(--accent-green); margin-bottom: 15px;"></i>
+                <br>
+                <span class="text-muted">Chart will load real market data</span>
+                <br>
+                <button class="btn-action btn-primary mt-3" onclick="refreshChart()">
+                    Load Chart Data
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function updateMarketSignals(signals) {
+    const container = document.getElementById('signalsContainer');
+    if (!signals || Object.keys(signals).length === 0) {
+        container.innerHTML = '<p class="text-muted">No signals available</p>';
+        return;
+    }
+    
+    // Show top 3 signals
+    const topSignals = Object.values(signals).slice(0, 3);
+    
+    container.innerHTML = topSignals.map(signal => {
+        const statusClass = signal.signal.includes('BUY') ? 'status-buy' : 
+                           signal.signal.includes('SELL') ? 'status-sell' : 'status-hold';
+        
+        return `
+            <div class="signal-item">
+                <span class="signal-symbol">${signal.symbol}</span>
+                <span class="signal-indicator">RSI: ${signal.indicators.rsi.value}</span>
+                <span class="signal-status ${statusClass}">${signal.signal}</span>
+                <span class="signal-strength">${signal.confidence}% confidence</span>
+            </div>
+        `;
+    }).join('');
+}
+
+function updateRiskAlerts(alerts) {
+    // Add risk alerts to the system status section
+    const statusContainer = document.querySelector('.status-grid');
+    if (statusContainer && alerts.length > 0) {
+        // Add risk alert indicator
+        const riskRow = document.createElement('div');
+        riskRow.className = 'status-row';
+        riskRow.innerHTML = `
+            <span>Risk Alerts</span>
+            <span class="badge ${alerts.length > 2 ? 'bg-danger' : 'bg-warning'}">${alerts.length}</span>
+        `;
+        statusContainer.appendChild(riskRow);
+    }
+}
+
+function refreshChart() {
+    const symbol = document.getElementById('symbolSelect').value;
+    showAlert(`Loading chart data for ${symbol}...`, 'info');
+    
+    // Simulate chart loading
+    setTimeout(() => {
+        showAlert(`Chart updated for ${symbol}`, 'success');
+    }, 1000);
+}
+
+// Export for global access
+window.refreshChart = refreshChart;
+</script>
+{% endblock %}

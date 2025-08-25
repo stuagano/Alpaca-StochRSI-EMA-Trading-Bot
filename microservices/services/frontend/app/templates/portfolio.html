@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .navbar h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1rem;
+        }
+        
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        
+        .nav-links a:hover {
+            background-color: rgba(255,255,255,0.2);
+        }
+        
+        .nav-links a.active {
+            background-color: rgba(255,255,255,0.3);
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+        
+        .portfolio-header {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .metric-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border: 1px solid #e0e0e0;
+        }
+        
+        .metric-card h4 {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+        
+        .metric-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #333;
+        }
+        
+        .metric-change {
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .positive {
+            color: #4caf50;
+        }
+        
+        .negative {
+            color: #f44336;
+        }
+        
+        .positions-table {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border: 1px solid #e0e0e0;
+            margin-bottom: 2rem;
+        }
+        
+        .positions-table h3 {
+            margin-bottom: 1rem;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background-color: #f5f5f5;
+            padding: 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        td {
+            padding: 0.75rem;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .action-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.4rem 0.8rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            margin-right: 0.5rem;
+            transition: background-color 0.3s;
+        }
+        
+        .action-btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .action-btn.danger {
+            background: #f44336;
+        }
+        
+        .action-btn.danger:hover {
+            background: #da190b;
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border: 1px solid #e0e0e0;
+            margin-bottom: 2rem;
+        }
+        
+        .chart-container h3 {
+            margin-bottom: 1rem;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+        
+        .error {
+            color: #f44336;
+            text-align: center;
+            padding: 1rem;
+            background-color: #ffebee;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+        
+        .filter-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .filter-controls select, .filter-controls input {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>Portfolio Management</h1>
+        <div class="nav-links">
+            <a href="/">Dashboard</a>
+            <a href="/portfolio" class="active">Portfolio</a>
+            <a href="/trading">Trading</a>
+            <a href="/analytics">Analytics</a>
+            <a href="/config">Config</a>
+            <a href="/monitoring">Monitoring</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Portfolio Summary -->
+        <div class="portfolio-header">
+            <div class="metric-card">
+                <h4>Total Value</h4>
+                <div class="metric-value" id="total-value">$0.00</div>
+                <div class="metric-change" id="total-change"></div>
+            </div>
+            <div class="metric-card">
+                <h4>Daily P&L</h4>
+                <div class="metric-value" id="daily-pnl">$0.00</div>
+                <div class="metric-change" id="daily-pnl-percent"></div>
+            </div>
+            <div class="metric-card">
+                <h4>Cash Balance</h4>
+                <div class="metric-value" id="cash-balance">$0.00</div>
+                <div class="metric-change">Available</div>
+            </div>
+            <div class="metric-card">
+                <h4>Positions</h4>
+                <div class="metric-value" id="positions-count">0</div>
+                <div class="metric-change">Active</div>
+            </div>
+        </div>
+
+        <!-- Portfolio Allocation Chart -->
+        <div class="chart-container">
+            <h3>Portfolio Allocation</h3>
+            <canvas id="allocation-chart" height="100"></canvas>
+        </div>
+
+        <!-- Positions Table -->
+        <div class="positions-table">
+            <h3>Current Positions</h3>
+            <div class="filter-controls">
+                <select id="filter-type">
+                    <option value="all">All Positions</option>
+                    <option value="long">Long Only</option>
+                    <option value="short">Short Only</option>
+                    <option value="profitable">Profitable</option>
+                    <option value="losing">Losing</option>
+                </select>
+                <input type="text" id="search-symbol" placeholder="Search symbol...">
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Quantity</th>
+                        <th>Avg Cost</th>
+                        <th>Current Price</th>
+                        <th>Market Value</th>
+                        <th>P&L</th>
+                        <th>P&L %</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="positions-body">
+                    <tr>
+                        <td colspan="8" class="loading">Loading positions...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Performance Chart -->
+        <div class="chart-container">
+            <h3>Portfolio Performance</h3>
+            <canvas id="performance-chart" height="80"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = '{{ api_gateway_url }}';
+        const WS_URL = '{{ websocket_url }}';
+        
+        let allPositions = [];
+        let allocationChart = null;
+        let performanceChart = null;
+
+        // Load portfolio summary
+        async function loadPortfolioSummary() {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/account`);
+                const data = response.data;
+                
+                // Handle the API response format {success: true, balance: ...}
+                if (data.success) {
+                    const balance = data.balance || data.cash || 0;
+                    const buying_power = data.buying_power || balance;
+                    
+                    // Use equity as portfolio value, fallback to cash
+                    const portfolio_value = balance;
+                    
+                    document.getElementById('total-value').textContent = 
+                        `$${parseFloat(portfolio_value).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+                    document.getElementById('cash-balance').textContent = 
+                        `$${parseFloat(data.cash || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+                    
+                    // Calculate daily P&L (mock data since we don't have historical)
+                    const dailyPnl = portfolio_value * 0.01; // Mock 1% change
+                    document.getElementById('daily-pnl').textContent = 
+                        `$${dailyPnl.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+                    
+                    const pnlClass = dailyPnl >= 0 ? 'positive' : 'negative';
+                    document.getElementById('daily-pnl').className = `metric-value ${pnlClass}`;
+                    document.getElementById('daily-pnl-percent').textContent = 
+                        `${dailyPnl >= 0 ? '+' : ''}${((dailyPnl / portfolio_value) * 100).toFixed(2)}%`;
+                    document.getElementById('daily-pnl-percent').className = `metric-change ${pnlClass}`;
+                } else {
+                    console.error('Account API returned error:', data.error);
+                }
+                
+            } catch (error) {
+                console.error('Failed to load portfolio summary:', error);
+            }
+        }
+
+        // Load positions
+        async function loadPositions() {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/positions`);
+                const data = response.data;
+                
+                // Handle the API response format {success: true, positions: [...]}
+                allPositions = data.success ? data.positions : [];
+                
+                document.getElementById('positions-count').textContent = allPositions.length;
+                
+                renderPositions(allPositions);
+                updateAllocationChart(allPositions);
+                
+            } catch (error) {
+                console.error('Failed to load positions:', error);
+                document.getElementById('positions-body').innerHTML = 
+                    '<tr><td colspan="8" class="error">Failed to load positions</td></tr>';
+            }
+        }
+
+        // Render positions table
+        function renderPositions(positions) {
+            const tbody = document.getElementById('positions-body');
+            
+            if (positions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No positions found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = positions.map(position => {
+                const pnl = parseFloat(position.unrealized_pl || 0);
+                const pnlPercent = parseFloat(position.unrealized_plpc || 0);
+                const pnlClass = pnl >= 0 ? 'positive' : 'negative';
+                
+                return `
+                    <tr>
+                        <td><strong>${position.symbol}</strong></td>
+                        <td>${position.qty}</td>
+                        <td>$${parseFloat(position.avg_entry_price).toFixed(2)}</td>
+                        <td>$${parseFloat(position.current_price).toFixed(2)}</td>
+                        <td>$${parseFloat(position.market_value).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                        <td class="${pnlClass}">
+                            $${pnl.toLocaleString('en-US', {minimumFractionDigits: 2})}
+                        </td>
+                        <td class="${pnlClass}">
+                            ${pnl >= 0 ? '+' : ''}${pnlPercent.toFixed(2)}%
+                        </td>
+                        <td>
+                            <button class="action-btn" onclick="addToPosition('${position.symbol}')">Add</button>
+                            <button class="action-btn danger" onclick="closePosition('${position.symbol}')">Close</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Update allocation chart
+        function updateAllocationChart(positions) {
+            const ctx = document.getElementById('allocation-chart').getContext('2d');
+            
+            const data = {
+                labels: positions.map(p => p.symbol),
+                datasets: [{
+                    data: positions.map(p => parseFloat(p.market_value)),
+                    backgroundColor: [
+                        '#667eea', '#764ba2', '#f093fb', '#f5576c',
+                        '#4facfe', '#00f2fe', '#43e97b', '#38f9d7',
+                        '#fa709a', '#fee140', '#30cfd0', '#330867'
+                    ],
+                    borderWidth: 1,
+                    borderColor: '#fff'
+                }]
+            };
+            
+            if (allocationChart) {
+                allocationChart.destroy();
+            }
+            
+            allocationChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${context.label}: $${value.toLocaleString()} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Load performance chart
+        async function loadPerformanceChart() {
+            try {
+                // This would normally fetch historical performance data
+                const ctx = document.getElementById('performance-chart').getContext('2d');
+                
+                // Sample data for demonstration
+                const labels = [];
+                const data = [];
+                const today = new Date();
+                
+                for (let i = 29; i >= 0; i--) {
+                    const date = new Date(today);
+                    date.setDate(date.getDate() - i);
+                    labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                    data.push(100000 + Math.random() * 10000 - 5000);
+                }
+                
+                if (performanceChart) {
+                    performanceChart.destroy();
+                }
+                
+                performanceChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Portfolio Value',
+                            data: data,
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `$${context.parsed.y.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                ticks: {
+                                    callback: function(value) {
+                                        return '$' + value.toLocaleString();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Failed to load performance chart:', error);
+            }
+        }
+
+        // Filter positions
+        function filterPositions() {
+            const filterType = document.getElementById('filter-type').value;
+            const searchSymbol = document.getElementById('search-symbol').value.toLowerCase();
+            
+            let filtered = allPositions;
+            
+            // Apply type filter
+            if (filterType === 'long') {
+                filtered = filtered.filter(p => p.side === 'long');
+            } else if (filterType === 'short') {
+                filtered = filtered.filter(p => p.side === 'short');
+            } else if (filterType === 'profitable') {
+                filtered = filtered.filter(p => parseFloat(p.unrealized_pl) > 0);
+            } else if (filterType === 'losing') {
+                filtered = filtered.filter(p => parseFloat(p.unrealized_pl) < 0);
+            }
+            
+            // Apply symbol search
+            if (searchSymbol) {
+                filtered = filtered.filter(p => p.symbol.toLowerCase().includes(searchSymbol));
+            }
+            
+            renderPositions(filtered);
+        }
+
+        // Action handlers
+        async function addToPosition(symbol) {
+            const quantity = prompt(`Enter quantity to add to ${symbol} position:`);
+            if (quantity && !isNaN(quantity)) {
+                try {
+                    await axios.post(`${API_BASE_URL}/api/orders`, {
+                        symbol: symbol,
+                        qty: parseInt(quantity),
+                        side: 'buy',
+                        type: 'market',
+                        time_in_force: 'day'
+                    });
+                    alert(`Order placed to add ${quantity} shares of ${symbol}`);
+                    setTimeout(loadPositions, 2000);
+                } catch (error) {
+                    alert('Failed to place order: ' + error.message);
+                }
+            }
+        }
+
+        async function closePosition(symbol) {
+            if (confirm(`Are you sure you want to close your ${symbol} position?`)) {
+                try {
+                    const position = allPositions.find(p => p.symbol === symbol);
+                    await axios.post(`${API_BASE_URL}/api/orders`, {
+                        symbol: symbol,
+                        qty: position.qty,
+                        side: 'sell',
+                        type: 'market',
+                        time_in_force: 'day'
+                    });
+                    alert(`Order placed to close ${symbol} position`);
+                    setTimeout(loadPositions, 2000);
+                } catch (error) {
+                    alert('Failed to close position: ' + error.message);
+                }
+            }
+        }
+
+        // Event listeners
+        document.getElementById('filter-type').addEventListener('change', filterPositions);
+        document.getElementById('search-symbol').addEventListener('input', filterPositions);
+
+        // Initialize
+        loadPortfolioSummary();
+        loadPositions();
+        loadPerformanceChart();
+
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            loadPortfolioSummary();
+            loadPositions();
+        }, 30000);
+
+        // WebSocket for real-time updates
+        if (WS_URL) {
+            try {
+                const ws = new WebSocket(WS_URL);
+                
+                ws.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.type === 'position_update' || data.type === 'order_fill') {
+                        loadPositions();
+                        loadPortfolioSummary();
+                    }
+                };
+                
+                ws.onerror = function(error) {
+                    console.warn('WebSocket connection failed:', error);
+                };
+            } catch (error) {
+                console.warn('WebSocket not supported or failed to connect');
+            }
+        }
+    </script>
+</body>
+</html>

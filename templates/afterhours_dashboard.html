@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>After-Hours Trading Dashboard | Trading Platform</title>
+    
+    <!-- Core CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-bg: #0a0a0a;
+            --secondary-bg: #1a1a1a;
+            --tertiary-bg: #2a2a2a;
+            --accent-blue: #2196F3;
+            --accent-orange: #f7931e;
+            --accent-red: #ff4444;
+            --accent-green: #00ff88;
+            --text-primary: #ffffff;
+            --text-secondary: #aaa;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--primary-bg) 0%, var(--secondary-bg) 100%);
+            color: var(--text-primary);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+        }
+
+        .session-header {
+            background: linear-gradient(135deg, var(--secondary-bg), var(--tertiary-bg));
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            border: 2px solid var(--accent-blue);
+        }
+
+        .session-status {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .session-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .session-indicator.closed { background: var(--accent-red); }
+        .session-indicator.premarket { background: var(--accent-orange); }
+        .session-indicator.afterhours { background: var(--accent-blue); }
+        .session-indicator.overnight { background: #666; }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .market-card {
+            background: var(--secondary-bg);
+            border: 1px solid var(--tertiary-bg);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .market-card:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+        }
+
+        .futures-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .futures-item {
+            background: var(--tertiary-bg);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-blue);
+        }
+
+        .crypto-ticker {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background: var(--tertiary-bg);
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .price-change {
+            font-weight: bold;
+        }
+
+        .price-change.positive { color: var(--accent-green); }
+        .price-change.negative { color: var(--accent-red); }
+        .price-change.neutral { color: var(--text-secondary); }
+
+        .overnight-positions {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border: 1px solid var(--accent-orange);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .position-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: var(--tertiary-bg);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--accent-blue);
+        }
+
+        .session-tips {
+            background: linear-gradient(135deg, #1a2a1a, #2a3a2a);
+            border: 1px solid var(--accent-green);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .news-feed {
+            height: 300px;
+            overflow-y: auto;
+            background: var(--secondary-bg);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .news-item {
+            padding: 10px 0;
+            border-bottom: 1px solid var(--tertiary-bg);
+        }
+
+        .timestamp {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .market-clock {
+            font-family: 'Courier New', monospace;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            color: var(--accent-blue);
+        }
+
+        .countdown-timer {
+            font-size: 18px;
+            color: var(--accent-orange);
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid p-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="session-header">
+                    <div class="session-status">
+                        <div class="session-indicator closed" id="sessionIndicator"></div>
+                        <div>
+                            <h2 id="sessionTitle">Market Closed</h2>
+                            <p class="mb-0" id="sessionDescription">8:00 PM - 4:00 AM ET | Overnight Trading</p>
+                        </div>
+                        <div class="ms-auto">
+                            <div class="market-clock" id="marketClock">--:--:--</div>
+                            <div class="countdown-timer" id="countdownTimer">Next session in: --:--:--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Overnight Positions -->
+            <div class="col-md-6">
+                <div class="overnight-positions">
+                    <h4><i class="bi bi-moon-stars"></i> Overnight Positions</h4>
+                    <p class="text-secondary">Positions held through market close</p>
+                    
+                    <div id="overnightPositions">
+                        <div class="position-item">
+                            <div>
+                                <strong>TSLA</strong>
+                                <div class="small text-secondary">100 shares @ $210.50</div>
+                            </div>
+                            <div class="text-end">
+                                <div class="price-change positive">+$480.00</div>
+                                <div class="small">+2.28%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="position-item">
+                            <div>
+                                <strong>NVDA</strong>
+                                <div class="small text-secondary">50 shares @ $475.20</div>
+                            </div>
+                            <div class="text-end">
+                                <div class="price-change positive">+$185.00</div>
+                                <div class="small">+0.78%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="position-item">
+                            <div>
+                                <strong>GME</strong>
+                                <div class="small text-secondary">200 shares @ $15.10</div>
+                            </div>
+                            <div class="text-end">
+                                <div class="price-change negative">-$50.00</div>
+                                <div class="small">-1.66%</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3 p-3 bg-dark rounded">
+                        <h6>⚠️ Overnight Risk Assessment</h6>
+                        <ul class="mb-0 small">
+                            <li>Gap risk on market open</li>
+                            <li>Limited liquidity for stops</li>
+                            <li>International market impact</li>
+                            <li>Earnings/news after-hours</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- International Markets & Futures -->
+            <div class="col-md-6">
+                <div class="market-card">
+                    <h4><i class="bi bi-globe"></i> International Markets</h4>
+                    <div class="futures-grid">
+                        <div class="futures-item">
+                            <div class="d-flex justify-content-between">
+                                <strong>Nikkei 225</strong>
+                                <span class="price-change positive">+0.8%</span>
+                            </div>
+                            <div class="small text-secondary">Tech stocks positive</div>
+                        </div>
+                        
+                        <div class="futures-item">
+                            <div class="d-flex justify-content-between">
+                                <strong>FTSE 100</strong>
+                                <span class="price-change negative">-0.3%</span>
+                            </div>
+                            <div class="small text-secondary">Energy sector weak</div>
+                        </div>
+                        
+                        <div class="futures-item">
+                            <div class="d-flex justify-content-between">
+                                <strong>DAX</strong>
+                                <span class="price-change positive">+1.2%</span>
+                            </div>
+                            <div class="small text-secondary">Manufacturing strong</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="market-card">
+                    <h4><i class="bi bi-graph-up"></i> Overnight Futures</h4>
+                    <div class="crypto-ticker">
+                        <div>
+                            <strong>ES (S&P 500)</strong>
+                            <div class="small text-secondary">Futures contract</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="price-change positive">+0.4%</div>
+                            <div class="small">5,485.25</div>
+                        </div>
+                    </div>
+                    
+                    <div class="crypto-ticker">
+                        <div>
+                            <strong>NQ (Nasdaq)</strong>
+                            <div class="small text-secondary">Tech futures</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="price-change positive">+0.7%</div>
+                            <div class="small">18,825.50</div>
+                        </div>
+                    </div>
+                    
+                    <div class="crypto-ticker">
+                        <div>
+                            <strong>RTY (Russell 2000)</strong>
+                            <div class="small text-secondary">Small cap futures</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="price-change negative">-0.2%</div>
+                            <div class="small">2,156.80</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Crypto Markets -->
+            <div class="col-md-6">
+                <div class="market-card">
+                    <h4><i class="bi bi-currency-bitcoin"></i> Crypto Markets (24/7)</h4>
+                    <div class="crypto-ticker">
+                        <div>
+                            <strong>BTC/USD</strong>
+                            <div class="small text-secondary">Bitcoin</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="price-change positive">+2.1%</div>
+                            <div class="small">$42,850.30</div>
+                        </div>
+                    </div>
+                    
+                    <div class="crypto-ticker">
+                        <div>
+                            <strong>ETH/USD</strong>
+                            <div class="small text-secondary">Ethereum</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="price-change positive">+3.4%</div>
+                            <div class="small">$2,650.85</div>
+                        </div>
+                    </div>
+                    
+                    <div class="small text-secondary mt-2">
+                        💡 Crypto correlation: Risk-on sentiment, DeFi momentum
+                    </div>
+                </div>
+            </div>
+
+            <!-- After-Hours News Feed -->
+            <div class="col-md-6">
+                <div class="market-card">
+                    <h4><i class="bi bi-newspaper"></i> After-Hours News</h4>
+                    <div class="news-feed" id="newsFeed">
+                        <div class="news-item">
+                            <div class="timestamp">8:45 PM ET</div>
+                            <strong>AAPL</strong> reports Q4 earnings: EPS $1.64 vs $1.60 est. (+2.8% AH)
+                        </div>
+                        <div class="news-item">
+                            <div class="timestamp">8:30 PM ET</div>
+                            <strong>MSFT</strong> cloud revenue misses estimates (-1.4% AH)
+                        </div>
+                        <div class="news-item">
+                            <div class="timestamp">8:15 PM ET</div>
+                            <strong>GOOGL</strong> announces strong AI partnership (+4.2% AH)
+                        </div>
+                        <div class="news-item">
+                            <div class="timestamp">7:45 PM ET</div>
+                            Fed officials hint at possible rate pause in December
+                        </div>
+                        <div class="news-item">
+                            <div class="timestamp">7:20 PM ET</div>
+                            China PMI data shows manufacturing expansion
+                        </div>
+                        <div class="news-item">
+                            <div class="timestamp">7:00 PM ET</div>
+                            Oil prices rise 1.2% on supply concerns
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="session-tips">
+                    <h4><i class="bi bi-lightbulb"></i> Overnight Trading Strategy</h4>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <h6>📊 Monitor Futures</h6>
+                            <p class="small">Watch ES/NQ for market open direction</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h6>🌍 International Trends</h6>
+                            <p class="small">Track overseas market movements</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h6>📈 Gap Preparation</h6>
+                            <p class="small">Prepare for potential gap opens</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h6>🔔 News Alerts</h6>
+                            <p class="small">Set alerts for breaking news</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Market session simulation
+        const sessions = [
+            {
+                id: 'closed',
+                name: 'Market Closed',
+                description: '8:00 PM - 4:00 AM ET | Overnight Trading',
+                indicator: 'closed'
+            },
+            {
+                id: 'premarket',
+                name: 'Pre-Market',
+                description: '4:00 AM - 9:30 AM ET | Limited Liquidity',
+                indicator: 'premarket'
+            },
+            {
+                id: 'afterhours',
+                name: 'After-Hours',
+                description: '4:00 PM - 8:00 PM ET | Earnings Reactions',
+                indicator: 'afterhours'
+            }
+        ];
+
+        let currentSessionIndex = 0;
+
+        function updateMarketClock() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', {
+                hour12: false,
+                timeZone: 'America/New_York'
+            });
+            document.getElementById('marketClock').textContent = timeString;
+        }
+
+        function simulateSessionChange() {
+            const session = sessions[currentSessionIndex];
+            
+            document.getElementById('sessionTitle').textContent = session.name;
+            document.getElementById('sessionDescription').textContent = session.description;
+            
+            const indicator = document.getElementById('sessionIndicator');
+            indicator.className = `session-indicator ${session.indicator}`;
+            
+            // Simulate countdown to next session
+            const nextIndex = (currentSessionIndex + 1) % sessions.length;
+            const nextSession = sessions[nextIndex];
+            const countdown = Math.floor(Math.random() * 3600) + 1800; // 30min - 90min
+            const hours = Math.floor(countdown / 3600);
+            const minutes = Math.floor((countdown % 3600) / 60);
+            const seconds = countdown % 60;
+            
+            document.getElementById('countdownTimer').textContent = 
+                `Next session (${nextSession.name}) in: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            currentSessionIndex = (currentSessionIndex + 1) % sessions.length;
+        }
+
+        function updatePrices() {
+            // Simulate price updates for overnight positions
+            const positions = document.querySelectorAll('.position-item');
+            positions.forEach(position => {
+                const changeElement = position.querySelector('.price-change');
+                const percentElement = position.querySelector('.small');
+                
+                // Random price movement
+                const change = (Math.random() - 0.5) * 100;
+                const percent = (Math.random() - 0.5) * 4;
+                
+                changeElement.textContent = change > 0 ? `+$${Math.abs(change).toFixed(2)}` : `-$${Math.abs(change).toFixed(2)}`;
+                changeElement.className = change > 0 ? 'price-change positive' : 'price-change negative';
+                percentElement.textContent = percent > 0 ? `+${percent.toFixed(2)}%` : `${percent.toFixed(2)}%`;
+            });
+
+            // Update futures
+            const futuresItems = document.querySelectorAll('.crypto-ticker .price-change');
+            futuresItems.forEach(item => {
+                const change = (Math.random() - 0.5) * 2;
+                item.textContent = change > 0 ? `+${Math.abs(change).toFixed(1)}%` : `${change.toFixed(1)}%`;
+                item.className = change > 0 ? 'price-change positive' : 'price-change negative';
+            });
+        }
+
+        function addNewsItem() {
+            const newsFeed = document.getElementById('newsFeed');
+            const newsItems = [
+                'Breaking: Fed minutes show hawkish tone',
+                'TSLA announces new factory in Texas',
+                'Crypto markets rally on institutional adoption',
+                'Oil prices surge on geopolitical tensions',
+                'Tech earnings beat expectations across sector',
+                'Asian markets open higher following US gains'
+            ];
+            
+            const randomNews = newsItems[Math.floor(Math.random() * newsItems.length)];
+            const now = new Date();
+            const timestamp = now.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'America/New_York'
+            }) + ' ET';
+            
+            const newsItem = document.createElement('div');
+            newsItem.className = 'news-item';
+            newsItem.innerHTML = `
+                <div class="timestamp">${timestamp}</div>
+                ${randomNews}
+            `;
+            
+            newsFeed.insertBefore(newsItem, newsFeed.firstChild);
+            
+            // Keep only latest 10 items
+            const items = newsFeed.querySelectorAll('.news-item');
+            if (items.length > 10) {
+                items[items.length - 1].remove();
+            }
+        }
+
+        // Initialize
+        updateMarketClock();
+        simulateSessionChange();
+        
+        // Update intervals
+        setInterval(updateMarketClock, 1000);
+        setInterval(simulateSessionChange, 45000); // Change session every 45 seconds
+        setInterval(updatePrices, 8000); // Update prices every 8 seconds
+        setInterval(addNewsItem, 15000); // Add news every 15 seconds
+
+        console.log('🌙 After-Hours Dashboard Loaded');
+    </script>
+</body>
+</html>

@@ -39,14 +39,19 @@ structlog.configure(
 
 logger = structlog.get_logger(__name__)
 
-# Service configuration
+# Service configuration - Updated for localhost services
 SERVICES = {
-    "position-management": os.getenv("POSITION_SERVICE_URL", "http://position-management:8001"),
-    "trading-execution": os.getenv("TRADING_SERVICE_URL", "http://trading-execution:8002"),
-    "signal-processing": os.getenv("SIGNAL_SERVICE_URL", "http://signal-processing:8003"),
-    "risk-management": os.getenv("RISK_SERVICE_URL", "http://risk-management:8004"),
-    "market-data": os.getenv("MARKET_DATA_SERVICE_URL", "http://market-data:8005"),
-    "analytics": os.getenv("ANALYTICS_SERVICE_URL", "http://analytics:8007"),
+    "position-management": os.getenv("POSITION_SERVICE_URL", "http://localhost:9001"),
+    "trading-execution": os.getenv("TRADING_SERVICE_URL", "http://localhost:9002"),
+    "signal-processing": os.getenv("SIGNAL_SERVICE_URL", "http://localhost:9003"),
+    "risk-management": os.getenv("RISK_SERVICE_URL", "http://localhost:9004"),
+    "market-data": os.getenv("MARKET_DATA_SERVICE_URL", "http://localhost:9005"),
+    "historical-data": os.getenv("HISTORICAL_DATA_SERVICE_URL", "http://localhost:9006"),
+    "analytics": os.getenv("ANALYTICS_SERVICE_URL", "http://localhost:9007"),
+    "training": os.getenv("TRAINING_SERVICE_URL", "http://localhost:9011"),
+    "notification": os.getenv("NOTIFICATION_SERVICE_URL", "http://notification:9008"),
+    "configuration": os.getenv("CONFIGURATION_SERVICE_URL", "http://configuration:9009"),
+    "health-monitor": os.getenv("HEALTH_MONITOR_SERVICE_URL", "http://health-monitor:9010"),
 }
 
 # Circuit breaker configuration
@@ -464,7 +469,7 @@ async def route_signals(request: Request, path: str, _: None = Depends(check_rat
     
     return JSONResponse(content=response.json(), status_code=response.status_code)
 
-# Analytics routes (if service exists)
+# Analytics routes
 @app.api_route("/api/analytics/{path:path}", methods=["GET", "POST"])
 async def route_analytics(request: Request, path: str, _: None = Depends(check_rate_limit)):
     """Route analytics requests."""
@@ -474,6 +479,78 @@ async def route_analytics(request: Request, path: str, _: None = Depends(check_r
     
     response = await proxy_service.forward_request(
         service_name="analytics",
+        path=f"/analytics/{path}",
+        method=request.method,
+        params=dict(request.query_params),
+        json_data=body
+    )
+    
+    return JSONResponse(content=response.json(), status_code=response.status_code)
+
+# Historical Data routes
+@app.api_route("/api/historical/{path:path}", methods=["GET", "POST"])
+async def route_historical_data(request: Request, path: str, _: None = Depends(check_rate_limit)):
+    """Route historical data requests."""
+    body = None
+    if request.method in ["POST"]:
+        body = await request.json() if await request.body() else None
+    
+    response = await proxy_service.forward_request(
+        service_name="historical-data",
+        path=f"/{path}",
+        method=request.method,
+        params=dict(request.query_params),
+        json_data=body
+    )
+    
+    return JSONResponse(content=response.json(), status_code=response.status_code)
+
+# Notification routes
+@app.api_route("/api/notifications/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+async def route_notifications(request: Request, path: str, _: None = Depends(check_rate_limit)):
+    """Route notification requests."""
+    body = None
+    if request.method in ["POST", "PUT", "PATCH"]:
+        body = await request.json() if await request.body() else None
+    
+    response = await proxy_service.forward_request(
+        service_name="notification",
+        path=f"/{path}",
+        method=request.method,
+        params=dict(request.query_params),
+        json_data=body
+    )
+    
+    return JSONResponse(content=response.json(), status_code=response.status_code)
+
+# Configuration routes
+@app.api_route("/api/config/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+async def route_configuration(request: Request, path: str, _: None = Depends(check_rate_limit)):
+    """Route configuration requests."""
+    body = None
+    if request.method in ["POST", "PUT", "PATCH"]:
+        body = await request.json() if await request.body() else None
+    
+    response = await proxy_service.forward_request(
+        service_name="configuration",
+        path=f"/{path}",
+        method=request.method,
+        params=dict(request.query_params),
+        json_data=body
+    )
+    
+    return JSONResponse(content=response.json(), status_code=response.status_code)
+
+# Health Monitor routes
+@app.api_route("/api/monitoring/{path:path}", methods=["GET", "POST"])
+async def route_health_monitor(request: Request, path: str, _: None = Depends(check_rate_limit)):
+    """Route health monitoring requests."""
+    body = None
+    if request.method in ["POST"]:
+        body = await request.json() if await request.body() else None
+    
+    response = await proxy_service.forward_request(
+        service_name="health-monitor",
         path=f"/{path}",
         method=request.method,
         params=dict(request.query_params),
@@ -559,6 +636,6 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
+        port=9000,
         reload=True
     )

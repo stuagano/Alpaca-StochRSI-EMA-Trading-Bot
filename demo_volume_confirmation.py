@@ -73,7 +73,9 @@ def demo_volume_analysis():
         print(f"   🎛️  Confirmation threshold: {volume_analyzer.volume_confirmation_threshold}")
     except Exception as e:
         print(f"   ❌ Error initializing volume analyzer: {e}")
-        return
+        print(f"   🔍 Error type: {type(e).__name__}")
+        print("   💡 Suggestion: Check config.yaml volume_confirmation settings")
+        return False
     
     # Test volume moving average calculation
     print("\n3. Testing volume moving average calculation...")
@@ -90,7 +92,10 @@ def demo_volume_analysis():
         print("   ✅ Volume moving average calculated successfully")
     except Exception as e:
         print(f"   ❌ Error calculating volume MA: {e}")
-        return
+        print(f"   🔍 Error type: {type(e).__name__}")
+        print(f"   📊 Data shape: {market_data.shape if hasattr(market_data, 'shape') else 'Unknown'}")
+        print("   💡 Suggestion: Ensure market data has 'volume' column with sufficient history")
+        return False
     
     # Test relative volume calculation
     print("\n4. Testing relative volume calculation...")
@@ -104,7 +109,9 @@ def demo_volume_analysis():
         print("   ✅ Relative volume calculated successfully")
     except Exception as e:
         print(f"   ❌ Error calculating relative volume: {e}")
-        return
+        print(f"   🔍 Error type: {type(e).__name__}")
+        print("   💡 Suggestion: Check volume data completeness and format")
+        return False
     
     # Test volume profile analysis
     print("\n5. Testing volume profile analysis...")
@@ -127,7 +134,9 @@ def demo_volume_analysis():
         print("   ✅ Volume profile analysis completed successfully")
     except Exception as e:
         print(f"   ❌ Error in volume profile analysis: {e}")
-        return
+        print(f"   🔍 Error type: {type(e).__name__}")
+        print("   💡 Suggestion: Volume profile requires price and volume data")
+        return False
     
     # Test signal confirmation
     print("\n6. Testing signal confirmation...")
@@ -148,7 +157,9 @@ def demo_volume_analysis():
         print("   ✅ Signal confirmation tested successfully")
     except Exception as e:
         print(f"   ❌ Error in signal confirmation: {e}")
-        return
+        print(f"   🔍 Error type: {type(e).__name__}")
+        print("   💡 Suggestion: Check signal format and volume analyzer state")
+        return False
     
     # Test dashboard data generation
     print("\n7. Testing dashboard data generation...")
@@ -164,7 +175,9 @@ def demo_volume_analysis():
         print("   ✅ Dashboard data generation successful")
     except Exception as e:
         print(f"   ❌ Error generating dashboard data: {e}")
-        return
+        print(f"   🔍 Error type: {type(e).__name__}")
+        print("   💡 Suggestion: Check data processing pipeline and analyzer state")
+        return False
     
     # Performance simulation
     print("\n8. Simulating performance impact...")
@@ -195,7 +208,9 @@ def demo_volume_analysis():
         print("   ✅ Performance simulation completed")
     except Exception as e:
         print(f"   ❌ Error in performance simulation: {e}")
-        return
+        print(f"   🔍 Error type: {type(e).__name__}")
+        print("   💡 Suggestion: Check signal history and volume confirmation setup")
+        return False
     
     print("\n" + "=" * 60)
     print("✅ VOLUME CONFIRMATION SYSTEM DEMO COMPLETED SUCCESSFULLY!")

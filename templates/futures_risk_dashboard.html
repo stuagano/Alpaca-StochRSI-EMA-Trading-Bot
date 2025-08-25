@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Futures & Risk Management | After-Hours Trading</title>
+    
+    <!-- Core CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        :root {
+            --primary-bg: #0a0a0a;
+            --secondary-bg: #1a1a1a;
+            --tertiary-bg: #2a2a2a;
+            --futures-blue: #1e88e5;
+            --risk-red: #e53935;
+            --risk-orange: #ff9800;
+            --risk-yellow: #ffc107;
+            --futures-green: #43a047;
+            --text-primary: #ffffff;
+            --text-secondary: #aaa;
+            --border-color: #333;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--primary-bg) 0%, var(--secondary-bg) 100%);
+            color: var(--text-primary);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+        }
+
+        .futures-header {
+            background: linear-gradient(135deg, #1a237e, #3949ab);
+            padding: 25px;
+            margin-bottom: 25px;
+            border-radius: 15px;
+            border: 2px solid var(--futures-blue);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .futures-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .futures-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .futures-card {
+            background: linear-gradient(135deg, var(--secondary-bg), var(--tertiary-bg));
+            border: 2px solid var(--futures-blue);
+            border-radius: 15px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .futures-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(30, 136, 229, 0.3);
+        }
+
+        .futures-symbol {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--futures-blue);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .futures-price {
+            font-size: 28px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .futures-change {
+            font-size: 18px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .futures-change.positive { color: var(--futures-green); }
+        .futures-change.negative { color: var(--risk-red); }
+        .futures-change.neutral { color: var(--text-secondary); }
+
+        .futures-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .meta-item {
+            text-align: center;
+        }
+
+        .meta-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+        }
+
+        .meta-value {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .risk-panel {
+            background: linear-gradient(135deg, #b71c1c, #d32f2f);
+            border: 2px solid var(--risk-red);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+
+        .risk-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .risk-meter {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: conic-gradient(
+                var(--risk-red) 0deg 120deg,
+                var(--risk-orange) 120deg 240deg,
+                var(--futures-green) 240deg 360deg
+            );
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .risk-meter::before {
+            content: '';
+            width: 80px;
+            height: 80px;
+            background: var(--secondary-bg);
+            border-radius: 50%;
+            position: absolute;
+        }
+
+        .risk-value {
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 1;
+            color: var(--text-primary);
+        }
+
+        .risk-alerts {
+            display: grid;
+            gap: 15px;
+        }
+
+        .risk-alert {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--risk-orange);
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .alert-icon {
+            font-size: 24px;
+            min-width: 30px;
+        }
+
+        .alert-critical { border-color: var(--risk-red); color: var(--risk-red); }
+        .alert-warning { border-color: var(--risk-orange); color: var(--risk-orange); }
+        .alert-info { border-color: var(--futures-blue); color: var(--futures-blue); }
+
+        .correlation-matrix {
+            background: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .correlation-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 2px;
+            margin-top: 15px;
+        }
+
+        .correlation-cell {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 5px;
+        }
+
+        .corr-header {
+            background: var(--tertiary-bg);
+            color: var(--text-secondary);
+        }
+
+        .corr-positive { background: rgba(67, 160, 71, 0.3); }
+        .corr-negative { background: rgba(229, 57, 53, 0.3); }
+        .corr-neutral { background: rgba(158, 158, 158, 0.3); }
+
+        .overnight-positions {
+            background: linear-gradient(135deg, #1a2332, #2d3748);
+            border: 2px solid var(--risk-orange);
+            border-radius: 15px;
+            padding: 25px;
+        }
+
+        .position-card {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--futures-blue);
+        }
+
+        .position-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .position-symbol {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .position-pnl {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .position-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .detail-item {
+            text-align: center;
+        }
+
+        .detail-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+        }
+
+        .detail-value {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .risk-metrics {
+            background: var(--tertiary-bg);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 15px;
+        }
+
+        .metric-item {
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        .futures-chart {
+            background: var(--secondary-bg);
+            border-radius: 15px;
+            padding: 20px;
+            height: 400px;
+        }
+
+        .live-indicator {
+            width: 12px;
+            height: 12px;
+            background: var(--futures-green);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .session-clock {
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            color: var(--futures-blue);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid p-4">
+        <!-- Futures Header -->
+        <div class="futures-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2><i class="bi bi-graph-up-arrow"></i> Futures & Risk Management</h2>
+                    <p class="mb-0">Advanced overnight risk monitoring and futures tracking</p>
+                </div>
+                <div class="text-end">
+                    <div class="session-clock" id="sessionClock">--:--:-- ET</div>
+                    <div class="small">
+                        <span class="live-indicator"></span>Live Markets
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Main Futures Tracking -->
+            <div class="col-lg-8">
+                <!-- Futures Grid -->
+                <div class="futures-grid" id="futuresGrid">
+                    <!-- ES Futures -->
+                    <div class="futures-card">
+                        <div class="futures-symbol">
+                            <i class="bi bi-graph-up"></i>
+                            ES (S&P 500)
+                        </div>
+                        <div class="futures-price" id="es-price">5,485.25</div>
+                        <div class="futures-change positive" id="es-change">
+                            <i class="bi bi-arrow-up"></i>
+                            +21.75 (+0.40%)
+                        </div>
+                        <div class="futures-meta">
+                            <div class="meta-item">
+                                <div class="meta-label">Volume</div>
+                                <div class="meta-value" id="es-volume">2.3M</div>
+                            </div>
+                            <div class="meta-item">
+                                <div class="meta-label">Open Interest</div>
+                                <div class="meta-value" id="es-oi">3.1M</div>
+                            </div>
+                            <div class="meta-item">
+                                <div class="meta-label">Range</div>
+                                <div class="meta-value">5,465-5,492</div>
+                            </div>
+                            <div class="meta-item">
+                                <div class="meta-label">Expiry</div>
+                                <div class="meta-value">Dec 15</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NQ Futures -->
+                    <div class="futures-card">
+                        <div class="futures-symbol">
+                            <i class="bi bi-cpu"></i>
+                            NQ (Nasdaq)
+                        </div>
+                        <div class="futures-price" id="nq-price">18,825.50</div>
+                        <div class="futures-change positive" id="nq-change">
+                            <i class="bi bi-arrow-up"></i>
+                            +128.75 (+0.69%)
+                        </div>
+                        <div class="futures-meta">
+                            <div class="meta-item">
+                                <div class="meta-label">Volume</div>
+                                <div class="meta-value" id="nq-volume">1.8M</div>
+                            </div>
+                            <div class="meta-item">
+                                <div class="meta-label">Open Interest</div>
+                                <div class="meta-value" id="nq-oi">245K</div>
+                            </div>
+                            <div class="meta-item">
+                                <div class="meta-label">Range</div>
+                                <div class="meta-value">18,785-18,845</div>
+                            </div>
+                            <div class="meta-item">
+                                <div class="meta-label">Expiry</div>
+                                <div class="meta-value">Dec 15</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RTY Futures -->
+                    <div class="futures-card">
+                        <div class="futures-symbol">
+                            <i class="bi bi-building"></i>
+                            RTY (Russell 2000)
+                        </div>
+                        <div class="futures-price" id="rty-price">2,156.80</div>
+                        <div class="futures-change negative" id="rty-change">
+                            <i class="bi bi-arrow-down"></i>
+                            -4.30 (-0.20%)
+                        </div>
+                        <div class="futures-meta">
+                            <div class="meta-item">
+                                <div class="meta-label">Volume</div>
+                                <div class="meta-value">890K</div>
+                            </div>
+                            <div class="meta-item">
+                                <div class="meta-label">Open Interest</div>
+                                <div class="meta-value">485K</div>
+                            </div>
+                            <div class="meta-item">
+                                <div class="meta-label">Range</div>
+                                <div class="meta-value">2,145-2,165</div>
+                            </div>
+                            <div class="meta-item">
+                                <div class="meta-label">Expiry</div>
+                                <div class="meta-value">Dec 15</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIX Futures -->
+                    <div class="futures-card">
+                        <div class="futures-symbol">
+                            <i class="bi bi-lightning"></i>
+                            VIX (Volatility)
+                        </div>
+                        <div class="futures-price" id="vix-price">18.45</div>
+                        <div class="futures-change negative" id="vix-change">
+                            <i class="bi bi-arrow-down"></i>
+                            -0.85 (-4.4%)
+                        </div>
+                        <div class="futures-meta">
+                            <div class="meta-item">
+                                <div class="meta-label">Contango</div>
+                                <div class="meta-value text-warning">+2.3</div>
+                            </div>
+                            <div class="meta-item">
+                                <div class="meta-label">Term Structure</div>
+                                <div class="meta-value text-info">Normal</div>
+                            </div>
+                            <div class="meta-item">
+                                <div class="meta-label">Fear Index</div>
+                                <div class="meta-value text-success">Low</div>
+                            </div>
+                            <div class="meta-item">
+                                <div class="meta-label">Next Event</div>
+                                <div class="meta-value">FOMC 12/13</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Correlation Matrix -->
+                <div class="correlation-matrix">
+                    <h5><i class="bi bi-diagram-3"></i> Futures Correlation Matrix</h5>
+                    <div class="correlation-grid">
+                        <div class="correlation-cell corr-header"></div>
+                        <div class="correlation-cell corr-header">ES</div>
+                        <div class="correlation-cell corr-header">NQ</div>
+                        <div class="correlation-cell corr-header">RTY</div>
+                        <div class="correlation-cell corr-header">VIX</div>
+                        
+                        <div class="correlation-cell corr-header">ES</div>
+                        <div class="correlation-cell corr-positive">1.00</div>
+                        <div class="correlation-cell corr-positive">0.84</div>
+                        <div class="correlation-cell corr-positive">0.72</div>
+                        <div class="correlation-cell corr-negative">-0.68</div>
+                        
+                        <div class="correlation-cell corr-header">NQ</div>
+                        <div class="correlation-cell corr-positive">0.84</div>
+                        <div class="correlation-cell corr-positive">1.00</div>
+                        <div class="correlation-cell corr-positive">0.65</div>
+                        <div class="correlation-cell corr-negative">-0.71</div>
+                        
+                        <div class="correlation-cell corr-header">RTY</div>
+                        <div class="correlation-cell corr-positive">0.72</div>
+                        <div class="correlation-cell corr-positive">0.65</div>
+                        <div class="correlation-cell corr-positive">1.00</div>
+                        <div class="correlation-cell corr-negative">-0.58</div>
+                        
+                        <div class="correlation-cell corr-header">VIX</div>
+                        <div class="correlation-cell corr-negative">-0.68</div>
+                        <div class="correlation-cell corr-negative">-0.71</div>
+                        <div class="correlation-cell corr-negative">-0.58</div>
+                        <div class="correlation-cell corr-positive">1.00</div>
+                    </div>
+                </div>
+
+                <!-- Futures Chart -->
+                <div class="futures-chart">
+                    <h5><i class="bi bi-graph-up"></i> ES Futures - Overnight Session</h5>
+                    <canvas id="futuresChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Risk Management Panel -->
+            <div class="col-lg-4">
+                <!-- Risk Assessment -->
+                <div class="risk-panel">
+                    <div class="risk-header">
+                        <div class="risk-meter">
+                            <div class="risk-value" id="riskScore">7.2</div>
+                        </div>
+                        <div>
+                            <h4>Portfolio Risk</h4>
+                            <p class="mb-0">Overnight risk assessment</p>
+                            <div class="small text-warning">⚠️ Elevated Risk Level</div>
+                        </div>
+                    </div>
+
+                    <div class="risk-alerts" id="riskAlerts">
+                        <div class="risk-alert alert-critical">
+                            <i class="bi bi-exclamation-triangle-fill alert-icon"></i>
+                            <div>
+                                <strong>Gap Risk Alert</strong>
+                                <div class="small">3 positions exposed to overnight gaps</div>
+                            </div>
+                        </div>
+
+                        <div class="risk-alert alert-warning">
+                            <i class="bi bi-lightning-fill alert-icon"></i>
+                            <div>
+                                <strong>Volatility Spike</strong>
+                                <div class="small">VIX term structure inverted</div>
+                            </div>
+                        </div>
+
+                        <div class="risk-alert alert-info">
+                            <i class="bi bi-calendar-event alert-icon"></i>
+                            <div>
+                                <strong>FOMC Meeting</strong>
+                                <div class="small">Fed decision in 2 days</div>
+                            </div>
+                        </div>
+
+                        <div class="risk-alert alert-warning">
+                            <i class="bi bi-globe alert-icon"></i>
+                            <div>
+                                <strong>Futures Contango</strong>
+                                <div class="small">VIX term structure abnormal</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Overnight Positions -->
+                <div class="overnight-positions">
+                    <h5><i class="bi bi-moon-stars"></i> Overnight Positions</h5>
+                    
+                    <div class="position-card">
+                        <div class="position-header">
+                            <div class="position-symbol">TSLA</div>
+                            <div class="position-pnl text-success">+$480.00</div>
+                        </div>
+                        <div class="position-details">
+                            <div class="detail-item">
+                                <div class="detail-label">Quantity</div>
+                                <div class="detail-value">100</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Avg Cost</div>
+                                <div class="detail-value">$210.50</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Current</div>
+                                <div class="detail-value">$215.30</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">% Change</div>
+                                <div class="detail-value text-success">+2.28%</div>
+                            </div>
+                        </div>
+                        <div class="risk-metrics">
+                            <div class="metrics-grid">
+                                <div class="metric-item">
+                                    <div class="metric-value text-danger">8.2</div>
+                                    <div class="metric-label">GAP RISK</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-value text-warning">1.85</div>
+                                    <div class="metric-label">BETA</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-value">0.72</div>
+                                    <div class="metric-label">ES CORR</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-value text-warning">$2,100</div>
+                                    <div class="metric-label">MAX LOSS</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="position-card">
+                        <div class="position-header">
+                            <div class="position-symbol">NVDA</div>
+                            <div class="position-pnl text-success">+$185.00</div>
+                        </div>
+                        <div class="position-details">
+                            <div class="detail-item">
+                                <div class="detail-label">Quantity</div>
+                                <div class="detail-value">50</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Avg Cost</div>
+                                <div class="detail-value">$475.20</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Current</div>
+                                <div class="detail-value">$478.90</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">% Change</div>
+                                <div class="detail-value text-success">+0.78%</div>
+                            </div>
+                        </div>
+                        <div class="risk-metrics">
+                            <div class="metrics-grid">
+                                <div class="metric-item">
+                                    <div class="metric-value text-danger">9.1</div>
+                                    <div class="metric-label">GAP RISK</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-value text-danger">2.15</div>
+                                    <div class="metric-label">BETA</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-value">0.89</div>
+                                    <div class="metric-label">NQ CORR</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-value text-danger">$4,750</div>
+                                    <div class="metric-label">MAX LOSS</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="position-card">
+                        <div class="position-header">
+                            <div class="position-symbol">GME</div>
+                            <div class="position-pnl text-danger">-$50.00</div>
+                        </div>
+                        <div class="position-details">
+                            <div class="detail-item">
+                                <div class="detail-label">Quantity</div>
+                                <div class="detail-value">200</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Avg Cost</div>
+                                <div class="detail-value">$15.10</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Current</div>
+                                <div class="detail-value">$14.85</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">% Change</div>
+                                <div class="detail-value text-danger">-1.66%</div>
+                            </div>
+                        </div>
+                        <div class="risk-metrics">
+                            <div class="metrics-grid">
+                                <div class="metric-item">
+                                    <div class="metric-value text-danger">9.8</div>
+                                    <div class="metric-label">GAP RISK</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-value text-danger">3.25</div>
+                                    <div class="metric-label">BETA</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">MEME RISK</div>
+                                    <div class="metric-value text-danger">HIGH</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-value text-danger">$1,510</div>
+                                    <div class="metric-label">MAX LOSS</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize futures chart
+        const ctx = document.getElementById('futuresChart').getContext('2d');
+        const futuresChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'ES Futures',
+                    data: [],
+                    borderColor: '#1e88e5',
+                    backgroundColor: 'rgba(30, 136, 229, 0.1)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: '#ffffff' }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: '#aaa' },
+                        grid: { color: '#333' }
+                    },
+                    y: {
+                        ticks: { color: '#aaa' },
+                        grid: { color: '#333' }
+                    }
+                }
+            }
+        });
+
+        // Generate initial chart data
+        function generateChartData() {
+            const now = new Date();
+            const data = [];
+            const labels = [];
+            let price = 5485.25;
+
+            for (let i = 0; i < 100; i++) {
+                const time = new Date(now.getTime() - (100 - i) * 60000);
+                labels.push(time.toLocaleTimeString());
+                price += (Math.random() - 0.5) * 5;
+                data.push(price);
+            }
+
+            futuresChart.data.labels = labels;
+            futuresChart.data.datasets[0].data = data;
+            futuresChart.update();
+        }
+
+        // Update session clock
+        function updateClock() {
+            const now = new Date();
+            const etTime = now.toLocaleTimeString('en-US', {
+                timeZone: 'America/New_York',
+                hour12: false
+            });
+            document.getElementById('sessionClock').textContent = etTime + ' ET';
+        }
+
+        // Update futures prices
+        function updateFuturesData() {
+            const futures = ['es', 'nq', 'rty', 'vix'];
+            
+            futures.forEach(symbol => {
+                const priceElement = document.getElementById(symbol + '-price');
+                const changeElement = document.getElementById(symbol + '-change');
+                
+                if (priceElement && changeElement) {
+                    // Simulate price movement
+                    const currentPrice = parseFloat(priceElement.textContent.replace(',', ''));
+                    const change = (Math.random() - 0.5) * (currentPrice * 0.005);
+                    const newPrice = currentPrice + change;
+                    const changePercent = (change / currentPrice) * 100;
+                    
+                    priceElement.textContent = newPrice.toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    });
+                    
+                    const changeText = `${change > 0 ? '+' : ''}${change.toFixed(2)} (${changePercent > 0 ? '+' : ''}${changePercent.toFixed(2)}%)`;
+                    const icon = change > 0 ? 'bi-arrow-up' : 'bi-arrow-down';
+                    const className = change > 0 ? 'futures-change positive' : 'futures-change negative';
+                    
+                    changeElement.innerHTML = `<i class="bi ${icon}"></i> ${changeText}`;
+                    changeElement.className = className;
+                }
+            });
+
+            // Update chart
+            const newTime = new Date().toLocaleTimeString();
+            const newPrice = parseFloat(document.getElementById('es-price').textContent.replace(',', ''));
+            
+            futuresChart.data.labels.push(newTime);
+            futuresChart.data.datasets[0].data.push(newPrice);
+            
+            // Keep last 50 data points
+            if (futuresChart.data.labels.length > 50) {
+                futuresChart.data.labels.shift();
+                futuresChart.data.datasets[0].data.shift();
+            }
+            
+            futuresChart.update('none');
+        }
+
+        // Update risk score
+        function updateRiskScore() {
+            const riskScore = 5.0 + Math.random() * 4.0; // 5.0 - 9.0
+            document.getElementById('riskScore').textContent = riskScore.toFixed(1);
+        }
+
+        // Initialize
+        generateChartData();
+        updateClock();
+        
+        // Set intervals
+        setInterval(updateClock, 1000);
+        setInterval(updateFuturesData, 5000); // Update every 5 seconds
+        setInterval(updateRiskScore, 15000); // Update risk every 15 seconds
+
+        console.log('🌙 Futures & Risk Dashboard Loaded');
+    </script>
+</body>
+</html>

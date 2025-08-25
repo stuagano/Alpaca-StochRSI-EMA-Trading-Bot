@@ -74,6 +74,14 @@ try:
 except ImportError as e:
     logger.warning(f"Could not register simple chart routes: {e}")
 
+# Register dashboard data API routes
+try:
+    from api.dashboard_data_api import dashboard_data_bp
+    app.register_blueprint(dashboard_data_bp)
+    logger.info("✅ Dashboard data API routes registered")
+except ImportError as e:
+    logger.warning(f"Could not register dashboard data routes: {e}")
+
 # Add performance middleware
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
@@ -87,20 +95,31 @@ REALTIME_CACHE_TIMEOUT = 10  # 10 seconds
 STATIC_CACHE_TIMEOUT = 3600  # 1 hour
 
 # Load Flask configuration from environment
+# Import centralized debug configuration
+from config.debug_config import debug_config
+
 try:
     flask_config = env_manager.get_flask_config()
     app.config.update(flask_config)
+    
+    # Apply centralized debug configuration
+    debug_flask_config = debug_config.get_flask_config()
+    app.config.update(debug_flask_config)
+    
     logger.info("Loaded Flask configuration from environment")
     logger.info(f"Flask ENV: {app.config.get('ENV')}")
     logger.info(f"Flask DEBUG: {app.config.get('DEBUG')}")
+    logger.info(f"Environment: {debug_config.environment}")
 except Exception as e:
     logger.warning(f"Failed to load environment config: {e}")
     logger.warning("Using fallback configuration - SECURITY WARNING!")
     app.config['SECRET_KEY'] = 'dev-secret-key-change-in-production-32chars'
     app.config['JWT_SECRET_KEY'] = 'dev-jwt-secret-change-in-production-32chars'
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 3600
-    app.config['ENV'] = 'development'
-    app.config['DEBUG'] = True
+    
+    # Use centralized debug config for fallback
+    fallback_config = debug_config.get_flask_config()
+    app.config.update(fallback_config)
 
 # Configure CORS with specific origins
 try:
@@ -723,7 +742,24 @@ def get_config_template():
 # Routes
 @app.route('/')
 def index():
-    return render_template('trading_dashboard.html')
+    # Show navigation hub as the main landing page
+    return render_template('navigation_index.html')
+
+@app.route('/navigation')
+def navigation_hub():
+    return render_template('navigation_index.html')
+
+@app.route('/training')
+def training_dashboard():
+    return render_template('unified_dashboard_with_training.html')
+
+@app.route('/live')
+def live_trading():
+    return render_template('index.html')
+
+@app.route('/backtesting')
+def backtesting_dashboard():
+    return render_template('backtesting_dashboard.html')
 
 @app.route('/dashboard')
 @require_auth  
@@ -747,6 +783,20 @@ def dashboard_v2():
 @app.route('/dashboard_fixed')
 def dashboard_fixed():
     return render_template('trading_dashboard_fixed.html')
+
+@app.route('/dashboard_real')
+@require_auth
+def dashboard_with_real_data():
+    """Dashboard with working real-time data"""
+    return render_template(
+        'dashboard_with_real_data.html',
+        page_title="Real-Time Dashboard",
+        page_description="Live trading dashboard with real portfolio data",
+        page_icon="speedometer2",
+        current_page="dashboard",
+        api_gateway_url="http://localhost:9000",
+        training_service_url="http://localhost:9011"
+    )
 
 @app.route('/v1')
 def index_v1():

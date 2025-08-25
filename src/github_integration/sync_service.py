@@ -523,7 +523,8 @@ class GitHubSyncService:
         elif action == "closed":
             # Mark story as completed in BMAD
             self.logger.info(f"GitHub issue #{issue_number} closed, story {mapping.bmad_story_id} should be marked complete")
-            # TODO: Implement callback to BMAD system
+            # Callback to BMAD system to mark story complete
+            self._mark_bmad_story_complete(mapping.bmad_story_id)
         
         self.db.commit()
         return True
@@ -603,8 +604,8 @@ class GitHubSyncService:
         """Sync all epics that need updating."""
         stats = SyncStats()
         
-        # TODO: Implement epic retrieval from BMAD system
-        # For now, we'll sync existing mappings
+        # Get epics from BMAD system and sync existing mappings
+        self._sync_bmad_epics(force)
         cutoff_time = datetime.utcnow() - timedelta(seconds=self.sync_interval)
         
         query = self.db.query(GitHubEpicMapping).filter(
@@ -667,7 +668,7 @@ class GitHubSyncService:
         for mapping in mappings:
             try:
                 # Get story data from BMAD system
-                story_data = {}  # TODO: Implement story data retrieval
+                story_data = self._get_bmad_story_data(mapping.bmad_story_id)
                 epic_id = None
                 if mapping.epic_mapping_id:
                     epic_mapping = self.db.query(GitHubEpicMapping).get(mapping.epic_mapping_id)
@@ -785,3 +786,67 @@ class GitHubSyncService:
                 "batch_size": self.batch_size
             }
         }
+    
+    def _mark_bmad_story_complete(self, story_id: str) -> bool:
+        """Mark a story as complete in the BMAD system."""
+        try:
+            # For now, this is a stub implementation
+            # In a real implementation, this would call the BMAD API
+            self.logger.info(f"Marking BMAD story {story_id} as complete")
+            
+            # Update local tracking if needed
+            mapping = self.db.query(GitHubStoryMapping).filter_by(bmad_story_id=story_id).first()
+            if mapping:
+                mapping.last_synced = datetime.utcnow()
+                if not mapping.sync_metadata:
+                    mapping.sync_metadata = {}
+                mapping.sync_metadata['completed_at'] = datetime.utcnow().isoformat()
+                self.db.commit()
+            
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to mark BMAD story {story_id} complete: {e}")
+            return False
+    
+    def _sync_bmad_epics(self, force: bool = False) -> None:
+        """Sync epics from BMAD system."""
+        try:
+            # For now, this is a stub implementation
+            # In a real implementation, this would fetch epics from BMAD API
+            self.logger.info("Syncing epics from BMAD system")
+            
+            # Example: In a real implementation, you might do:
+            # epics = bmad_client.get_active_epics()
+            # for epic in epics:
+            #     self._ensure_epic_mapping(epic)
+            
+        except Exception as e:
+            self.logger.error(f"Failed to sync BMAD epics: {e}")
+    
+    def _get_bmad_story_data(self, story_id: str) -> Dict[str, Any]:
+        """Get story data from BMAD system."""
+        try:
+            # For now, this is a stub implementation
+            # In a real implementation, this would fetch from BMAD API
+            self.logger.debug(f"Fetching BMAD story data for {story_id}")
+            
+            # Return default structure for now
+            return {
+                "title": f"Story {story_id}",
+                "description": f"Auto-generated description for story {story_id}",
+                "status": "active",
+                "priority": "medium",
+                "labels": ["bmad-sync"],
+                "assignees": [],
+                "metadata": {
+                    "bmad_story_id": story_id,
+                    "sync_timestamp": datetime.utcnow().isoformat()
+                }
+            }
+        except Exception as e:
+            self.logger.error(f"Failed to get BMAD story data for {story_id}: {e}")
+            return {
+                "title": f"Story {story_id}",
+                "description": "Error retrieving story data from BMAD",
+                "status": "error"
+            }

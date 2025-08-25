@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+        }
+        
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .navbar h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1rem;
+        }
+        
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        
+        .nav-links a:hover {
+            background-color: rgba(255,255,255,0.2);
+        }
+        
+        .nav-links a.active {
+            background-color: rgba(255,255,255,0.3);
+        }
+        
+        .trading-container {
+            display: grid;
+            grid-template-columns: 300px 1fr 300px;
+            gap: 1rem;
+            padding: 1rem;
+            height: calc(100vh - 100px);
+        }
+        
+        .panel {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            border: 1px solid #333;
+        }
+        
+        .panel h3 {
+            margin-bottom: 1rem;
+            color: #fff;
+            font-size: 1.1rem;
+            border-bottom: 1px solid #444;
+            padding-bottom: 0.5rem;
+        }
+        
+        .chart-container {
+            grid-column: 2;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #chart {
+            flex: 1;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .order-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .form-group label {
+            font-size: 0.9rem;
+            color: #bbb;
+        }
+        
+        .form-group input, .form-group select {
+            padding: 0.5rem;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #e0e0e0;
+            font-size: 0.95rem;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .order-type-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .order-type-tab {
+            flex: 1;
+            padding: 0.5rem;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #bbb;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        
+        .order-type-tab:hover {
+            border-color: #667eea;
+        }
+        
+        .order-type-tab.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            padding: 0.75rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-buy {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .btn-buy:hover {
+            background: #45a049;
+        }
+        
+        .btn-sell {
+            background: #f44336;
+            color: white;
+        }
+        
+        .btn-sell:hover {
+            background: #da190b;
+        }
+        
+        .order-book table {
+            width: 100%;
+            font-size: 0.9rem;
+        }
+        
+        .order-book th {
+            padding: 0.5rem;
+            text-align: left;
+            color: #999;
+            font-weight: 500;
+            border-bottom: 1px solid #444;
+        }
+        
+        .order-book td {
+            padding: 0.4rem 0.5rem;
+            border-bottom: 1px solid #333;
+        }
+        
+        .buy-order {
+            color: #4caf50;
+        }
+        
+        .sell-order {
+            color: #f44336;
+        }
+        
+        .signal-indicator {
+            padding: 1rem;
+            background: #1a1a1a;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            border-left: 4px solid #444;
+        }
+        
+        .signal-buy {
+            border-left-color: #4caf50;
+        }
+        
+        .signal-sell {
+            border-left-color: #f44336;
+        }
+        
+        .signal-neutral {
+            border-left-color: #ff9800;
+        }
+        
+        .signal-strength {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+        }
+        
+        .strength-bar {
+            flex: 1;
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+        
+        .strength-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #f44336, #ff9800, #4caf50);
+        }
+        
+        .timeframe-selector {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #444;
+            margin-bottom: 1rem;
+        }
+        
+        .timeframe-btn {
+            padding: 0.4rem 0.8rem;
+            background: #333;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #bbb;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .timeframe-btn:hover {
+            border-color: #667eea;
+        }
+        
+        .timeframe-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .indicators-panel {
+            margin-top: 1rem;
+        }
+        
+        .indicator-toggle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            background: #1a1a1a;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+        }
+        
+        .indicator-toggle label {
+            color: #bbb;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            width: 48px;
+            height: 24px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #444;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .toggle-slider {
+            background-color: #667eea;
+        }
+        
+        input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>Trading Execution</h1>
+        <div class="nav-links">
+            <a href="/">Dashboard</a>
+            <a href="/portfolio">Portfolio</a>
+            <a href="/trading" class="active">Trading</a>
+            <a href="/analytics">Analytics</a>
+            <a href="/config">Config</a>
+            <a href="/monitoring">Monitoring</a>
+        </div>
+    </nav>
+
+    <div class="trading-container">
+        <!-- Left Panel - Order Entry -->
+        <div class="panel">
+            <h3>Order Entry</h3>
+            <div class="order-form">
+                <div class="form-group">
+                    <label>Symbol</label>
+                    <input type="text" id="symbol" value="AAPL" placeholder="Enter symbol">
+                </div>
+                
+                <div class="order-type-tabs">
+                    <div class="order-type-tab active" data-type="market">Market</div>
+                    <div class="order-type-tab" data-type="limit">Limit</div>
+                    <div class="order-type-tab" data-type="stop">Stop</div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Quantity</label>
+                    <input type="number" id="quantity" value="100" min="1">
+                </div>
+                
+                <div class="form-group" id="limit-price-group" style="display: none;">
+                    <label>Limit Price</label>
+                    <input type="number" id="limit-price" step="0.01">
+                </div>
+                
+                <div class="form-group" id="stop-price-group" style="display: none;">
+                    <label>Stop Price</label>
+                    <input type="number" id="stop-price" step="0.01">
+                </div>
+                
+                <div class="form-group">
+                    <label>Time in Force</label>
+                    <select id="time-in-force">
+                        <option value="day">Day</option>
+                        <option value="gtc">Good Till Canceled</option>
+                        <option value="ioc">Immediate or Cancel</option>
+                        <option value="fok">Fill or Kill</option>
+                    </select>
+                </div>
+                
+                <button class="btn btn-buy" onclick="placeOrder('buy')">Buy</button>
+                <button class="btn btn-sell" onclick="placeOrder('sell')">Sell</button>
+            </div>
+            
+            <div class="indicators-panel">
+                <h3>Indicators</h3>
+                <div class="indicator-toggle">
+                    <label>EMA (20/50)</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="ema-toggle" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="indicator-toggle">
+                    <label>StochRSI</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="stochrsi-toggle" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="indicator-toggle">
+                    <label>Volume</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="volume-toggle" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Panel - Chart -->
+        <div class="panel chart-container">
+            <div class="timeframe-selector">
+                <button class="timeframe-btn" data-timeframe="1Min">1m</button>
+                <button class="timeframe-btn active" data-timeframe="5Min">5m</button>
+                <button class="timeframe-btn" data-timeframe="15Min">15m</button>
+                <button class="timeframe-btn" data-timeframe="1Hour">1h</button>
+                <button class="timeframe-btn" data-timeframe="1Day">1D</button>
+            </div>
+            <div id="chart"></div>
+        </div>
+
+        <!-- Right Panel - Order Book & Signals -->
+        <div class="panel">
+            <h3>Trading Signals</h3>
+            <div id="signal-container">
+                <div class="signal-indicator signal-neutral">
+                    <div>Signal: <strong id="signal-type">NEUTRAL</strong></div>
+                    <div class="signal-strength">
+                        <span>Strength:</span>
+                        <span id="signal-value">0%</span>
+                    </div>
+                    <div class="strength-bar">
+                        <div class="strength-fill" id="strength-fill" style="width: 50%"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <h3 style="margin-top: 2rem;">Order Book</h3>
+            <div class="order-book">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Side</th>
+                            <th>Qty</th>
+                            <th>Price</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="order-book-body">
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: #666;">No active orders</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = '{{ api_gateway_url }}';
+        const WS_URL = '{{ websocket_url }}';
+        
+        let chart;
+        let candlestickSeries;
+        let ema20Series;
+        let ema50Series;
+        let volumeSeries;
+        let currentSymbol = 'AAPL';
+        let currentTimeframe = '5Min';
+        let orderType = 'market';
+
+        // Initialize chart
+        function initChart() {
+            const chartContainer = document.getElementById('chart');
+            
+            // Check if LightweightCharts is loaded
+            if (typeof LightweightCharts === 'undefined') {
+                console.error('LightweightCharts library not loaded');
+                // Try using the global object if available
+                if (typeof window.LightweightCharts !== 'undefined') {
+                    window.LightweightCharts = window.LightweightCharts;
+                } else {
+                    chartContainer.innerHTML = '<div style="padding: 20px; color: #ff9800;">Chart library loading... Please refresh the page.</div>';
+                    return false;
+                }
+            }
+            
+            chart = LightweightCharts.createChart(chartContainer, {
+                width: chartContainer.clientWidth,
+                height: chartContainer.clientHeight,
+                layout: {
+                    background: { color: '#1a1a1a' },
+                    textColor: '#d1d4dc',
+                },
+                grid: {
+                    vertLines: { color: '#333' },
+                    horzLines: { color: '#333' },
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                },
+                rightPriceScale: {
+                    borderColor: '#444',
+                },
+                timeScale: {
+                    borderColor: '#444',
+                },
+            });
+
+            candlestickSeries = chart.addCandlestickSeries({
+                upColor: '#4caf50',
+                downColor: '#f44336',
+                borderUpColor: '#4caf50',
+                borderDownColor: '#f44336',
+                wickUpColor: '#4caf50',
+                wickDownColor: '#f44336',
+            });
+
+            ema20Series = chart.addLineSeries({
+                color: '#667eea',
+                lineWidth: 2,
+                title: 'EMA 20',
+            });
+
+            ema50Series = chart.addLineSeries({
+                color: '#ff9800',
+                lineWidth: 2,
+                title: 'EMA 50',
+            });
+
+            volumeSeries = chart.addHistogramSeries({
+                color: '#26a69a',
+                priceFormat: {
+                    type: 'volume',
+                },
+                priceScaleId: '',
+                scaleMargins: {
+                    top: 0.8,
+                    bottom: 0,
+                },
+            });
+
+            // Handle resize
+            window.addEventListener('resize', () => {
+                if (chart) {
+                    chart.applyOptions({
+                        width: chartContainer.clientWidth,
+                        height: chartContainer.clientHeight
+                    });
+                }
+            });
+            
+            return true;
+        }
+
+        // Load chart data
+        async function loadChartData(symbol, timeframe) {
+            try {
+                // Check if chart is initialized
+                if (!chart || !candlestickSeries) {
+                    console.warn('Chart not yet initialized, skipping data load');
+                    return;
+                }
+                
+                const response = await axios.get(`${API_BASE_URL}/api/chart/${symbol}?timeframe=${timeframe}&limit=200`);
+                const data = response.data.candlestick_data;
+                
+                if (!data || data.length === 0) return;
+
+                // Convert data for Lightweight Charts
+                const candleData = data.map(d => ({
+                    time: new Date(d.timestamp).getTime() / 1000,
+                    open: d.open,
+                    high: d.high,
+                    low: d.low,
+                    close: d.close
+                }));
+
+                const volumeData = data.map(d => ({
+                    time: new Date(d.timestamp).getTime() / 1000,
+                    value: d.volume,
+                    color: d.close >= d.open ? '#4caf5033' : '#f4433633'
+                }));
+
+                // Calculate EMAs
+                const ema20Data = calculateEMA(data, 20);
+                const ema50Data = calculateEMA(data, 50);
+
+                // Update series data
+                if (candlestickSeries) candlestickSeries.setData(candleData);
+                if (volumeSeries) volumeSeries.setData(volumeData);
+                if (ema20Series) ema20Series.setData(ema20Data);
+                if (ema50Series) ema50Series.setData(ema50Data);
+
+                if (chart) chart.timeScale().fitContent();
+            } catch (error) {
+                console.error('Failed to load chart data:', error);
+            }
+        }
+
+        // Calculate EMA
+        function calculateEMA(data, period) {
+            const k = 2 / (period + 1);
+            const emaData = [];
+            let ema = data[0].close;
+
+            for (let i = 0; i < data.length; i++) {
+                if (i < period) {
+                    ema = (data[i].close + ema * (period - 1)) / period;
+                } else {
+                    ema = data[i].close * k + ema * (1 - k);
+                }
+                emaData.push({
+                    time: new Date(data[i].timestamp).getTime() / 1000,
+                    value: ema
+                });
+            }
+            return emaData;
+        }
+
+        // Load trading signals
+        async function loadSignals() {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/signals?symbol=${currentSymbol}`);
+                const signal = response.data;
+                
+                const signalEl = document.getElementById('signal-type');
+                const valueEl = document.getElementById('signal-value');
+                const fillEl = document.getElementById('strength-fill');
+                const containerEl = document.querySelector('.signal-indicator');
+                
+                signalEl.textContent = signal.signal;
+                valueEl.textContent = `${Math.round(signal.strength * 100)}%`;
+                fillEl.style.width = `${signal.strength * 100}%`;
+                
+                containerEl.className = 'signal-indicator';
+                if (signal.signal === 'BUY') {
+                    containerEl.classList.add('signal-buy');
+                } else if (signal.signal === 'SELL') {
+                    containerEl.classList.add('signal-sell');
+                } else {
+                    containerEl.classList.add('signal-neutral');
+                }
+            } catch (error) {
+                console.error('Failed to load signals:', error);
+            }
+        }
+
+        // Load order book
+        async function loadOrderBook() {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/orders`);
+                const orders = response.data.slice(0, 10);
+                
+                const tbody = document.getElementById('order-book-body');
+                
+                if (orders.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #666;">No active orders</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = orders.map(order => `
+                    <tr>
+                        <td class="${order.side === 'buy' ? 'buy-order' : 'sell-order'}">${order.side.toUpperCase()}</td>
+                        <td>${order.qty}</td>
+                        <td>$${order.limit_price || order.filled_avg_price || 'Market'}</td>
+                        <td>${order.status}</td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Failed to load order book:', error);
+            }
+        }
+
+        // Place order
+        async function placeOrder(side) {
+            const symbol = document.getElementById('symbol').value;
+            const quantity = document.getElementById('quantity').value;
+            const timeInForce = document.getElementById('time-in-force').value;
+            
+            const orderData = {
+                symbol: symbol,
+                qty: parseInt(quantity),
+                side: side,
+                type: orderType,
+                time_in_force: timeInForce
+            };
+            
+            if (orderType === 'limit') {
+                orderData.limit_price = parseFloat(document.getElementById('limit-price').value);
+            }
+            
+            if (orderType === 'stop') {
+                orderData.stop_price = parseFloat(document.getElementById('stop-price').value);
+            }
+            
+            try {
+                await axios.post(`${API_BASE_URL}/api/orders`, orderData);
+                alert(`${side.toUpperCase()} order placed successfully!`);
+                loadOrderBook();
+            } catch (error) {
+                alert(`Failed to place order: ${error.response?.data?.message || error.message}`);
+            }
+        }
+
+        // Order type tabs
+        document.querySelectorAll('.order-type-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.order-type-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                orderType = this.dataset.type;
+                
+                document.getElementById('limit-price-group').style.display = orderType === 'limit' ? 'block' : 'none';
+                document.getElementById('stop-price-group').style.display = orderType === 'stop' ? 'block' : 'none';
+            });
+        });
+
+        // Timeframe buttons
+        document.querySelectorAll('.timeframe-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentTimeframe = this.dataset.timeframe;
+                loadChartData(currentSymbol, currentTimeframe);
+            });
+        });
+
+        // Symbol change
+        document.getElementById('symbol').addEventListener('change', function() {
+            currentSymbol = this.value.toUpperCase();
+            loadChartData(currentSymbol, currentTimeframe);
+            loadSignals();
+        });
+
+        // Indicator toggles
+        document.getElementById('ema-toggle').addEventListener('change', function() {
+            if (this.checked) {
+                ema20Series.applyOptions({ visible: true });
+                ema50Series.applyOptions({ visible: true });
+            } else {
+                ema20Series.applyOptions({ visible: false });
+                ema50Series.applyOptions({ visible: false });
+            }
+        });
+
+        document.getElementById('volume-toggle').addEventListener('change', function() {
+            volumeSeries.applyOptions({ visible: this.checked });
+        });
+
+        // Initialize when DOM is ready
+        function initialize() {
+            // Wait for LightweightCharts to be available
+            if (typeof LightweightCharts === 'undefined') {
+                console.log('Waiting for LightweightCharts library...');
+                setTimeout(initialize, 100);
+                return;
+            }
+            
+            const chartInitialized = initChart();
+            if (chartInitialized !== false) {
+                loadChartData(currentSymbol, currentTimeframe);
+                loadSignals();
+                loadOrderBook();
+            }
+        }
+        
+        // Start initialization
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initialize);
+        } else {
+            initialize();
+        }
+
+        // Auto-refresh
+        setInterval(() => {
+            loadChartData(currentSymbol, currentTimeframe);
+            loadSignals();
+            loadOrderBook();
+        }, 10000);
+
+        // WebSocket for real-time updates
+        if (WS_URL) {
+            try {
+                const ws = new WebSocket(WS_URL);
+                
+                ws.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.type === 'price_update' && data.symbol === currentSymbol) {
+                        // Update latest candle
+                        // This would require more complex logic to update the chart in real-time
+                    }
+                    
+                    if (data.type === 'order_update') {
+                        loadOrderBook();
+                    }
+                };
+            } catch (error) {
+                console.warn('WebSocket connection failed:', error);
+            }
+        }
+    </script>
+</body>
+</html>

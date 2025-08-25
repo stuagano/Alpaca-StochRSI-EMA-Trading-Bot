@@ -1,25 +1,74 @@
 import logging
+import logging.config
+import logging.handlers
 import sys
 import time
+import os
 from typing import Optional, Dict, Any
 from contextlib import contextmanager
-from pythonjsonlogger import jsonlogger
+from pathlib import Path
 
-def setup_logging():
+try:
+    from pythonjsonlogger import jsonlogger
+    HAS_JSON_LOGGER = True
+except ImportError:
+    HAS_JSON_LOGGER = False
+
+try:
+    from config.debug_config import debug_config
+    HAS_DEBUG_CONFIG = True
+except ImportError:
+    HAS_DEBUG_CONFIG = False
+
+def setup_logging(force_reconfigure: bool = False):
     """
-    Sets up a standardized JSON logger.
+    Sets up comprehensive logging system with structured output.
+    Integrates with debug_config if available.
     """
+    if HAS_DEBUG_CONFIG and not force_reconfigure:
+        # Use centralized debug configuration
+        debug_config.setup_logging()
+        return logging.getLogger('trading_bot')
+    
+    # Fallback logging setup
     logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
     
     # Prevent duplicate logs if already configured
+    if logger.hasHandlers() and not force_reconfigure:
+        return logger
+        
     if logger.hasHandlers():
         logger.handlers.clear()
 
-    logHandler = logging.StreamHandler(sys.stdout)
-    formatter = jsonlogger.JsonFormatter('%(asctime)s %(name)s %(levelname)s %(message)s')
-    logHandler.setFormatter(formatter)
-    logger.addHandler(logHandler)
+    # Set appropriate log level
+    log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
+    logger.setLevel(getattr(logging, log_level, logging.INFO))
+    
+    # Create logs directory
+    log_dir = Path('logs')
+    log_dir.mkdir(exist_ok=True)
+    
+    # Console handler
+    console_handler = logging.StreamHandler(sys.stdout)
+    if HAS_JSON_LOGGER:
+        console_formatter = jsonlogger.JsonFormatter('%(asctime)s %(name)s %(levelname)s %(message)s')
+    else:
+        console_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    console_handler.setFormatter(console_formatter)
+    logger.addHandler(console_handler)
+    
+    # File handler with rotation
+    file_handler = logging.handlers.RotatingFileHandler(
+        log_dir / 'trading_bot.log',
+        maxBytes=10*1024*1024,  # 10MB
+        backupCount=5
+    )
+    if HAS_JSON_LOGGER:
+        file_formatter = jsonlogger.JsonFormatter('%(asctime)s %(name)s %(levelname)s %(filename)s %(lineno)d %(message)s')
+    else:
+        file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s')
+    file_handler.setFormatter(file_formatter)
+    logger.addHandler(file_handler)
 
     return logger
 
