@@ -35,11 +35,10 @@ class CryptoVolatilityScanner:
     """Scans for high volatility crypto pairs suitable for day trading"""
     
     def __init__(self):
+        # Use symbols that are actually available in Alpaca
         self.high_volume_pairs = [
-            'BTC/USD', 'ETH/USD', 'BNB/USD', 'XRP/USD', 'ADA/USD',
-            'SOL/USD', 'DOGE/USD', 'DOT/USD', 'MATIC/USD', 'LTC/USD',
-            'AVAX/USD', 'LINK/USD', 'UNI/USD', 'ATOM/USD', 'XLM/USD',
-            'BCH/USD', 'ALGO/USD', 'VET/USD', 'ICP/USD', 'FIL/USD'
+            'BTCUSD', 'ETHUSD', 'DOGEUSD', 'SOLUSD', 'LTCUSD',
+            'AVAXUSD', 'LINKUSD', 'UNIUSD', 'BCHUSD', 'DOTUSD'
         ]
         
         # Minimum criteria for day trading
@@ -217,7 +216,7 @@ class CryptoDayTradingBot:
         self.alpaca = alpaca_client
         self.scanner = CryptoVolatilityScanner()
         self.initial_capital = initial_capital
-        self.max_position_size = initial_capital * 0.05  # 5% per trade
+        self.max_position_size = min(100, initial_capital * 0.01)  # 1% per trade, max $100
         self.max_concurrent_positions = 10
         self.min_profit_target = 0.003  # 0.3% minimum profit
         
@@ -290,10 +289,10 @@ class CryptoDayTradingBot:
     async def _execute_entry(self, signal: CryptoSignal):
         """Execute entry trade"""
         try:
-            # Calculate position size
-            position_value = min(
-                self.max_position_size,
-                self.initial_capital * signal.confidence * 0.1  # Scale with confidence
+            # Calculate position size - ensure minimum $10 order size
+            position_value = max(
+                10.0,  # Alpaca minimum
+                min(self.max_position_size, 25 * signal.confidence)  # Max $25 per trade
             )
             
             quantity = position_value / signal.price
@@ -316,7 +315,7 @@ class CryptoDayTradingBot:
                     'entry_time': datetime.now(),
                     'target_price': signal.price * (1 + signal.target_profit) if signal.action == 'buy' else signal.price * (1 - signal.target_profit),
                     'stop_price': signal.price * (1 - signal.stop_loss) if signal.action == 'buy' else signal.price * (1 + signal.stop_loss),
-                    'order_id': order.get('id')
+                    'order_id': order.id if hasattr(order, 'id') else str(order)
                 }
                 
                 logger.info(f"🎯 Opened {signal.action.upper()} position: {signal.symbol} @ {signal.price:.4f}")
@@ -523,6 +522,7 @@ class CryptoDayTradingBot:
         """Get current bot status"""
         return {
             'is_running': self.is_running,
+            'bot_running': self.is_running,  # For frontend compatibility
             'active_positions': len(self.active_positions),
             'daily_profit': self.daily_profit,
             'daily_trades': self.daily_trades,

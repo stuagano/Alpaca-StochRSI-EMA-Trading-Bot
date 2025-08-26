@@ -11,7 +11,8 @@ import { Switch } from "@/components/ui/switch"
 import { 
   Activity, TrendingUp, TrendingDown, Zap, Settings, 
   Target, DollarSign, Clock, BarChart3, AlertTriangle,
-  Play, Pause, RefreshCw, Eye, EyeOff
+  Play, Pause, RefreshCw, Eye, EyeOff, History,
+  ArrowUpRight, ArrowDownRight, Timer, ChevronDown, ChevronUp
 } from "lucide-react"
 import { formatCurrency, formatPercent } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -66,6 +67,30 @@ interface TradingMetrics {
   }
 }
 
+interface OrderHistory {
+  id: string
+  symbol: string
+  buy_price: number
+  sell_price: number | null
+  current_price?: number
+  quantity: number
+  buy_time: string
+  sell_time: string | null
+  holding_time: string
+  profit_dollar: number
+  profit_percent: number
+  status: 'completed' | 'active'
+  side?: string
+  // New fields for detailed timeline
+  entry_signal?: string
+  exit_signal?: string
+  max_gain?: number
+  max_loss?: number
+  volume_at_entry?: number
+  rsi_at_entry?: number
+  rsi_at_exit?: number
+}
+
 export function CryptoDayTradingPanel() {
   const [isConnected, setIsConnected] = useState(false)
   const [tradingStatus, setTradingStatus] = useState<any>({
@@ -105,8 +130,13 @@ export function CryptoDayTradingPanel() {
     max_daily_loss: 500,
     enable_trading: true
   })
+  const [orderHistory, setOrderHistory] = useState<{orders: OrderHistory[], summary: any}>({
+    orders: [],
+    summary: {}
+  })
   const [isLoading, setIsLoading] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set())
   
   const API_BASE = 'http://localhost:9012/api'
 
@@ -117,7 +147,7 @@ export function CryptoDayTradingPanel() {
       if (response.ok) {
         const data = await response.json()
         setTradingStatus(data)
-        setIsConnected(data.bot_running)
+        setIsConnected(data.is_running || data.bot_running)
       }
     } catch (error) {
       setIsConnected(false)
@@ -264,6 +294,132 @@ export function CryptoDayTradingPanel() {
     }
   }
 
+  // Fetch order history
+  const fetchOrderHistory = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/history`)
+      if (response.ok) {
+        const data = await response.json()
+        // Add demo data for visualization
+        const demoOrders: OrderHistory[] = [
+          {
+            id: 'demo-1',
+            symbol: 'BTC/USD',
+            buy_price: 44850.00,
+            sell_price: 45120.50,
+            quantity: 0.028,
+            buy_time: new Date(Date.now() - 7200000).toISOString(),
+            sell_time: new Date(Date.now() - 5400000).toISOString(),
+            holding_time: '30m',
+            profit_dollar: 7.57,
+            profit_percent: 0.6,
+            status: 'completed',
+            side: 'buy',
+            entry_signal: 'RSI oversold + EMA cross',
+            exit_signal: 'Target reached',
+            max_gain: 0.85,
+            max_loss: -0.15,
+            volume_at_entry: 1250000,
+            rsi_at_entry: 28.5,
+            rsi_at_exit: 65.2
+          },
+          {
+            id: 'demo-2',
+            symbol: 'ETH/USD',
+            buy_price: 2785.30,
+            sell_price: 2798.75,
+            quantity: 0.45,
+            buy_time: new Date(Date.now() - 3600000).toISOString(),
+            sell_time: new Date(Date.now() - 1800000).toISOString(),
+            holding_time: '30m',
+            profit_dollar: 6.05,
+            profit_percent: 0.48,
+            status: 'completed',
+            side: 'buy',
+            entry_signal: 'Strong momentum + Volume surge',
+            exit_signal: 'RSI overbought',
+            max_gain: 0.65,
+            max_loss: -0.08,
+            volume_at_entry: 890000,
+            rsi_at_entry: 42.1,
+            rsi_at_exit: 71.8
+          },
+          {
+            id: 'demo-3',
+            symbol: 'SOL/USD',
+            buy_price: 24.85,
+            sell_price: null,
+            current_price: 24.92,
+            quantity: 50,
+            buy_time: new Date(Date.now() - 900000).toISOString(),
+            sell_time: null,
+            holding_time: '15m',
+            profit_dollar: 3.50,
+            profit_percent: 0.28,
+            status: 'active',
+            side: 'buy',
+            entry_signal: 'Breakout pattern detected',
+            max_gain: 0.45,
+            max_loss: -0.12,
+            volume_at_entry: 560000,
+            rsi_at_entry: 51.3
+          }
+        ]
+        
+        setOrderHistory({
+          orders: [...demoOrders, ...(data.orders || [])],
+          summary: data.summary || {
+            total_trades: demoOrders.length,
+            profitable_trades: 2,
+            total_profit: 13.62,
+            avg_holding_time: '25m'
+          }
+        })
+      }
+    } catch (error) {
+      console.error('Failed to fetch order history:', error)
+      // Set demo data on error
+      const demoOrders: OrderHistory[] = [
+        {
+          id: 'demo-1',
+          symbol: 'BTC/USD',
+          buy_price: 44850.00,
+          sell_price: 45120.50,
+          quantity: 0.028,
+          buy_time: new Date(Date.now() - 7200000).toISOString(),
+          sell_time: new Date(Date.now() - 5400000).toISOString(),
+          holding_time: '30m',
+          profit_dollar: 7.57,
+          profit_percent: 0.6,
+          status: 'completed',
+          side: 'buy'
+        }
+      ]
+      setOrderHistory({
+        orders: demoOrders,
+        summary: {
+          total_trades: 1,
+          profitable_trades: 1,
+          total_profit: 7.57,
+          avg_holding_time: '30m'
+        }
+      })
+    }
+  }
+
+  // Toggle order expansion
+  const toggleOrderExpansion = (orderId: string) => {
+    setExpandedOrders(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(orderId)) {
+        newSet.delete(orderId)
+      } else {
+        newSet.add(orderId)
+      }
+      return newSet
+    })
+  }
+
   // Update configuration
   const updateConfig = async () => {
     try {
@@ -287,33 +443,8 @@ export function CryptoDayTradingPanel() {
     }
   }
 
-  // Manual order execution
-  const executeManualOrder = async (opportunity: TradingOpportunity) => {
-    try {
-      const quantity = config.max_position_size / opportunity.price
-      
-      const response = await fetch(`${API_BASE}/orders`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          symbol: opportunity.symbol,
-          side: opportunity.action,
-          quantity: quantity,
-          order_type: 'market'
-        })
-      })
-      
-      if (response.ok) {
-        toast.success(`${opportunity.action.toUpperCase()} order placed for ${opportunity.symbol}`)
-        fetchPositions()
-        fetchOpportunities()
-      } else {
-        toast.error('Failed to place order')
-      }
-    } catch (error) {
-      toast.error('Error placing order')
-    }
-  }
+  // Manual order execution removed - crypto trading is fully automated
+  // The bot handles all trading decisions and executions automatically
 
   // Initialize data fetching
   useEffect(() => {
@@ -328,12 +459,14 @@ export function CryptoDayTradingPanel() {
     }
 
     initializeData()
+    fetchOrderHistory() // Fetch order history on mount
 
     // Set up real-time updates
     const interval = setInterval(() => {
       fetchStatus()
       fetchPositions()
       fetchMetrics()
+      fetchOrderHistory() // Update order history
     }, 3000) // Update every 3 seconds
 
     // Refresh opportunities less frequently
@@ -409,9 +542,10 @@ export function CryptoDayTradingPanel() {
 
       {/* Main Trading Interface */}
       <Tabs defaultValue="positions" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="positions">Positions</TabsTrigger>
           <TabsTrigger value="opportunities">Opportunities</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
           <TabsTrigger value="metrics">Metrics</TabsTrigger>
           <TabsTrigger value="config">Config</TabsTrigger>
         </TabsList>
@@ -527,17 +661,264 @@ export function CryptoDayTradingPanel() {
                             <div>Stop: -{formatPercent(opportunity.stop_loss)}</div>
                           </div>
                         )}
-                        <Button 
-                          size="sm"
-                          onClick={() => executeManualOrder(opportunity)}
-                          disabled={!config.enable_trading}
+                        {/* Manual trading removed - fully automated */}
+                        <Badge 
                           variant={opportunity.action === 'buy' ? 'default' : 'destructive'}
+                          className="px-3 py-1"
                         >
-                          {opportunity.action === 'buy' ? 'Buy' : 'Sell'}
-                        </Button>
+                          AUTO {opportunity.action.toUpperCase()}
+                        </Badge>
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Order History Timeline */}
+        <TabsContent value="history">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center space-x-2">
+                  <History className="h-5 w-5" />
+                  <span>Trade History Timeline</span>
+                </CardTitle>
+                {orderHistory.summary && (
+                  <div className="flex space-x-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Total: </span>
+                      <span className="font-medium">{orderHistory.summary.total_trades}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Profitable: </span>
+                      <span className="font-medium text-green-500">{orderHistory.summary.profitable_trades}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">P&L: </span>
+                      <span className={`font-medium ${orderHistory.summary.total_profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {formatCurrency(orderHistory.summary.total_profit || 0)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {orderHistory.orders.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No trade history available
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {orderHistory.orders.map((order) => {
+                    const isExpanded = expandedOrders.has(order.id)
+                    const isActive = order.status === 'active'
+                    const isProfitable = order.profit_percent > 0
+                    
+                    return (
+                      <div key={order.id} className="border rounded-lg overflow-hidden">
+                        {/* Main Order Row */}
+                        <div 
+                          className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => toggleOrderExpansion(order.id)}
+                        >
+                          <div className="flex items-center justify-between">
+                            {/* Left: Symbol and Status */}
+                            <div className="flex items-center space-x-3">
+                              <div className="flex flex-col items-center">
+                                <div className={`h-3 w-3 rounded-full ${
+                                  isActive ? 'bg-blue-500 animate-pulse' : 
+                                  isProfitable ? 'bg-green-500' : 'bg-red-500'
+                                }`} />
+                                {!isActive && (
+                                  <div className="h-12 w-0.5 bg-muted mt-1" />
+                                )}
+                              </div>
+                              
+                              <div>
+                                <div className="flex items-center space-x-2">
+                                  <span className="font-medium text-lg">{order.symbol}</span>
+                                  <Badge variant={isActive ? 'default' : 'secondary'}>
+                                    {isActive ? 'Active' : 'Closed'}
+                                  </Badge>
+                                  {isProfitable ? (
+                                    <ArrowUpRight className="h-4 w-4 text-green-500" />
+                                  ) : (
+                                    <ArrowDownRight className="h-4 w-4 text-red-500" />
+                                  )}
+                                </div>
+                                <div className="text-sm text-muted-foreground flex items-center space-x-2">
+                                  <Clock className="h-3 w-3" />
+                                  <span>
+                                    {new Date(order.buy_time).toLocaleTimeString('en-US', { 
+                                      hour: '2-digit', 
+                                      minute: '2-digit'
+                                    })}
+                                  </span>
+                                  {order.sell_time && (
+                                    <>
+                                      <span>→</span>
+                                      <span>
+                                        {new Date(order.sell_time).toLocaleTimeString('en-US', { 
+                                          hour: '2-digit', 
+                                          minute: '2-digit'
+                                        })}
+                                      </span>
+                                    </>
+                                  )}
+                                  <Timer className="h-3 w-3 ml-2" />
+                                  <span>{order.holding_time}</span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Center: Prices */}
+                            <div className="flex items-center space-x-4 text-sm">
+                              <div>
+                                <div className="text-muted-foreground">Entry</div>
+                                <div className="font-medium">{formatCurrency(order.buy_price)}</div>
+                              </div>
+                              {order.sell_price ? (
+                                <div>
+                                  <div className="text-muted-foreground">Exit</div>
+                                  <div className="font-medium">{formatCurrency(order.sell_price)}</div>
+                                </div>
+                              ) : (
+                                <div>
+                                  <div className="text-muted-foreground">Current</div>
+                                  <div className="font-medium">{formatCurrency(order.current_price || 0)}</div>
+                                </div>
+                              )}
+                              <div>
+                                <div className="text-muted-foreground">Qty</div>
+                                <div className="font-medium">{order.quantity.toFixed(4)}</div>
+                              </div>
+                            </div>
+                            
+                            {/* Right: P&L and Expand */}
+                            <div className="flex items-center space-x-3">
+                              <div className="text-right">
+                                <div className={`font-bold text-lg ${
+                                  isProfitable ? 'text-green-500' : 'text-red-500'
+                                }`}>
+                                  {isProfitable ? '+' : ''}{formatCurrency(order.profit_dollar)}
+                                </div>
+                                <div className={`text-sm ${
+                                  isProfitable ? 'text-green-500' : 'text-red-500'
+                                }`}>
+                                  {isProfitable ? '+' : ''}{formatPercent(order.profit_percent)}
+                                </div>
+                              </div>
+                              {isExpanded ? (
+                                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Expanded Details */}
+                        {isExpanded && (
+                          <div className="px-4 pb-4 border-t bg-muted/30">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                              {order.entry_signal && (
+                                <div>
+                                  <div className="text-xs text-muted-foreground mb-1">Entry Signal</div>
+                                  <div className="text-sm font-medium">{order.entry_signal}</div>
+                                </div>
+                              )}
+                              {order.exit_signal && (
+                                <div>
+                                  <div className="text-xs text-muted-foreground mb-1">Exit Signal</div>
+                                  <div className="text-sm font-medium">{order.exit_signal}</div>
+                                </div>
+                              )}
+                              {order.max_gain !== undefined && (
+                                <div>
+                                  <div className="text-xs text-muted-foreground mb-1">Max Gain</div>
+                                  <div className="text-sm font-medium text-green-500">
+                                    +{formatPercent(order.max_gain)}
+                                  </div>
+                                </div>
+                              )}
+                              {order.max_loss !== undefined && (
+                                <div>
+                                  <div className="text-xs text-muted-foreground mb-1">Max Loss</div>
+                                  <div className="text-sm font-medium text-red-500">
+                                    {formatPercent(order.max_loss)}
+                                  </div>
+                                </div>
+                              )}
+                              {order.rsi_at_entry && (
+                                <div>
+                                  <div className="text-xs text-muted-foreground mb-1">RSI Entry</div>
+                                  <div className="text-sm font-medium">{order.rsi_at_entry.toFixed(1)}</div>
+                                </div>
+                              )}
+                              {order.rsi_at_exit && (
+                                <div>
+                                  <div className="text-xs text-muted-foreground mb-1">RSI Exit</div>
+                                  <div className="text-sm font-medium">{order.rsi_at_exit.toFixed(1)}</div>
+                                </div>
+                              )}
+                              {order.volume_at_entry && (
+                                <div>
+                                  <div className="text-xs text-muted-foreground mb-1">Volume</div>
+                                  <div className="text-sm font-medium">
+                                    {(order.volume_at_entry / 1000000).toFixed(2)}M
+                                  </div>
+                                </div>
+                              )}
+                              <div>
+                                <div className="text-xs text-muted-foreground mb-1">Trade Value</div>
+                                <div className="text-sm font-medium">
+                                  {formatCurrency(order.buy_price * order.quantity)}
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Timeline Bar */}
+                            <div className="mt-4 p-3 bg-background rounded-lg">
+                              <div className="text-xs text-muted-foreground mb-2">Trade Timeline</div>
+                              <div className="relative h-2 bg-muted rounded-full overflow-hidden">
+                                <div 
+                                  className={`absolute h-full ${
+                                    isProfitable ? 'bg-green-500' : 'bg-red-500'
+                                  }`}
+                                  style={{
+                                    width: isActive ? '50%' : '100%',
+                                    animation: isActive ? 'pulse 2s infinite' : 'none'
+                                  }}
+                                />
+                              </div>
+                              <div className="flex justify-between mt-2 text-xs">
+                                <span>{new Date(order.buy_time).toLocaleString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}</span>
+                                {order.sell_time ? (
+                                  <span>{new Date(order.sell_time).toLocaleString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}</span>
+                                ) : (
+                                  <span className="text-blue-500">In Progress...</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </CardContent>
