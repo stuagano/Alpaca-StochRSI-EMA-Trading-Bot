@@ -1,0 +1,413 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - link "Back to Stocks" [ref=e7] [cursor=pointer]:
+            - /url: /
+            - button "Back to Stocks" [ref=e8] [cursor=pointer]:
+              - img
+              - text: Back to Stocks
+          - img [ref=e9]
+          - generic [ref=e11]:
+            - heading "Crypto Trading Bot" [level=1] [ref=e12]
+            - paragraph [ref=e13]: 24/7 Automated Trading • 15-40 trades/hour
+          - generic [ref=e14]: Disconnected
+          - generic [ref=e15]: 24/7 Trading
+        - generic [ref=e16]:
+          - generic [ref=e17]:
+            - img [ref=e18]
+            - text: "Crypto Bot: OFF"
+          - button "Start Crypto Bot" [ref=e20] [cursor=pointer]:
+            - img
+            - text: Start Crypto Bot
+          - button [ref=e21] [cursor=pointer]:
+            - img
+          - button [ref=e22] [cursor=pointer]:
+            - img
+    - main [ref=e23]:
+      - generic [ref=e24]:
+        - generic [ref=e25]:
+          - generic [ref=e26]:
+            - heading "Crypto Portfolio" [level=3] [ref=e27]
+            - img [ref=e28]
+          - generic [ref=e30]:
+            - generic [ref=e31]: $93,560.79
+            - paragraph [ref=e32]:
+              - generic [ref=e33]: 0.00%
+              - text: today (24h)
+        - generic [ref=e34]:
+          - generic [ref=e35]:
+            - heading "24h P&L" [level=3] [ref=e36]
+            - img [ref=e37]
+          - generic [ref=e40]:
+            - generic [ref=e41]: $0.00
+            - paragraph [ref=e42]: 0 wins / 0 losses
+        - generic [ref=e43]:
+          - generic [ref=e44]:
+            - heading "Active Crypto" [level=3] [ref=e45]
+            - img [ref=e46]
+          - generic [ref=e48]:
+            - generic [ref=e49]: "8"
+            - paragraph [ref=e50]: pending orders
+        - generic [ref=e51]:
+          - generic [ref=e52]:
+            - heading "Win Rate" [level=3] [ref=e53]
+            - img [ref=e54]
+          - generic [ref=e58]:
+            - generic [ref=e59]: 3,750.00%
+            - paragraph [ref=e60]: 24h trading
+        - generic [ref=e61]:
+          - generic [ref=e62]:
+            - heading "Available Cash" [level=3] [ref=e63]
+            - img [ref=e64]
+          - generic [ref=e66]:
+            - generic [ref=e67]: $63,051.58
+            - paragraph [ref=e68]: "Risk score: 0/10"
+      - generic [ref=e69]:
+        - generic [ref=e70]:
+          - heading "Trading Metrics" [level=3] [ref=e72]
+          - generic [ref=e74]:
+            - generic [ref=e75]:
+              - generic [ref=e76]: "Daily Return:"
+              - generic [ref=e77]: "-2.11%"
+            - generic [ref=e78]:
+              - generic [ref=e79]: "Win Rate:"
+              - generic [ref=e80]: 37.50%
+            - generic [ref=e81]:
+              - generic [ref=e82]: "Positions:"
+              - generic [ref=e83]: "8"
+        - generic [ref=e84]:
+          - heading "P&L Summary" [level=3] [ref=e86]
+          - generic [ref=e88]:
+            - generic [ref=e89]:
+              - generic [ref=e90]: "Total P&L:"
+              - generic [ref=e91]: $537.61
+            - generic [ref=e92]:
+              - generic [ref=e93]: "P&L %:"
+              - generic [ref=e94]: 0.01%
+            - generic [ref=e95]:
+              - generic [ref=e96]: "Equity:"
+              - generic [ref=e97]: $95,573.48
+        - generic [ref=e98]:
+          - heading "Active Strategies" [level=3] [ref=e100]
+          - generic [ref=e102]:
+            - generic [ref=e103]:
+              - generic [ref=e104]: "Momentum Trading:"
+              - generic [ref=e105]: Active
+            - generic [ref=e106]:
+              - generic [ref=e107]: "Mean Reversion:"
+              - generic [ref=e108]: Active
+            - generic [ref=e109]:
+              - generic [ref=e110]: "Crypto Scalping:"
+              - generic [ref=e111]: Active
+            - generic [ref=e112]: 3 of 3 active
+        - generic [ref=e113]:
+          - heading "Recent History" [level=3] [ref=e115]
+          - generic [ref=e117]:
+            - generic [ref=e118]:
+              - generic [ref=e119]: "Total Trades:"
+              - generic [ref=e120]: "100"
+            - generic [ref=e121]:
+              - generic [ref=e122]: "Data Source:"
+              - generic [ref=e123]: live
+            - generic [ref=e124]: "Last: AVAX/USD (buy)"
+      - generic [ref=e125]:
+        - generic [ref=e126]:
+          - generic [ref=e127]:
+            - generic [ref=e129]:
+              - heading "Crypto Chart - BTCUSD" [level=3] [ref=e130]
+              - paragraph [ref=e131]: 24/7 Cryptocurrency Trading
+            - generic [ref=e133]:
+              - generic [ref=e134]:
+                - generic [ref=e135]:
+                  - button "1Min" [ref=e136] [cursor=pointer]
+                  - button "5Min" [ref=e137] [cursor=pointer]
+                  - button "15Min" [ref=e138] [cursor=pointer]
+                  - button "1Hour" [ref=e139] [cursor=pointer]
+                  - button "1Day" [ref=e140] [cursor=pointer]
+                  - generic [ref=e141]: 24/7
+                - combobox [ref=e143]:
+                  - option "BTCUSD" [selected]
+                  - option "ETHUSD"
+                  - option "LTCUSD"
+                  - option "BCHUSD"
+                  - option "UNIUSD"
+                  - option "LINKUSD"
+                  - option "AAVEUSD"
+                  - option "MKRUSD"
+                  - option "SOLUSD"
+                  - option "AVAXUSD"
+                  - option "ADAUSD"
+                  - option "MATICUSD"
+                  - option "DOGEUSD"
+                  - option "SHIBUSD"
+                  - option "XRPUSD"
+                  - option "XLMUSD"
+                - generic [ref=e145]:
+                  - button "EMA" [ref=e146] [cursor=pointer]
+                  - button "Signals" [ref=e147] [cursor=pointer]
+              - table [ref=e151]:
+                - row [ref=e152]:
+                  - cell
+                  - cell [ref=e153]:
+                    - link "Charting by TradingView" [ref=e157] [cursor=pointer]:
+                      - /url: https://www.tradingview.com/?utm_medium=lwc-link&utm_campaign=lwc-chart&utm_source=localhost/crypto
+                      - img [ref=e158] [cursor=pointer]
+                  - cell [ref=e162]
+                - row [ref=e166]:
+                  - cell
+                  - cell [ref=e167]
+                  - cell [ref=e171]
+              - generic [ref=e174]:
+                - generic [ref=e175]:
+                  - generic [ref=e176]: EMA (3/8)
+                  - generic [ref=e177]: Cross Up
+                  - generic [ref=e178]: Fast Momentum
+                - generic [ref=e179]:
+                  - generic [ref=e180]: Volume Spike
+                  - generic [ref=e181]: +35%
+                  - generic [ref=e182]: Above Avg
+                - generic [ref=e183]:
+                  - generic [ref=e184]: Price Move
+                  - generic [ref=e185]: +0.15%
+                  - generic [ref=e186]: Last Candle
+                - generic [ref=e187]:
+                  - generic [ref=e188]: StochRSI
+                  - generic [ref=e189]: "50"
+                  - generic [ref=e190]: NEUTRAL
+                - generic [ref=e191]:
+                  - generic [ref=e192]: Signals/Min
+                  - generic [ref=e193]: "2.3"
+                  - generic [ref=e194]: High Frequency
+              - generic [ref=e196]:
+                - generic [ref=e197]:
+                  - generic [ref=e198]: ⚡ High-Frequency Scalping Strategy
+                  - generic [ref=e199]: Fast EMA(3/8) + Volume Spikes + Price Momentum + StochRSI Signals
+                - generic [ref=e200]:
+                  - generic [ref=e201]: "Entry Triggers:"
+                  - generic [ref=e202]: EMA Cross + Volume +20% + Price Move >0.05%
+                  - generic [ref=e203]: "Targets:"
+                  - generic [ref=e204]: "Profit: 0.1-0.5% | Stop: 0.05-0.25% | Hold: <3min"
+              - generic [ref=e205]:
+                - generic [ref=e206]:
+                  - generic [ref=e207]: "Market: Cryptocurrency"
+                  - generic [ref=e208]: "Session: 24/7 Trading"
+                - generic [ref=e209]:
+                  - generic [ref=e210]: "Settlement: T+0 (Instant)"
+                  - generic [ref=e211]: "Fractional: Supported"
+          - generic [ref=e212]:
+            - generic [ref=e213]:
+              - generic [ref=e214]:
+                - img [ref=e215]
+                - heading "High-Frequency Scalping Engine" [level=3] [ref=e217]
+              - generic [ref=e218]:
+                - generic [ref=e219]: PAUSED
+                - button "Start" [ref=e220] [cursor=pointer]:
+                  - img
+                  - text: Start
+            - generic [ref=e221]:
+              - generic [ref=e222]:
+                - generic [ref=e223]:
+                  - generic [ref=e224]: "0"
+                  - generic [ref=e225]: Trades/Hour
+                - generic [ref=e226]:
+                  - generic [ref=e227]: 0.00%
+                  - generic [ref=e228]: Win Rate
+                - generic [ref=e229]:
+                  - generic [ref=e230]: $0.00
+                  - generic [ref=e231]: Avg Profit
+                - generic [ref=e232]:
+                  - generic [ref=e233]: 0m
+                  - generic [ref=e234]: Avg Duration
+              - generic [ref=e235]:
+                - generic [ref=e236]:
+                  - text: "Today:"
+                  - strong [ref=e237]: "0"
+                  - text: trades
+                - generic [ref=e238]:
+                  - text: "Current Streak:"
+                  - strong [ref=e239]: "0"
+                - generic [ref=e240]:
+                  - text: "Best Streak:"
+                  - strong [ref=e241]: "0"
+              - generic [ref=e242]:
+                - generic [ref=e243]: ⚡ Scalping Strategy Active
+                - generic [ref=e244]:
+                  - paragraph [ref=e245]:
+                    - text: •
+                    - strong [ref=e246]: "Profit Targets:"
+                    - text: 0.1-0.5% per trade
+                  - paragraph [ref=e247]:
+                    - text: •
+                    - strong [ref=e248]: "Stop Loss:"
+                    - text: 0.05-0.25% risk
+                  - paragraph [ref=e249]:
+                    - text: •
+                    - strong [ref=e250]: "Trade Frequency:"
+                    - text: 15-40 trades per hour
+                  - paragraph [ref=e251]:
+                    - text: •
+                    - strong [ref=e252]: "Hold Time:"
+                    - text: 30 seconds to 3 minutes
+                  - paragraph [ref=e253]:
+                    - text: •
+                    - strong [ref=e254]: "Focus:"
+                    - text: Rapid entries on volume spikes & momentum
+          - generic [ref=e255]:
+            - generic [ref=e256]:
+              - generic [ref=e258]:
+                - generic [ref=e259]:
+                  - heading "Session Profit Chart" [level=3] [ref=e260]
+                  - paragraph [ref=e261]: Cumulative P&L (line) and individual trades (bars)
+                - generic [ref=e262]:
+                  - generic [ref=e265]: "Wins: 0"
+                  - generic [ref=e268]: "Losses: 0"
+                  - generic [ref=e269]: +$0.00
+              - table [ref=e273]:
+                - row [ref=e274]:
+                  - cell
+                  - cell [ref=e275]:
+                    - link "Charting by TradingView" [ref=e279] [cursor=pointer]:
+                      - /url: https://www.tradingview.com/?utm_medium=lwc-link&utm_campaign=lwc-chart&utm_source=localhost/crypto
+                      - img [ref=e280] [cursor=pointer]
+                  - cell [ref=e284]
+                - row [ref=e288]:
+                  - cell
+                  - cell [ref=e289]
+                  - cell [ref=e293]
+            - generic [ref=e296]:
+              - generic [ref=e298]:
+                - generic [ref=e299]:
+                  - heading "Live Trade Activity" [level=3] [ref=e300]
+                  - paragraph [ref=e301]: Recent executed trades
+                - img [ref=e302]
+              - generic [ref=e309]: No trades executed yet. Waiting for signals...
+        - generic [ref=e310]:
+          - generic [ref=e311]:
+            - generic [ref=e312]:
+              - generic [ref=e313]:
+                - heading "Crypto Market Screener" [level=2] [ref=e314]
+                - paragraph [ref=e315]: "0 assets • Last updated: Invalid Date"
+              - button "Refresh" [ref=e316] [cursor=pointer]:
+                - img
+                - text: Refresh
+            - generic [ref=e317]:
+              - generic [ref=e319]:
+                - generic [ref=e320]:
+                  - img [ref=e321]
+                  - generic [ref=e323]: Total Assets
+                - generic [ref=e324]: "0"
+              - generic [ref=e326]:
+                - generic [ref=e327]:
+                  - img
+                  - generic [ref=e329]: Trading Enabled
+                - generic [ref=e330]: "0"
+              - generic [ref=e332]:
+                - generic [ref=e333]:
+                  - img
+                  - generic [ref=e336]: Gainers
+                - generic [ref=e337]: "0"
+              - generic [ref=e339]:
+                - generic [ref=e340]:
+                  - img [ref=e341]
+                  - generic [ref=e344]: Losers
+                - generic [ref=e345]: "0"
+            - generic [ref=e346]:
+              - img [ref=e347]
+              - textbox "Search cryptocurrencies..." [ref=e350]
+            - generic [ref=e351]:
+              - tablist [ref=e352]:
+                - tab "Top Movers" [selected] [ref=e353] [cursor=pointer]
+                - tab "All Assets" [ref=e354] [cursor=pointer]
+                - tab "Active Trading" [ref=e355] [cursor=pointer]
+              - tabpanel "Top Movers" [ref=e356]:
+                - generic [ref=e357]:
+                  - generic [ref=e358]:
+                    - generic [ref=e359]:
+                      - heading "Top 10 Gainers" [level=3] [ref=e360]:
+                        - img [ref=e361]
+                        - generic [ref=e364]: Top 10 Gainers
+                      - paragraph [ref=e365]: Biggest winners in the last 24 hours
+                    - generic [ref=e367]: No data available
+                  - generic [ref=e368]:
+                    - generic [ref=e369]:
+                      - heading "Top 10 Losers" [level=3] [ref=e370]:
+                        - img [ref=e371]
+                        - generic [ref=e374]: Top 10 Losers
+                      - paragraph [ref=e375]: Biggest losers in the last 24 hours
+                    - generic [ref=e377]: No data available
+          - generic [ref=e378]:
+            - generic [ref=e379]:
+              - heading "Crypto Positions" [level=3] [ref=e380]
+              - paragraph [ref=e381]: Current holdings
+            - generic [ref=e383]:
+              - generic [ref=e384]:
+                - generic [ref=e385]:
+                  - generic [ref=e386]: AAPL
+                  - generic [ref=e387]: 304 @ $227.45
+                - generic [ref=e388]:
+                  - generic [ref=e389]: $3,604.54
+                  - button "Close" [ref=e390] [cursor=pointer]
+              - generic [ref=e391]:
+                - generic [ref=e392]:
+                  - generic [ref=e393]: AMD
+                  - generic [ref=e394]: 130 @ $179.83
+                - generic [ref=e395]:
+                  - generic [ref=e396]: "-$3,746.15"
+                  - button "Close" [ref=e397] [cursor=pointer]
+              - generic [ref=e398]:
+                - generic [ref=e399]:
+                  - generic [ref=e400]: AVAXUSD
+                  - generic [ref=e401]: 10.375867955 @ $24.43
+                - generic [ref=e402]:
+                  - generic [ref=e403]: "-$0.35"
+                  - button "Close" [ref=e404] [cursor=pointer]
+              - generic [ref=e405]:
+                - generic [ref=e406]:
+                  - generic [ref=e407]: GOOG
+                  - generic [ref=e408]: 20 @ $196.18
+                - generic [ref=e409]:
+                  - generic [ref=e410]: $781.20
+                  - button "Close" [ref=e411] [cursor=pointer]
+              - generic [ref=e412]:
+                - generic [ref=e413]:
+                  - generic [ref=e414]: MSFT
+                  - generic [ref=e415]: 20 @ $503.49
+                - generic [ref=e416]:
+                  - generic [ref=e417]: "-$182.80"
+                  - button "Close" [ref=e418] [cursor=pointer]
+              - generic [ref=e419]:
+                - generic [ref=e420]:
+                  - generic [ref=e421]: NVDA
+                  - generic [ref=e422]: 30 @ $180.48
+                - generic [ref=e423]:
+                  - generic [ref=e424]: "-$409.63"
+                  - button "Close" [ref=e425] [cursor=pointer]
+              - generic [ref=e426]:
+                - generic [ref=e427]:
+                  - generic [ref=e428]: PYPL
+                  - generic [ref=e429]: 10 @ $71.65
+                - generic [ref=e430]:
+                  - generic [ref=e431]: "-$32.95"
+                  - button "Close" [ref=e432] [cursor=pointer]
+              - generic [ref=e433]:
+                - generic [ref=e434]:
+                  - generic [ref=e435]: SPY
+                  - generic [ref=e436]: 17 @ $645.02
+                - generic [ref=e437]:
+                  - generic [ref=e438]: $31.44
+                  - button "Close" [ref=e439] [cursor=pointer]
+  - region "Notifications alt+T"
+  - status [ref=e440]:
+    - generic [ref=e441]:
+      - img [ref=e443]
+      - generic [ref=e445]:
+        - text: Static route
+        - button "Hide static indicator" [ref=e446] [cursor=pointer]:
+          - img [ref=e447] [cursor=pointer]
+  - alert [ref=e450]
+```

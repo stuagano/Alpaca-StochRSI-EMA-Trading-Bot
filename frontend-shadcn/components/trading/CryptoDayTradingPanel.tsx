@@ -12,24 +12,21 @@ import {
   Activity, TrendingUp, TrendingDown, Zap, Settings, 
   Target, DollarSign, Clock, BarChart3, AlertTriangle,
   Play, Pause, RefreshCw, Eye, EyeOff, History,
-  ArrowUpRight, ArrowDownRight, Timer, ChevronDown, ChevronUp
+  ArrowUpRight, ArrowDownRight, Timer, ChevronDown, ChevronUp,
+  CheckCircle, XCircle, RotateCcw, Bot
 } from "lucide-react"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { formatCurrency, formatPercent } from '@/lib/utils'
 import { toast } from 'sonner'
+import { Position } from '@/types/alpaca'
 
-interface Position {
-  symbol: string
-  side: 'buy' | 'sell'
-  quantity: number
-  entry_price: number
-  current_price: number
-  target_price: number
-  stop_price: number
-  pnl_percent: number
-  pnl_dollar: number
-  entry_time: string
-  hold_time_minutes: number
-  confidence: number
+// Extended position interface for crypto trading with additional fields
+interface ExtendedPosition extends Position {
+  confidence?: number
+  target_price?: number
+  stop_price?: number
+  entry_time?: string
+  hold_time_minutes?: number
 }
 
 interface TradingOpportunity {
@@ -43,6 +40,9 @@ interface TradingOpportunity {
   target_profit: number
   stop_loss: number
   timestamp: string
+  recommendation?: string
+  score?: number
+  price_change?: number
 }
 
 interface TradingMetrics {
@@ -100,8 +100,10 @@ export function CryptoDayTradingPanel() {
     win_rate: 0,
     bot_running: false
   })
-  const [positions, setPositions] = useState<Position[]>([])
+  const [positions, setPositions] = useState<ExtendedPosition[]>([])
   const [opportunities, setOpportunities] = useState<TradingOpportunity[]>([])
+  const [isLoadingPositions, setIsLoadingPositions] = useState(true)
+  const [isLoadingOpportunities, setIsLoadingOpportunities] = useState(true)
   const [metrics, setMetrics] = useState<TradingMetrics | null>({
     daily_metrics: {
       profit_loss: 0,
@@ -130,20 +132,22 @@ export function CryptoDayTradingPanel() {
     max_daily_loss: 500,
     enable_trading: true
   })
-  const [orderHistory, setOrderHistory] = useState<{orders: OrderHistory[], summary: any}>({
+  const [orderHistory, setOrderHistory] = useState<{orders: OrderHistory[], timeline: any[], summary: any}>({
     orders: [],
+    timeline: [],
     summary: {}
   })
+  const [pnlChartData, setPnlChartData] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set())
   
-  const API_BASE = 'http://localhost:9012/api'
+  const API_BASE = 'http://localhost:9100'
 
   // Fetch trading status
   const fetchStatus = async () => {
     try {
-      const response = await fetch(`${API_BASE}/status`)
+      const response = await fetch(`${API_BASE}/api/status`)
       if (response.ok) {
         const data = await response.json()
         setTradingStatus(data)
@@ -156,21 +160,26 @@ export function CryptoDayTradingPanel() {
 
   // Fetch positions
   const fetchPositions = async () => {
+    setIsLoadingPositions(true)
     try {
-      const response = await fetch(`${API_BASE}/positions`)
+      const response = await fetch(`${API_BASE}/api/positions`)
       if (response.ok) {
         const data = await response.json()
         setPositions(data.positions || [])
       }
     } catch (error) {
       console.error('Failed to fetch positions:', error)
+      setPositions([])
+    } finally {
+      setIsLoadingPositions(false)
     }
   }
 
   // Fetch market opportunities
   const fetchOpportunities = async () => {
+    setIsLoadingOpportunities(true)
     try {
-      const response = await fetch(`${API_BASE}/scan`, {
+      const response = await fetch(`${API_BASE}/api/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -265,16 +274,40 @@ export function CryptoDayTradingPanel() {
           timestamp: new Date().toISOString()
         }
       ])
+    } finally {
+      setIsLoadingOpportunities(false)
     }
   }
 
   // Fetch metrics
   const fetchMetrics = async () => {
     try {
-      const response = await fetch(`${API_BASE}/metrics`)
+      const response = await fetch(`${API_BASE}/api/metrics`)
       if (response.ok) {
         const data = await response.json()
-        setMetrics(data)
+        // Transform API response to match expected structure
+        const transformedMetrics: TradingMetrics = {
+          daily_metrics: {
+            profit_loss: data.metrics?.daily_pnl || 0,
+            trades_today: data.metrics?.total_trades || 0,
+            win_rate: data.metrics?.win_rate || 0,
+            total_trades: data.metrics?.total_trades || 0,
+            capital_utilization: 0
+          },
+          position_analysis: {
+            total_positions: 0,
+            capital_deployed: 0,
+            avg_hold_time_minutes: 0,
+            profitable_positions: data.metrics?.winning_trades || 0
+          },
+          risk_metrics: {
+            max_daily_loss_limit: 500,
+            remaining_risk_budget: 500 - Math.abs(Math.min(0, data.metrics?.daily_pnl || 0)),
+            largest_position_size: 0,
+            current_exposure: 0
+          }
+        }
+        setMetrics(transformedMetrics)
       }
     } catch (error) {
       console.error('Failed to fetch metrics:', error)
@@ -284,7 +317,7 @@ export function CryptoDayTradingPanel() {
   // Fetch configuration
   const fetchConfig = async () => {
     try {
-      const response = await fetch(`${API_BASE}/config`)
+      const response = await fetch(`${API_BASE}/api/config`)
       if (response.ok) {
         const data = await response.json()
         setConfig(data)
@@ -294,14 +327,38 @@ export function CryptoDayTradingPanel() {
     }
   }
 
+  // Fetch P&L chart data
+  const fetchPnlChart = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/pnl-chart`)
+      if (response.ok) {
+        const data = await response.json()
+        setPnlChartData(data.chart_data || [])
+      }
+    } catch (error) {
+      console.error('Failed to fetch P&L chart:', error)
+    }
+  }
+
   // Fetch order history
   const fetchOrderHistory = async () => {
     try {
-      const response = await fetch(`${API_BASE}/history`)
+      const response = await fetch(`${API_BASE}/api/history`)
       if (response.ok) {
         const data = await response.json()
-        // Add demo data for visualization
-        const demoOrders: OrderHistory[] = [
+        setOrderHistory({
+          orders: data.orders || [],
+          timeline: data.timeline || [],
+          summary: data.summary || {}
+        })
+        return
+      }
+    } catch (error) {
+      console.error('Failed to fetch order history:', error)
+    }
+    
+    // Fallback demo data for visualization
+    const demoOrders: OrderHistory[] = [
           {
             id: 'demo-1',
             symbol: 'BTC/USD',
@@ -367,43 +424,29 @@ export function CryptoDayTradingPanel() {
         ]
         
         setOrderHistory({
-          orders: [...demoOrders, ...(data.orders || [])],
-          summary: data.summary || {
+          orders: demoOrders,
+          timeline: [], // Empty timeline for demo data  
+          summary: {
             total_trades: demoOrders.length,
             profitable_trades: 2,
             total_profit: 13.62,
             avg_holding_time: '25m'
           }
         })
+  }
+
+  // Fetch P&L chart data
+  const fetchPnlChartData = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/pnl-chart`)
+      if (response.ok) {
+        const data = await response.json()
+        setPnlChartData(data.chart_data || [])
       }
     } catch (error) {
-      console.error('Failed to fetch order history:', error)
-      // Set demo data on error
-      const demoOrders: OrderHistory[] = [
-        {
-          id: 'demo-1',
-          symbol: 'BTC/USD',
-          buy_price: 44850.00,
-          sell_price: 45120.50,
-          quantity: 0.028,
-          buy_time: new Date(Date.now() - 7200000).toISOString(),
-          sell_time: new Date(Date.now() - 5400000).toISOString(),
-          holding_time: '30m',
-          profit_dollar: 7.57,
-          profit_percent: 0.6,
-          status: 'completed',
-          side: 'buy'
-        }
-      ]
-      setOrderHistory({
-        orders: demoOrders,
-        summary: {
-          total_trades: 1,
-          profitable_trades: 1,
-          total_profit: 7.57,
-          avg_holding_time: '30m'
-        }
-      })
+      console.error('Failed to fetch P&L chart data:', error)
+      // Set empty data on error
+      setPnlChartData([])
     }
   }
 
@@ -424,7 +467,7 @@ export function CryptoDayTradingPanel() {
   const updateConfig = async () => {
     try {
       setIsLoading(true)
-      const response = await fetch(`${API_BASE}/config`, {
+      const response = await fetch(`${API_BASE}/api/config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config)
@@ -460,6 +503,7 @@ export function CryptoDayTradingPanel() {
 
     initializeData()
     fetchOrderHistory() // Fetch order history on mount
+    fetchPnlChartData() // Fetch P&L chart data on mount
 
     // Set up real-time updates
     const interval = setInterval(() => {
@@ -467,6 +511,7 @@ export function CryptoDayTradingPanel() {
       fetchPositions()
       fetchMetrics()
       fetchOrderHistory() // Update order history
+      fetchPnlChart() // Update P&L chart
     }, 3000) // Update every 3 seconds
 
     // Refresh opportunities less frequently
@@ -541,388 +586,460 @@ export function CryptoDayTradingPanel() {
       </Card>
 
       {/* Main Trading Interface */}
-      <Tabs defaultValue="positions" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="positions">Positions</TabsTrigger>
-          <TabsTrigger value="opportunities">Opportunities</TabsTrigger>
+      <Tabs defaultValue="trading" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="trading">Trading</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
           <TabsTrigger value="metrics">Metrics</TabsTrigger>
           <TabsTrigger value="config">Config</TabsTrigger>
         </TabsList>
 
-        {/* Active Positions */}
-        <TabsContent value="positions">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Activity className="h-5 w-5" />
-                <span>Active Positions ({positions.length})</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {positions.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No active positions
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {positions.map((position, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <span className="font-medium">{position.symbol}</span>
-                            <Badge variant={position.side === 'buy' ? 'default' : 'destructive'}>
-                              {position.side.toUpperCase()}
-                            </Badge>
-                            <Badge variant="outline" className="text-xs">
-                              {(position.confidence * 100).toFixed(0)}%
-                            </Badge>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {position.quantity.toFixed(4)} @ {formatCurrency(position.entry_price)}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="text-right">
-                        <div className={`font-medium ${position.pnl_percent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                          {formatCurrency(position.pnl_dollar)}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {formatPercent(position.pnl_percent)} • {position.hold_time_minutes}m
-                        </div>
-                      </div>
-                      
-                      {showAdvanced && (
-                        <div className="text-xs text-muted-foreground ml-4">
-                          <div>Target: {formatCurrency(position.target_price)}</div>
-                          <div>Stop: {formatCurrency(position.stop_price)}</div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Market Opportunities */}
-        <TabsContent value="opportunities">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
+        {/* Combined Trading Tab */}
+        <TabsContent value="trading">
+          <div className="grid gap-4 lg:grid-cols-2">
+            {/* Active Positions */}
+            <Card>
+              <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <Target className="h-5 w-5" />
-                  <span>Trading Opportunities</span>
+                  <Activity className="h-5 w-5" />
+                  <span>Active Positions ({positions.length})</span>
                 </CardTitle>
-                <Button variant="outline" size="sm" onClick={fetchOpportunities}>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {opportunities.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No opportunities found
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {opportunities.slice(0, 8).map((opportunity, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        {opportunity.action === 'buy' ? 
-                          <TrendingUp className="h-5 w-5 text-green-500" /> :
-                          <TrendingDown className="h-5 w-5 text-red-500" />
-                        }
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <span className="font-medium">{opportunity.symbol}</span>
-                            <Badge variant={opportunity.action === 'buy' ? 'default' : 'destructive'}>
-                              {opportunity.action.toUpperCase()}
-                            </Badge>
-                            <Badge variant="outline" className="text-xs">
-                              {(opportunity.confidence * 100).toFixed(0)}%
-                            </Badge>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {formatCurrency(opportunity.price)} • Vol: {formatPercent(opportunity.volatility)}
-                            {opportunity.volume_surge && <span className="text-orange-500 ml-2">🔥 Volume Surge</span>}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center space-x-3">
-                        {showAdvanced && (
-                          <div className="text-xs text-muted-foreground text-right">
-                            <div>Target: +{formatPercent(opportunity.target_profit)}</div>
-                            <div>Stop: -{formatPercent(opportunity.stop_loss)}</div>
-                          </div>
-                        )}
-                        {/* Manual trading removed - fully automated */}
-                        <Badge 
-                          variant={opportunity.action === 'buy' ? 'default' : 'destructive'}
-                          className="px-3 py-1"
-                        >
-                          AUTO {opportunity.action.toUpperCase()}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Order History Timeline */}
-        <TabsContent value="history">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center space-x-2">
-                  <History className="h-5 w-5" />
-                  <span>Trade History Timeline</span>
-                </CardTitle>
-                {orderHistory.summary && (
-                  <div className="flex space-x-4 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Total: </span>
-                      <span className="font-medium">{orderHistory.summary.total_trades}</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Profitable: </span>
-                      <span className="font-medium text-green-500">{orderHistory.summary.profitable_trades}</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">P&L: </span>
-                      <span className={`font-medium ${orderHistory.summary.total_profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {formatCurrency(orderHistory.summary.total_profit || 0)}
-                      </span>
-                    </div>
+              </CardHeader>
+              <CardContent>
+                {isLoadingPositions ? (
+                  <div className="text-center py-8">
+                    <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">Loading positions...</p>
                   </div>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {orderHistory.orders.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No trade history available
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {orderHistory.orders.map((order) => {
-                    const isExpanded = expandedOrders.has(order.id)
-                    const isActive = order.status === 'active'
-                    const isProfitable = order.profit_percent > 0
-                    
-                    return (
-                      <div key={order.id} className="border rounded-lg overflow-hidden">
-                        {/* Main Order Row */}
-                        <div 
-                          className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-                          onClick={() => toggleOrderExpansion(order.id)}
-                        >
-                          <div className="flex items-center justify-between">
-                            {/* Left: Symbol and Status */}
-                            <div className="flex items-center space-x-3">
-                              <div className="flex flex-col items-center">
-                                <div className={`h-3 w-3 rounded-full ${
-                                  isActive ? 'bg-blue-500 animate-pulse' : 
-                                  isProfitable ? 'bg-green-500' : 'bg-red-500'
-                                }`} />
-                                {!isActive && (
-                                  <div className="h-12 w-0.5 bg-muted mt-1" />
-                                )}
-                              </div>
-                              
-                              <div>
-                                <div className="flex items-center space-x-2">
-                                  <span className="font-medium text-lg">{order.symbol}</span>
-                                  <Badge variant={isActive ? 'default' : 'secondary'}>
-                                    {isActive ? 'Active' : 'Closed'}
-                                  </Badge>
-                                  {isProfitable ? (
-                                    <ArrowUpRight className="h-4 w-4 text-green-500" />
-                                  ) : (
-                                    <ArrowDownRight className="h-4 w-4 text-red-500" />
-                                  )}
-                                </div>
-                                <div className="text-sm text-muted-foreground flex items-center space-x-2">
-                                  <Clock className="h-3 w-3" />
-                                  <span>
-                                    {new Date(order.buy_time).toLocaleTimeString('en-US', { 
-                                      hour: '2-digit', 
-                                      minute: '2-digit'
-                                    })}
-                                  </span>
-                                  {order.sell_time && (
-                                    <>
-                                      <span>→</span>
-                                      <span>
-                                        {new Date(order.sell_time).toLocaleTimeString('en-US', { 
-                                          hour: '2-digit', 
-                                          minute: '2-digit'
-                                        })}
-                                      </span>
-                                    </>
-                                  )}
-                                  <Timer className="h-3 w-3 ml-2" />
-                                  <span>{order.holding_time}</span>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            {/* Center: Prices */}
-                            <div className="flex items-center space-x-4 text-sm">
-                              <div>
-                                <div className="text-muted-foreground">Entry</div>
-                                <div className="font-medium">{formatCurrency(order.buy_price)}</div>
-                              </div>
-                              {order.sell_price ? (
-                                <div>
-                                  <div className="text-muted-foreground">Exit</div>
-                                  <div className="font-medium">{formatCurrency(order.sell_price)}</div>
-                                </div>
-                              ) : (
-                                <div>
-                                  <div className="text-muted-foreground">Current</div>
-                                  <div className="font-medium">{formatCurrency(order.current_price || 0)}</div>
-                                </div>
+                ) : positions.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No active positions
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {positions.map((position, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <div>
+                            <div className="flex items-center space-x-1">
+                              <span className="font-medium text-sm">{position.symbol}</span>
+                              {position.side && (
+                                <Badge variant={position.side === 'long' ? 'default' : 'destructive'} className="text-xs">
+                                  {position.side.toUpperCase()}
+                                </Badge>
                               )}
-                              <div>
-                                <div className="text-muted-foreground">Qty</div>
-                                <div className="font-medium">{order.quantity.toFixed(4)}</div>
-                              </div>
-                            </div>
-                            
-                            {/* Right: P&L and Expand */}
-                            <div className="flex items-center space-x-3">
-                              <div className="text-right">
-                                <div className={`font-bold text-lg ${
-                                  isProfitable ? 'text-green-500' : 'text-red-500'
-                                }`}>
-                                  {isProfitable ? '+' : ''}{formatCurrency(order.profit_dollar)}
-                                </div>
-                                <div className={`text-sm ${
-                                  isProfitable ? 'text-green-500' : 'text-red-500'
-                                }`}>
-                                  {isProfitable ? '+' : ''}{formatPercent(order.profit_percent)}
-                                </div>
-                              </div>
-                              {isExpanded ? (
-                                <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              {position.confidence && (
+                                <Badge variant="outline" className="text-xs">
+                                  {(position.confidence * 100).toFixed(0)}%
+                                </Badge>
                               )}
+                              {position.unrealized_plpc && (
+                                <Badge variant={parseFloat(position.unrealized_plpc) >= 0 ? 'default' : 'destructive'} className="text-xs">
+                                  {parseFloat(position.unrealized_plpc) >= 0 ? '+' : ''}{(parseFloat(position.unrealized_plpc) * 100).toFixed(2)}%
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {parseFloat(position.qty || '0').toFixed(4)} @ {formatCurrency(parseFloat(position.avg_entry_price || '0'))}
                             </div>
                           </div>
                         </div>
                         
-                        {/* Expanded Details */}
-                        {isExpanded && (
-                          <div className="px-4 pb-4 border-t bg-muted/30">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                              {order.entry_signal && (
-                                <div>
-                                  <div className="text-xs text-muted-foreground mb-1">Entry Signal</div>
-                                  <div className="text-sm font-medium">{order.entry_signal}</div>
-                                </div>
+                        <div className="text-right">
+                          <div className={`font-medium text-sm ${(parseFloat(position.unrealized_pl) || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                            {formatCurrency(parseFloat(position.unrealized_pl) || 0)}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {position.unrealized_plpc ? formatPercent(parseFloat(position.unrealized_plpc)) : 'N/A'}
+                            {position.hold_time_minutes && ` • ${position.hold_time_minutes}m`}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Trading Opportunities */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center space-x-2">
+                    <Target className="h-5 w-5" />
+                    <span>Trading Opportunities</span>
+                  </CardTitle>
+                  <Button variant="outline" size="sm" onClick={fetchOpportunities}>
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                    Refresh
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {isLoadingOpportunities ? (
+                  <div className="text-center py-8">
+                    <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">Scanning markets...</p>
+                  </div>
+                ) : opportunities.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No opportunities found
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {opportunities.slice(0, 6).map((opportunity, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          {opportunity.action === 'buy' ? 
+                            <TrendingUp className="h-4 w-4 text-green-500" /> :
+                            <TrendingDown className="h-4 w-4 text-red-500" />
+                          }
+                          <div>
+                            <div className="flex items-center space-x-1">
+                              <span className="font-medium text-sm">{opportunity.symbol}</span>
+                              {opportunity.action && (
+                                <Badge variant={opportunity.action === 'buy' ? 'default' : 'destructive'} className="text-xs">
+                                  {opportunity.action.toUpperCase()}
+                                </Badge>
                               )}
-                              {order.exit_signal && (
-                                <div>
-                                  <div className="text-xs text-muted-foreground mb-1">Exit Signal</div>
-                                  <div className="text-sm font-medium">{order.exit_signal}</div>
-                                </div>
+                              {opportunity.recommendation && (
+                                <Badge variant={opportunity.recommendation === 'strong_buy' || opportunity.recommendation === 'buy' ? 'default' : 'outline'} className="text-xs">
+                                  {opportunity.recommendation.replace('_', ' ').toUpperCase()}
+                                </Badge>
                               )}
-                              {order.max_gain !== undefined && (
-                                <div>
-                                  <div className="text-xs text-muted-foreground mb-1">Max Gain</div>
-                                  <div className="text-sm font-medium text-green-500">
-                                    +{formatPercent(order.max_gain)}
-                                  </div>
-                                </div>
+                              {opportunity.confidence ? (
+                                <Badge variant="outline" className="text-xs">
+                                  {(opportunity.confidence * 100).toFixed(0)}%
+                                </Badge>
+                              ) : opportunity.score && (
+                                <Badge variant="outline" className="text-xs">
+                                  Score: {(opportunity.score * 100).toFixed(0)}%
+                                </Badge>
                               )}
-                              {order.max_loss !== undefined && (
-                                <div>
-                                  <div className="text-xs text-muted-foreground mb-1">Max Loss</div>
-                                  <div className="text-sm font-medium text-red-500">
-                                    {formatPercent(order.max_loss)}
-                                  </div>
-                                </div>
-                              )}
-                              {order.rsi_at_entry && (
-                                <div>
-                                  <div className="text-xs text-muted-foreground mb-1">RSI Entry</div>
-                                  <div className="text-sm font-medium">{order.rsi_at_entry.toFixed(1)}</div>
-                                </div>
-                              )}
-                              {order.rsi_at_exit && (
-                                <div>
-                                  <div className="text-xs text-muted-foreground mb-1">RSI Exit</div>
-                                  <div className="text-sm font-medium">{order.rsi_at_exit.toFixed(1)}</div>
-                                </div>
-                              )}
-                              {order.volume_at_entry && (
-                                <div>
-                                  <div className="text-xs text-muted-foreground mb-1">Volume</div>
-                                  <div className="text-sm font-medium">
-                                    {(order.volume_at_entry / 1000000).toFixed(2)}M
-                                  </div>
-                                </div>
-                              )}
-                              <div>
-                                <div className="text-xs text-muted-foreground mb-1">Trade Value</div>
-                                <div className="text-sm font-medium">
-                                  {formatCurrency(order.buy_price * order.quantity)}
-                                </div>
-                              </div>
                             </div>
-                            
-                            {/* Timeline Bar */}
-                            <div className="mt-4 p-3 bg-background rounded-lg">
-                              <div className="text-xs text-muted-foreground mb-2">Trade Timeline</div>
-                              <div className="relative h-2 bg-muted rounded-full overflow-hidden">
-                                <div 
-                                  className={`absolute h-full ${
-                                    isProfitable ? 'bg-green-500' : 'bg-red-500'
-                                  }`}
-                                  style={{
-                                    width: isActive ? '50%' : '100%',
-                                    animation: isActive ? 'pulse 2s infinite' : 'none'
-                                  }}
-                                />
-                              </div>
-                              <div className="flex justify-between mt-2 text-xs">
-                                <span>{new Date(order.buy_time).toLocaleString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}</span>
-                                {order.sell_time ? (
-                                  <span>{new Date(order.sell_time).toLocaleString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })}</span>
-                                ) : (
-                                  <span className="text-blue-500">In Progress...</span>
-                                )}
-                              </div>
+                            <div className="text-xs text-muted-foreground">
+                              {opportunity.price && `${formatCurrency(opportunity.price)} • `}
+                              Vol: {formatPercent(opportunity.volatility || 0)}
+                              {opportunity.price_change && ` • ${opportunity.price_change >= 0 ? '+' : ''}${opportunity.price_change.toFixed(2)}%`}
+                              {opportunity.volume_surge && <span className="text-orange-500 ml-1">🔥</span>}
                             </div>
                           </div>
-                        )}
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          {showAdvanced && opportunity.target_profit && opportunity.stop_loss && (
+                            <div className="text-xs text-muted-foreground text-right">
+                              <div>+{formatPercent(opportunity.target_profit)}</div>
+                              <div>-{formatPercent(opportunity.stop_loss)}</div>
+                            </div>
+                          )}
+                          <Badge 
+                            variant={
+                              opportunity.recommendation === 'strong_buy' || opportunity.recommendation === 'buy' ? 'default' : 
+                              opportunity.recommendation === 'sell' ? 'destructive' : 'outline'
+                            }
+                            className="px-2 py-1 text-xs"
+                          >
+                            {opportunity.score ? `${(opportunity.score * 100).toFixed(0)}%` : 'AUTO'}
+                          </Badge>
+                        </div>
                       </div>
-                    )
-                  })}
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* History with P&L Chart and Timeline */}
+        <TabsContent value="history">
+          <div className="space-y-4">
+            {/* P&L Performance Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <TrendingUp className="h-5 w-5" />
+                  <span>Profit & Loss Over Time</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {pnlChartData.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No P&L data available
+                  </div>
+                ) : (
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={pnlChartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="timestamp" 
+                          tickFormatter={(timestamp) => new Date(timestamp).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric'
+                          })}
+                        />
+                        <YAxis 
+                          tickFormatter={(value) => formatCurrency(value)}
+                        />
+                        <Tooltip
+                          formatter={(value, name) => [
+                            formatCurrency(value as number),
+                            name === 'cumulative_pnl' ? 'Total P&L' : 'Trade P&L'
+                          ]}
+                          labelFormatter={(timestamp) => `Date: ${new Date(timestamp).toLocaleString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}`}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="cumulative_pnl"
+                          stroke="#8884d8"
+                          strokeWidth={2}
+                          dot={{ r: 3 }}
+                          name="cumulative_pnl"
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Bot Activity Timeline */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center space-x-2">
+                    <History className="h-5 w-5" />
+                    <span>Bot Activity Timeline</span>
+                  </CardTitle>
+                  {orderHistory.summary && (
+                    <div className="flex space-x-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Total: </span>
+                        <span className="font-medium">{orderHistory.summary.total_trades}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Profitable: </span>
+                        <span className="font-medium text-green-500">{orderHistory.summary.profitable_trades}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">P&L: </span>
+                        <span className={`font-medium ${orderHistory.summary.total_profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                          {formatCurrency(orderHistory.summary.total_profit || 0)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent>
+                {orderHistory.orders.length === 0 && orderHistory.timeline?.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No activity history available
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {/* Combine and sort trades and timeline events */}
+                    {[
+                      ...orderHistory.orders.map(order => ({
+                        type: 'trade',
+                        timestamp: order.sell_time || order.buy_time,
+                        data: order,
+                        id: `trade-${order.id}`
+                      })),
+                      ...(orderHistory.timeline || []).map(event => ({
+                        type: 'event',
+                        timestamp: event.timestamp,
+                        data: event,
+                        id: event.id
+                      }))
+                    ]
+                      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                      .map((item) => {
+                        if (item.type === 'trade') {
+                          const order = item.data
+                          const isExpanded = expandedOrders.has(order.id)
+                          const isActive = order.status === 'active'
+                          const isProfitable = order.profit_percent > 0
+                          
+                          return (
+                            <div key={item.id} className="border rounded-lg overflow-hidden">
+                              {/* Trade Row */}
+                              <div 
+                                className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                                onClick={() => toggleOrderExpansion(order.id)}
+                              >
+                                <div className="flex items-center justify-between">
+                                  {/* Left: Symbol and Status */}
+                                  <div className="flex items-center space-x-3">
+                                    <div className="flex flex-col items-center">
+                                      <div className={`h-3 w-3 rounded-full ${
+                                        isActive ? 'bg-blue-500 animate-pulse' : 
+                                        isProfitable ? 'bg-green-500' : 'bg-red-500'
+                                      }`} />
+                                    </div>
+                                    
+                                    <div>
+                                      <div className="flex items-center space-x-2">
+                                        <span className="font-medium text-lg">{order.symbol}</span>
+                                        <Badge variant={isActive ? 'default' : 'secondary'}>
+                                          {isActive ? 'Active' : 'Closed'}
+                                        </Badge>
+                                        {isProfitable ? (
+                                          <ArrowUpRight className="h-4 w-4 text-green-500" />
+                                        ) : (
+                                          <ArrowDownRight className="h-4 w-4 text-red-500" />
+                                        )}
+                                      </div>
+                                      <div className="text-sm text-muted-foreground flex items-center space-x-2">
+                                        <Clock className="h-3 w-3" />
+                                        <span>
+                                          {new Date(order.buy_time).toLocaleTimeString('en-US', { 
+                                            hour: '2-digit', 
+                                            minute: '2-digit'
+                                          })}
+                                        </span>
+                                        {order.sell_time && (
+                                          <>
+                                            <span>→</span>
+                                            <span>
+                                              {new Date(order.sell_time).toLocaleTimeString('en-US', { 
+                                                hour: '2-digit', 
+                                                minute: '2-digit'
+                                              })}
+                                            </span>
+                                          </>
+                                        )}
+                                        <Timer className="h-3 w-3 ml-2" />
+                                        <span>{order.holding_time}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Center: Prices */}
+                                  <div className="flex items-center space-x-4 text-sm">
+                                    <div>
+                                      <div className="text-muted-foreground">Entry</div>
+                                      <div className="font-medium">{formatCurrency(order.buy_price)}</div>
+                                    </div>
+                                    {order.sell_price ? (
+                                      <div>
+                                        <div className="text-muted-foreground">Exit</div>
+                                        <div className="font-medium">{formatCurrency(order.sell_price)}</div>
+                                      </div>
+                                    ) : (
+                                      <div>
+                                        <div className="text-muted-foreground">Current</div>
+                                        <div className="font-medium">{formatCurrency(order.current_price || 0)}</div>
+                                      </div>
+                                    )}
+                                    <div>
+                                      <div className="text-muted-foreground">Qty</div>
+                                      <div className="font-medium">{order.quantity.toFixed(4)}</div>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Right: P&L and Expand */}
+                                  <div className="flex items-center space-x-3">
+                                    <div className="text-right">
+                                      <div className={`font-bold text-lg ${
+                                        isProfitable ? 'text-green-500' : 'text-red-500'
+                                      }`}>
+                                        {isProfitable ? '+' : ''}{formatCurrency(order.profit_dollar)}
+                                      </div>
+                                      <div className={`text-sm ${
+                                        isProfitable ? 'text-green-500' : 'text-red-500'
+                                      }`}>
+                                        {isProfitable ? '+' : ''}{formatPercent(order.profit_percent)}
+                                      </div>
+                                    </div>
+                                    {isExpanded ? (
+                                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                                    ) : (
+                                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Expanded Details */}
+                              {isExpanded && (
+                                <div className="px-4 pb-4 border-t bg-muted/30">
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                                    {order.entry_signal && (
+                                      <div>
+                                        <div className="text-xs text-muted-foreground mb-1">Entry Signal</div>
+                                        <div className="text-sm font-medium">{order.entry_signal}</div>
+                                      </div>
+                                    )}
+                                    {order.exit_signal && (
+                                      <div>
+                                        <div className="text-xs text-muted-foreground mb-1">Exit Signal</div>
+                                        <div className="text-sm font-medium">{order.exit_signal}</div>
+                                      </div>
+                                    )}
+                                    <div>
+                                      <div className="text-xs text-muted-foreground mb-1">Trade Value</div>
+                                      <div className="text-sm font-medium">
+                                        {formatCurrency(order.buy_price * order.quantity)}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        } else {
+                          // Timeline event
+                          const event = item.data
+                          return (
+                            <div key={item.id} className="border border-dashed rounded-lg p-3 bg-muted/20">
+                              <div className="flex items-center space-x-3">
+                                <div className="h-2 w-2 rounded-full bg-blue-400" />
+                                <div className="flex-1">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <span className="font-medium text-sm">{event.description}</span>
+                                      <div className="text-xs text-muted-foreground mt-1">
+                                        {new Date(event.timestamp).toLocaleString('en-US', {
+                                          month: 'short',
+                                          day: 'numeric',
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                          second: '2-digit'
+                                        })}
+                                      </div>
+                                    </div>
+                                    <Badge variant="outline" className="text-xs">
+                                      {event.event_type}
+                                    </Badge>
+                                  </div>
+                                  {event.details && Object.keys(event.details).length > 0 && (
+                                    <div className="mt-2 text-xs text-muted-foreground">
+                                      {Object.entries(event.details).map(([key, value]) => (
+                                        <span key={key} className="mr-3">
+                                          {key}: {String(value)}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        }
+                      })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* Performance Metrics */}
@@ -937,21 +1054,25 @@ export function CryptoDayTradingPanel() {
                   <CardContent className="space-y-3">
                     <div className="flex justify-between">
                       <span>Profit/Loss:</span>
-                      <span className={metrics.daily_metrics.profit_loss >= 0 ? 'text-green-500' : 'text-red-500'}>
-                        {formatCurrency(metrics.daily_metrics.profit_loss)}
+                      <span className={
+                        metrics?.daily_metrics?.profit_loss !== undefined && metrics.daily_metrics.profit_loss >= 0 
+                          ? 'text-green-500' 
+                          : 'text-red-500'
+                      }>
+                        {formatCurrency(metrics?.daily_metrics?.profit_loss || 0)}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span>Trades Today:</span>
-                      <span>{metrics.daily_metrics.trades_today}</span>
+                      <span>{metrics?.daily_metrics?.trades_today || 0}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Win Rate:</span>
-                      <span>{formatPercent(metrics.daily_metrics.win_rate)}</span>
+                      <span>{formatPercent(metrics?.daily_metrics?.win_rate || 0)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Capital Utilization:</span>
-                      <span>{formatPercent(metrics.daily_metrics.capital_utilization)}</span>
+                      <span>{formatPercent(metrics?.daily_metrics?.capital_utilization || 0)}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -963,21 +1084,21 @@ export function CryptoDayTradingPanel() {
                   <CardContent className="space-y-3">
                     <div className="flex justify-between">
                       <span>Daily Loss Limit:</span>
-                      <span>{formatCurrency(metrics.risk_metrics.max_daily_loss_limit)}</span>
+                      <span>{formatCurrency(metrics?.risk_metrics?.max_daily_loss_limit || 500)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Remaining Budget:</span>
-                      <span className={metrics.risk_metrics.remaining_risk_budget > 0 ? 'text-green-500' : 'text-red-500'}>
-                        {formatCurrency(metrics.risk_metrics.remaining_risk_budget)}
+                      <span className={(metrics?.risk_metrics?.remaining_risk_budget || 0) > 0 ? 'text-green-500' : 'text-red-500'}>
+                        {formatCurrency(metrics?.risk_metrics?.remaining_risk_budget || 0)}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span>Current Exposure:</span>
-                      <span>{metrics.risk_metrics.current_exposure.toFixed(1)}%</span>
+                      <span>{(metrics?.risk_metrics?.current_exposure || 0).toFixed(1)}%</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Avg Hold Time:</span>
-                      <span>{metrics.position_analysis.avg_hold_time_minutes.toFixed(1)} min</span>
+                      <span>{(metrics?.position_analysis?.avg_hold_time_minutes || 0).toFixed(1)} min</span>
                     </div>
                   </CardContent>
                 </Card>

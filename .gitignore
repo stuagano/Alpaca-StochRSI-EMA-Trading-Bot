@@ -1,13 +1,12 @@
-
 # Environment Variables (NEVER commit these)
 .env
 .env.local
 .env.*.local
 
-# API Keys and Secrets (Legacy - migrate to .env)
-AUTH/authAlpaca.txt
-AUTH/ConfigFile.txt
+# API Keys and Secrets
 config/secrets.json
+*.key
+*.pem
 
 # Python
 __pycache__/
@@ -47,15 +46,17 @@ ENV/
 *.swp
 *.swo
 *~
+.cursor/
 
 # Logs
 *.log
-logs/
+/logs/*.log
+/logs/*.txt
+/logs/*.json
 flask.log
 flask_startup.log
 
 # Trading Data
-ORDERS/*.csv
 backups/
 data/
 *.pickle
@@ -77,43 +78,67 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+.tox/
+.hypothesis/
 
-# Security
-security_audit.json
-config_backup_*/
+# Frontend
+frontend-shadcn/node_modules/
+frontend-shadcn/.next/
+frontend-shadcn/out/
+frontend-shadcn/dist/
+frontend-shadcn/.env.local
+frontend-shadcn/.vercel
+frontend-shadcn/*.log
+frontend-shadcn/playwright-report/
+frontend-shadcn/test-results/
+frontend-shadcn/.playwright/
+
+# Archive directories (old code)
+/archive/
+/docs/archive/
+/scripts/demos/
 
 # Temporary files
 tmp/
 temp/
 *.tmp
+*.bak
+*.backup
+*.old
 
-# Configuration backups
-config/backups/
-
-# Crush specific
-.crush/
-
-# Claude Flow generated files
-.claude/settings.local.json
-.mcp.json
-claude-flow.config.json
-.swarm/
-.hive-mind/
-memory/claude-flow-data.json
-memory/sessions/*
-!memory/sessions/README.md
-memory/agents/*
-!memory/agents/README.md
-coordination/memory_bank/*
-coordination/subtasks/*
-coordination/orchestration/*
+# Database files
 *.db
 *.db-journal
 *.db-wal
 *.sqlite
 *.sqlite-journal
 *.sqlite-wal
-claude-flow
-claude-flow.bat
-claude-flow.ps1
-hive-mind-prompt-*.txt
+
+# Claude specific
+.claude/settings.local.json
+.claude/agents/*.local.md
+
+# MCP configuration (local)
+.mcp.json
+mcp.json
+
+# Performance metrics (auto-generated)
+**/metrics/*.json
+**/performance*.json
+**/task-metrics.json
+
+# Test reports (keep test code, ignore reports)
+test-results*.json
+test-report*.md
+/tests/reports/*.html
+/tests/reports/*.json
+
+# Playwright screenshots
+.playwright-mcp/
+
+# History files
+.history/
+
+# Crush configuration
+.crush/
+".crush.json "

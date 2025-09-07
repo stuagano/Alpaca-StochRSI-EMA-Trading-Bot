@@ -1,82 +1,40 @@
-# Claude Code Agents Directory Structure
+# Expert Agent Panel
 
-This directory contains sub-agent definitions organized by type and purpose. Each agent has specific capabilities, tool restrictions, and naming conventions that trigger automatic delegation.
+These agents provide best practice guidance and challenge architectural decisions for the Alpaca Trading Bot.
 
-## Directory Structure
+## Available Experts
 
-```
-.claude/agents/
-├── README.md                    # This file
-├── _templates/                  # Agent templates
-│   ├── base-agent.yaml
-│   └── agent-types.md
-├── development/                 # Development agents
-│   ├── backend/
-│   ├── frontend/
-│   ├── fullstack/
-│   └── api/
-├── testing/                     # Testing agents
-│   ├── unit/
-│   ├── integration/
-│   ├── e2e/
-│   └── performance/
-├── architecture/                # Architecture agents
-│   ├── system-design/
-│   ├── database/
-│   ├── cloud/
-│   └── security/
-├── devops/                      # DevOps agents
-│   ├── ci-cd/
-│   ├── infrastructure/
-│   ├── monitoring/
-│   └── deployment/
-├── documentation/               # Documentation agents
-│   ├── api-docs/
-│   ├── user-guides/
-│   ├── technical/
-│   └── readme/
-├── analysis/                    # Analysis agents
-│   ├── code-review/
-│   ├── performance/
-│   ├── security/
-│   └── refactoring/
-├── data/                        # Data agents
-│   ├── etl/
-│   ├── analytics/
-│   ├── ml/
-│   └── visualization/
-└── specialized/                 # Specialized agents
-    ├── mobile/
-    ├── embedded/
-    ├── blockchain/
-    └── ai-ml/
-```
+### 🏗️ Architecture Expert (`architecture-expert.md`)
+- Challenges monolith vs microservices decisions
+- Reviews system design patterns
+- Suggests scalability improvements
 
-## Naming Conventions
+### ⚡ Performance Expert (`performance-expert.md`)
+- Identifies bottlenecks
+- Suggests optimization strategies
+- Reviews async/sync patterns
 
-Agent files follow this naming pattern:
-`[type]-[specialization]-[capability].agent.yaml`
+### 🔒 Security Expert (`security-expert.md`)
+- API key management
+- Data encryption practices
+- Network security
 
-Examples:
-- `dev-backend-api.agent.yaml`
-- `test-unit-jest.agent.yaml`
-- `arch-cloud-aws.agent.yaml`
-- `docs-api-openapi.agent.yaml`
+### 📈 Trading Strategy Expert (`trading-expert.md`)
+- Validates trading logic
+- Risk management review
+- Backtesting best practices
 
-## Automatic Delegation Triggers
+### 🧹 Code Quality Expert (`code-quality-expert.md`)
+- DRY principle enforcement
+- Refactoring suggestions
+- Testing coverage
 
-Claude Code automatically delegates to agents based on:
-1. **Keywords in user request**: "test", "deploy", "document", "review"
-2. **File patterns**: `*.test.js` → testing agent, `*.tf` → infrastructure agent
-3. **Task complexity**: Multi-step tasks spawn coordinator agents
-4. **Domain detection**: Database queries → data agent, API endpoints → backend agent
+## Usage
 
-## Tool Restrictions
+Each expert will:
+1. **Challenge** your current implementation
+2. **Suggest** industry best practices
+3. **Validate** your decisions
+4. **Provide** actionable improvements
 
-Each agent type has specific tool access:
-- **Development agents**: Full file system access, code execution
-- **Testing agents**: Test runners, coverage tools, limited write access
-- **Architecture agents**: Read-only access, diagram generation
-- **Documentation agents**: Markdown tools, read access, limited write to docs/
-- **DevOps agents**: Infrastructure tools, deployment scripts, environment access
-- **Analysis agents**: Read-only access, static analysis tools
+Activate an expert by referencing their file when you need specific guidance.

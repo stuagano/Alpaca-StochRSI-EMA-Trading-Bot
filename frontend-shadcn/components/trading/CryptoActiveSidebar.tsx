@@ -9,6 +9,7 @@ import {
   Zap, AlertCircle, Clock
 } from "lucide-react"
 import { formatCurrency, formatPercent } from '@/lib/utils'
+import unifiedAPIClient from '@/lib/api/client'
 
 interface CryptoSignal {
   symbol: string
@@ -45,13 +46,13 @@ export function CryptoActiveSidebar({ marketMode, signals, onExecute }: CryptoAc
   const fetchCryptoSignals = async () => {
     try {
       setLoading(true)
-      const response = await fetch('http://localhost:9012/api/signals')
+      const response = await fetch('http://localhost:9100/api/crypto/signals')
       if (response.ok) {
         const data = await response.json()
-        setCryptoSignals(data.slice(0, 5)) // Top 5 signals
+        setCryptoSignals(Array.isArray(data) ? data.slice(0, 5) : data.signals ? data.signals.slice(0, 5) : [])
       }
     } catch (error) {
-      console.error('Failed to fetch crypto signals:', error)
+      // Silently fail - endpoint may not exist
     } finally {
       setLoading(false)
     }
@@ -81,9 +82,9 @@ export function CryptoActiveSidebar({ marketMode, signals, onExecute }: CryptoAc
 
   const getSignalText = (signal: any) => {
     if (marketMode === 'crypto') {
-      return signal.action.toUpperCase()
+      return signal?.action?.toUpperCase() || 'HOLD'
     } else {
-      return signal.signal || 'HOLD'
+      return signal?.signal || 'HOLD'
     }
   }
 

@@ -1,6 +1,7 @@
 """
 High-Frequency Crypto Day Trading Strategy
 Focuses on volatility, quick gains, and rapid position turnover
+WITH COMPREHENSIVE ERROR HANDLING AND TRADE LOGGING
 """
 
 import numpy as np
@@ -9,14 +10,61 @@ import asyncio
 import websocket
 import json
 import time
+import os
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple, Any
+from dataclasses import dataclass, asdict
 from concurrent.futures import ThreadPoolExecutor
 import logging
 from threading import Lock
+from enum import Enum
+from alpaca.common.exceptions import APIError
 
+# Configure structured logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s | %(levelname)-8s | %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 logger = logging.getLogger(__name__)
+
+@dataclass
+class TradeLog:
+    """Comprehensive trade log entry with all required fields"""
+    timestamp: str
+    action: str  # 'BUY' or 'SELL'
+    symbol: str
+    quantity: float
+    price: float
+    status: str  # 'filled', 'partially_filled', 'failed'
+    error_notes: str = ""
+    order_id: str = ""
+    pnl: float = 0.0
+    execution_time_ms: int = 0
+    
+    def to_console_string(self) -> str:
+        """Format for clear console output"""
+        status_emoji = {
+            "filled": "✅",
+            "partially_filled": "⚠️",
+            "failed": "❌",
+            "pending": "⏳"
+        }.get(self.status, "❓")
+        
+        action_color = "\033[92m" if self.action == "BUY" else "\033[91m"
+        reset_color = "\033[0m"
+        
+        return (
+            f"{status_emoji} {self.timestamp} | "
+            f"{action_color}{self.action:4s}{reset_color} | "
+            f"{self.symbol:10s} | "
+            f"Qty: {self.quantity:8.4f} | "
+            f"Price: ${self.price:10.2f} | "
+            f"Status: {self.status:15s} | "
+            f"P&L: ${self.pnl:+8.2f} | "
+            f"Exec: {self.execution_time_ms}ms | "
+            f"{self.error_notes}"
+        )
 
 @dataclass
 class CryptoSignal:
@@ -34,22 +82,50 @@ class CryptoSignal:
 class CryptoVolatilityScanner:
     """Scans for high volatility crypto pairs suitable for day trading"""
     
-    def __init__(self):
-        # Use symbols that are actually available in Alpaca
-        self.high_volume_pairs = [
-            'BTCUSD', 'ETHUSD', 'DOGEUSD', 'SOLUSD', 'LTCUSD',
-            'AVAXUSD', 'LINKUSD', 'UNIUSD', 'BCHUSD', 'DOTUSD'
+    def __init__(self, enabled_symbols=None):
+        # Default verified crypto pairs if no dynamic list provided
+        self.default_pairs = [
+            # Major pairs - confirmed working
+            'BTCUSD', 'ETHUSD', 'LTCUSD', 'BCHUSD',
+            # DeFi tokens - verified  
+            'UNIUSD', 'LINKUSD', 'AAVEUSD', 'MKRUSD',
+            # Layer 1 blockchains - verified
+            'SOLUSD', 'AVAXUSD', 'ADAUSD', 'DOTUSD', 'MATICUSD',
+            # Meme coins & popular - verified
+            'DOGEUSD', 'SHIBUSD', 
+            # Additional liquid pairs - removing ATOMUSD as it caused errors
+            'XRPUSD', 'XLMUSD', 'ALGOUSD',
+            # Stablecoins trading pairs
+            'BTCUSDT', 'ETHUSDT', 'BTCUSDC', 'ETHUSDC'
         ]
         
-        # Minimum criteria for day trading
-        self.min_24h_volume = 10000000  # $10M daily volume
-        self.min_volatility = 0.02  # 2% price movement
-        self.max_spread = 0.001  # 0.1% bid-ask spread
+        # Use provided enabled symbols or fall back to defaults
+        self.high_volume_pairs = enabled_symbols or self.default_pairs
+        self.enabled_trading_symbols = set(enabled_symbols) if enabled_symbols else set(self.default_pairs)
+        
+        # More aggressive criteria for crypto day trading
+        self.min_24h_volume = 1000000   # $1M daily volume (reduced from $10M)
+        self.min_volatility = 0.005     # 0.5% price movement (reduced from 2%)
+        self.max_spread = 0.005         # 0.5% bid-ask spread (increased tolerance)
         
         self.price_data = {}
         self.volatility_data = {}
         self.volume_data = {}
         self.lock = Lock()
+    
+    def update_enabled_symbols(self, enabled_symbols: List[str]):
+        """Update the list of symbols enabled for trading"""
+        with self.lock:
+            self.enabled_trading_symbols = set(enabled_symbols)
+            # Update high_volume_pairs to only include enabled symbols
+            self.high_volume_pairs = [symbol for symbol in self.high_volume_pairs 
+                                     if symbol in self.enabled_trading_symbols]
+            logger.info(f"Updated enabled trading symbols: {len(self.enabled_trading_symbols)} symbols")
+    
+    def get_enabled_symbols(self) -> List[str]:
+        """Get list of currently enabled trading symbols"""
+        with self.lock:
+            return list(self.enabled_trading_symbols)
         
     def calculate_volatility(self, prices: List[float], window: int = 20) -> float:
         """Calculate price volatility using standard deviation"""
@@ -133,10 +209,10 @@ class CryptoVolatilityScanner:
                         volume_surge: bool, momentum: float) -> Optional[CryptoSignal]:
         """Generate trading signal based on analysis"""
         
-        # Scalping thresholds
-        high_momentum_threshold = 0.7
-        low_momentum_threshold = 0.3
-        high_volatility_threshold = 0.05
+        # More aggressive scalping thresholds for crypto
+        high_momentum_threshold = 0.6      # Reduced from 0.7
+        low_momentum_threshold = 0.4       # Increased from 0.3 
+        high_volatility_threshold = 0.01   # Reduced from 0.05 (1% instead of 5%)
         
         # Determine action
         action = 'hold'
@@ -156,29 +232,49 @@ class CryptoVolatilityScanner:
                 action = 'sell'
                 confidence = min(0.9, volatility * 10 + (0.3 if volume_surge else 0))
         
-        # Medium volatility signals
+        # Medium volatility signals (more aggressive)
         elif volatility > self.min_volatility:
-            if momentum > 0.8 and volume_surge:
+            if momentum > 0.65 and volume_surge:  # Reduced from 0.8
                 action = 'buy'
-                confidence = 0.7
-            elif momentum < 0.2 and volume_surge:
+                confidence = 0.6  # Reduced from 0.7
+            elif momentum < 0.35 and volume_surge:  # Increased from 0.2
                 action = 'sell'
-                confidence = 0.7
-        
-        # Volume surge signals (momentum plays)
-        if volume_surge and action == 'hold':
-            if momentum > 0.6:
+                confidence = 0.6  # Reduced from 0.7
+            # Add signals without volume surge requirement
+            elif momentum > 0.75:  # Strong momentum alone
                 action = 'buy'
-                confidence = 0.6
+                confidence = 0.5
+            elif momentum < 0.25:  # Strong bearish momentum
+                action = 'sell'
+                confidence = 0.5
+        
+        # Volume surge signals (momentum plays) - more aggressive
+        if volume_surge and action == 'hold':
+            if momentum > 0.55:  # Reduced from 0.6
+                action = 'buy'
+                confidence = 0.5     # Reduced from 0.6
                 target_profit = 0.004  # Quick 0.4% target
                 stop_loss = 0.002      # Tight 0.2% stop
-            elif momentum < 0.4:
+            elif momentum < 0.45:    # Increased from 0.4
                 action = 'sell'
-                confidence = 0.6
+                confidence = 0.5     # Reduced from 0.6
                 target_profit = 0.004
                 stop_loss = 0.002
         
-        if action != 'hold' and confidence > 0.5:
+        # Additional aggressive signals for crypto volatility
+        if action == 'hold' and volatility > 0.003:  # Any decent volatility
+            if momentum > 0.58:  # Moderate bullish momentum
+                action = 'buy'
+                confidence = 0.45
+                target_profit = 0.003
+                stop_loss = 0.0015
+            elif momentum < 0.42:  # Moderate bearish momentum  
+                action = 'sell'
+                confidence = 0.45
+                target_profit = 0.003
+                stop_loss = 0.0015
+        
+        if action != 'hold' and confidence > 0.4:  # Reduced from 0.5
             return CryptoSignal(
                 symbol=symbol,
                 action=action,
@@ -210,7 +306,7 @@ class CryptoVolatilityScanner:
                 self.volume_data[symbol] = self.volume_data[symbol][-1000:]
 
 class CryptoDayTradingBot:
-    """High-frequency crypto day trading bot"""
+    """High-frequency crypto day trading bot with comprehensive error handling"""
     
     def __init__(self, alpaca_client, initial_capital: float = 10000):
         self.alpaca = alpaca_client
@@ -231,6 +327,19 @@ class CryptoDayTradingBot:
         # Risk management
         self.max_daily_loss = initial_capital * 0.02  # 2% daily loss limit
         self.max_drawdown = initial_capital * 0.05    # 5% maximum drawdown
+        
+        # Error handling
+        self.error_count = 0
+        self.max_errors = 10
+        self.reconnect_attempts = 0
+        self.max_reconnect_attempts = 5
+        self.rate_limit_errors = 0
+        self.last_rate_limit_time = None
+        
+        # Trade logging
+        self.trade_log: List[TradeLog] = []
+        self.log_file = 'logs/crypto_trade_timeline.log'
+        os.makedirs('logs', exist_ok=True)
         
         self.is_running = False
         self.executor = ThreadPoolExecutor(max_workers=5)
@@ -287,7 +396,18 @@ class CryptoDayTradingBot:
                 await self._execute_entry(signal)
     
     async def _execute_entry(self, signal: CryptoSignal):
-        """Execute entry trade"""
+        """Execute entry trade with comprehensive error handling and logging"""
+        start_time = time.time()
+        trade_log = TradeLog(
+            timestamp=datetime.now().isoformat(),
+            action=signal.action.upper(),
+            symbol=signal.symbol,
+            quantity=0,
+            price=signal.price,
+            status="pending",
+            error_notes=""
+        )
+        
         try:
             # Calculate position size - ensure minimum $10 order size
             position_value = max(
@@ -296,9 +416,10 @@ class CryptoDayTradingBot:
             )
             
             quantity = position_value / signal.price
+            trade_log.quantity = quantity
             
-            # Place order
-            order = await self._place_crypto_order(
+            # Place order with error handling
+            order = await self._place_crypto_order_with_retry(
                 symbol=signal.symbol,
                 side=signal.action,
                 quantity=quantity,
@@ -318,10 +439,53 @@ class CryptoDayTradingBot:
                     'order_id': order.id if hasattr(order, 'id') else str(order)
                 }
                 
+                trade_log.status = "filled"
+                trade_log.order_id = order.id if hasattr(order, 'id') else str(order)
+                trade_log.execution_time_ms = int((time.time() - start_time) * 1000)
+                
                 logger.info(f"🎯 Opened {signal.action.upper()} position: {signal.symbol} @ {signal.price:.4f}")
+            else:
+                trade_log.status = "failed"
+                trade_log.error_notes = "Order placement failed"
         
+        except APIError as e:
+            trade_log.status = "failed"
+            if hasattr(e, 'code'):
+                if e.code == 429:
+                    trade_log.error_notes = "API rate limit exceeded"
+                    self.rate_limit_errors += 1
+                    self.last_rate_limit_time = datetime.now()
+                    logger.error(f"🚫 Rate limit hit for {signal.symbol}: {e}")
+                    await self._handle_rate_limit()
+                elif e.code == 403:
+                    trade_log.error_notes = "Insufficient funds"
+                    logger.error(f"💸 Insufficient funds for {signal.symbol}")
+                elif e.code == 400:
+                    trade_log.error_notes = f"Invalid request: {str(e)}"
+                    logger.error(f"❌ Invalid request for {signal.symbol}: {e}")
+                else:
+                    trade_log.error_notes = f"API error {e.code}: {str(e)}"
+                    logger.error(f"❌ API error for {signal.symbol}: {e}")
+            else:
+                trade_log.error_notes = f"API error: {str(e)}"
+                logger.error(f"❌ API error for {signal.symbol}: {e}")
+                
+        except ConnectionError as e:
+            trade_log.status = "failed"
+            trade_log.error_notes = "Connection lost, attempting reconnect"
+            logger.error(f"🔌 Connection error for {signal.symbol}: {e}")
+            await self._handle_connection_error()
+            
         except Exception as e:
-            logger.error(f"Failed to execute entry for {signal.symbol}: {e}")
+            trade_log.status = "failed"
+            trade_log.error_notes = f"Unexpected error: {str(e)}"
+            logger.error(f"❌ Unexpected error for {signal.symbol}: {e}")
+            self.error_count += 1
+            
+        finally:
+            # Log trade to timeline
+            trade_log.execution_time_ms = int((time.time() - start_time) * 1000)
+            self._log_trade(trade_log)
     
     async def _check_exit_conditions(self):
         """Check exit conditions for all active positions"""
@@ -443,6 +607,85 @@ class CryptoDayTradingBot:
             logger.error(f"Order placement failed for {symbol}: {e}")
             return None
     
+    async def _place_crypto_order_with_retry(self, symbol: str, side: str, quantity: float, order_type: str = 'market', max_retries: int = 3):
+        """Place crypto order with retry logic for transient failures"""
+        for attempt in range(max_retries):
+            try:
+                order = await self._place_crypto_order(symbol, side, quantity, order_type)
+                if order:
+                    return order
+                    
+            except APIError as e:
+                if hasattr(e, 'code') and e.code == 429:
+                    # Rate limit - wait longer
+                    wait_time = min(60, 2 ** attempt * 5)
+                    logger.warning(f"Rate limit hit, waiting {wait_time}s before retry")
+                    await asyncio.sleep(wait_time)
+                elif attempt < max_retries - 1:
+                    # Other API errors - exponential backoff
+                    wait_time = 2 ** attempt
+                    logger.warning(f"Retrying order after {wait_time}s (attempt {attempt + 1}/{max_retries})")
+                    await asyncio.sleep(wait_time)
+                else:
+                    raise
+                    
+            except ConnectionError as e:
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** attempt
+                    logger.warning(f"Connection error, retrying after {wait_time}s")
+                    await asyncio.sleep(wait_time)
+                else:
+                    raise
+                    
+        return None
+    
+    async def _handle_rate_limit(self):
+        """Handle API rate limit errors with exponential backoff"""
+        if self.rate_limit_errors > 5:
+            logger.critical("Too many rate limit errors, pausing trading for 5 minutes")
+            await asyncio.sleep(300)  # 5 minutes
+            self.rate_limit_errors = 0
+        else:
+            wait_time = min(60, 2 ** self.rate_limit_errors)
+            logger.warning(f"Rate limit: waiting {wait_time} seconds")
+            await asyncio.sleep(wait_time)
+    
+    async def _handle_connection_error(self):
+        """Handle connection errors with reconnection logic"""
+        self.reconnect_attempts += 1
+        
+        if self.reconnect_attempts > self.max_reconnect_attempts:
+            logger.critical("Max reconnection attempts reached, stopping bot")
+            self.is_running = False
+            return
+        
+        wait_time = min(60, 2 ** self.reconnect_attempts)
+        logger.info(f"Reconnecting in {wait_time} seconds (attempt {self.reconnect_attempts})")
+        await asyncio.sleep(wait_time)
+        
+        # Reset on successful operations
+        self.reconnect_attempts = 0
+    
+    def _log_trade(self, trade_log: TradeLog):
+        """Log trade to console and file with timeline format"""
+        # Add to in-memory log
+        self.trade_log.append(trade_log)
+        
+        # Print to console with formatting
+        print(trade_log.to_console_string())
+        
+        # Write to file as JSON for analysis
+        try:
+            with open(self.log_file, 'a') as f:
+                f.write(json.dumps(asdict(trade_log)) + '\n')
+        except Exception as e:
+            logger.error(f"Failed to write trade log to file: {e}")
+        
+        # Update metrics
+        if trade_log.status == "filled":
+            self.daily_trades += 1
+            self.total_trades += 1
+    
     async def _get_current_price(self, symbol: str) -> Optional[float]:
         """Get current price for symbol"""
         try:
@@ -528,14 +771,67 @@ class CryptoDayTradingBot:
             'daily_trades': self.daily_trades,
             'win_rate': self.win_rate,
             'total_trades': self.total_trades,
-            'positions': list(self.active_positions.keys())
+            'positions': list(self.active_positions.keys()),
+            'error_count': self.error_count,
+            'rate_limit_errors': self.rate_limit_errors,
+            'recent_trades': len(self.trade_log)
         }
     
+    def print_trade_timeline(self, last_n: int = 20):
+        """Print formatted trade timeline to console"""
+        print("\n" + "="*100)
+        print("📊 TRADE TIMELINE (Last {} Trades)".format(min(last_n, len(self.trade_log))))
+        print("="*100)
+        
+        if not self.trade_log:
+            print("No trades executed yet")
+        else:
+            # Print header
+            print(f"{'Time':<20} {'Action':<6} {'Symbol':<10} {'Qty':<10} {'Price':<12} {'Status':<15} {'P&L':<10} {'Notes'}")
+            print("-"*100)
+            
+            # Print recent trades
+            for trade in self.trade_log[-last_n:]:
+                print(trade.to_console_string())
+        
+        # Print summary statistics
+        print("\n" + "="*100)
+        print("📈 TRADING SUMMARY")
+        print("-"*100)
+        
+        filled_trades = [t for t in self.trade_log if t.status == "filled"]
+        failed_trades = [t for t in self.trade_log if t.status == "failed"]
+        
+        print(f"Total Trades Attempted: {len(self.trade_log)}")
+        print(f"Successful Trades: {len(filled_trades)}")
+        print(f"Failed Trades: {len(failed_trades)}")
+        
+        if filled_trades:
+            total_pnl = sum(t.pnl for t in filled_trades)
+            avg_exec_time = sum(t.execution_time_ms for t in filled_trades) / len(filled_trades)
+            print(f"Total P&L: ${total_pnl:+,.2f}")
+            print(f"Average Execution Time: {avg_exec_time:.0f}ms")
+        
+        if failed_trades:
+            print("\n⚠️ ERROR SUMMARY:")
+            error_counts = {}
+            for trade in failed_trades:
+                error = trade.error_notes.split(':')[0] if trade.error_notes else "Unknown"
+                error_counts[error] = error_counts.get(error, 0) + 1
+            
+            for error, count in sorted(error_counts.items(), key=lambda x: x[1], reverse=True):
+                print(f"  {error}: {count} occurrences")
+        
+        print("="*100 + "\n")
+    
     def stop(self):
-        """Stop the trading bot"""
+        """Stop the trading bot and print final summary"""
         logger.info("🛑 Stopping Crypto Day Trading Bot")
         self.is_running = False
         self.executor.shutdown(wait=True)
+        
+        # Print final trade timeline
+        self.print_trade_timeline(last_n=50)
 
 # Integration function for the main bot
 def create_crypto_day_trader(alpaca_client, config: Dict) -> CryptoDayTradingBot:

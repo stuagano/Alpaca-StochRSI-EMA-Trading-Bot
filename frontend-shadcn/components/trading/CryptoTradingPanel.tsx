@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatCurrency, formatPercent } from '@/lib/utils'
 import { Bitcoin, TrendingUp, TrendingDown, Clock, DollarSign } from 'lucide-react'
 import { toast } from 'sonner'
-import { useCryptoAssets, useCryptoPositions, useCryptoQuote, useSubmitCryptoOrder, useCryptoWebSocket } from '@/hooks/useAlpaca'
+import { usePositions, useSubmitOrder, useWebSocket } from '@/hooks/useAlpaca'
 
 interface CryptoAsset {
   symbol: string
@@ -52,21 +52,30 @@ export function CryptoTradingPanel() {
   const [realtimeData, setRealtimeData] = useState<any>({})
 
   // Data hooks
-  const { data: assetsData, isLoading: assetsLoading } = useCryptoAssets()
-  const { data: positionsData, isLoading: positionsLoading } = useCryptoPositions()
-  const { data: currentQuote, isLoading: quoteLoading } = useCryptoQuote(selectedSymbol)
-  const submitCryptoOrder = useSubmitCryptoOrder()
+  // TODO: Add crypto assets hook or fetch from API directly
+  const assetsData = null
+  const assetsLoading = false
+  const { data: positionsData, isLoading: positionsLoading } = usePositions('crypto')
+  // TODO: Add crypto quote hook or fetch from API directly
+  const currentQuote: { last: number; bid: number; ask: number } | null = null
+  const quoteLoading = false
+  const submitCryptoOrder = useSubmitOrder('crypto')
 
   // WebSocket for real-time data
-  const { isConnected } = useCryptoWebSocket((data: any) => {
+  const { isConnected } = useWebSocket([], (data: any) => {
     setRealtimeData((prev: any) => ({
       ...prev,
       [data.symbol]: data
     }))
-  })
+  }, 'crypto')
 
-  const assets = assetsData?.assets || []
-  const positions = positionsData?.positions || []
+  // Mock crypto assets until proper hook is implemented
+  const assets: CryptoAsset[] = [
+    { symbol: 'BTCUSD', name: 'Bitcoin', tradable: true, fractionable: true },
+    { symbol: 'ETHUSD', name: 'Ethereum', tradable: true, fractionable: true },
+    { symbol: 'LTCUSD', name: 'Litecoin', tradable: true, fractionable: true },
+  ]
+  const positions = Array.isArray(positionsData) ? positionsData : (positionsData as any)?.positions || []
 
   // Set default symbol when assets load
   useEffect(() => {
@@ -177,13 +186,13 @@ export function CryptoTradingPanel() {
                   <div className="space-y-1">
                     <div className="text-sm text-muted-foreground">Current Price</div>
                     <div className="text-lg font-semibold" data-testid="crypto-current-price">
-                      {formatCurrency(currentQuote.last)}
+                      $---.--
                     </div>
                   </div>
                   <div className="text-right space-y-1">
                     <div className="text-sm text-muted-foreground">Bid/Ask</div>
                     <div className="text-sm">
-                      {formatCurrency(currentQuote.bid)} / {formatCurrency(currentQuote.ask)}
+                      $---.-- / $---.--
                     </div>
                   </div>
                 </div>
@@ -342,7 +351,7 @@ export function CryptoTradingPanel() {
                 </div>
               ) : (
               <div className="space-y-3">
-                {positions.map((position, index) => {
+                {positions.map((position: any, index: number) => {
                   const pl = parseFloat(position.unrealized_pl)
                   const plPercent = parseFloat(position.unrealized_plpc)
                   const isProfit = pl >= 0

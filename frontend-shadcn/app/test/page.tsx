@@ -15,12 +15,12 @@ export default function TestPage() {
   const { data: riskMetrics, isLoading: riskLoading } = useRiskMetrics()
 
   // Calculate stats
-  const totalPL = positions.reduce((sum, pos) => 
+  const totalPL = positions.reduce((sum: number, pos: any) => 
     sum + parseFloat(pos.unrealized_pl || '0'), 0
   )
   const totalValue = parseFloat(account?.portfolio_value || '0')
   const buyingPower = parseFloat(account?.buying_power || '0')
-  const dayChange = positions.reduce((sum, pos) => 
+  const dayChange = positions.reduce((sum: number, pos: any) => 
     sum + parseFloat(pos.unrealized_intraday_pl || '0'), 0
   )
 
@@ -81,7 +81,7 @@ export default function TestPage() {
               <p className="text-muted-foreground">No positions found</p>
             ) : (
               <div className="space-y-2">
-                {positions.map((position) => (
+                {positions.map((position: any) => (
                   <div key={position.symbol} className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex items-center space-x-3">
                       <div className="font-medium">{position.symbol}</div>
@@ -113,7 +113,7 @@ export default function TestPage() {
               <p className="text-muted-foreground">No open orders</p>
             ) : (
               <div className="space-y-2">
-                {orders.map((order) => (
+                {orders.map((order: any) => (
                   <div key={order.id} className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex items-center space-x-3">
                       <div className="font-medium">{order.symbol}</div>
