@@ -1,5 +1,23 @@
 # Scalping Trading Bot - Architecture Best Practices
 
+## 🚀 NEW: Dedicated Scalping Dashboard Implemented
+
+A dedicated frontend scalping interface has been created at `/scalping` with ultra-high frequency trading capabilities:
+
+- **Ultra-Fast Execution**: Hotkey trading (Space=Buy, Shift+Space=Sell, Esc=Close All)
+- **Real-time Metrics**: Live tracking of 40-100 trades/hour performance  
+- **Micro-timeframes**: 15s, 1m, 5m charts for rapid decision making
+- **Volume Alerts**: Automatic notifications for volume spikes and breakouts
+- **Risk Controls**: Integrated position limits and daily loss monitoring
+- **Bracket Orders**: Automatic take profit and stop loss on every trade
+
+### Quick Access Routes:
+- Main Dashboard: `http://localhost:9100/scalping`
+- From Crypto Page: Click "Scalping Mode" button  
+- From Home Page: Select "Scalping Mode" card
+
+---
+
 Based on industry standards and Alpaca's official examples, here are the key improvements needed:
 
 ## 🎯 Current Issues
