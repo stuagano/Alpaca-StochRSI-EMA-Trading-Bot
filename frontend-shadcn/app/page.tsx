@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { 
   BarChart3, Bitcoin, TrendingUp, Zap, Shield, Target,
-  Clock, DollarSign, Activity, ArrowRight
+  Clock, DollarSign, Activity, ArrowRight, Flame
 } from "lucide-react"
 
 export default function HomePage() {
@@ -26,7 +26,7 @@ export default function HomePage() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-12">
-        <div className="grid gap-8 md:grid-cols-2 max-w-6xl mx-auto">
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
           
           {/* Stock Trading Card */}
           <Card className="relative overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" 
@@ -138,6 +138,63 @@ export default function HomePage() {
               
               <div className="text-xs text-muted-foreground text-center">
                 Trades BTC, ETH, LTC, BCH, UNI, LINK, AAVE, MKR, SOL, AVAX
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Scalping Card */}
+          <Card className="relative overflow-hidden hover:shadow-lg transition-shadow cursor-pointer border-2 border-red-500/20" 
+                onClick={() => router.push('/scalping')}>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-red-500/20 to-transparent rounded-bl-full" />
+            <CardHeader>
+              <div className="flex items-center justify-between mb-4">
+                <Flame className="h-12 w-12 text-red-500" />
+                <Badge className="bg-red-500 animate-pulse">EXTREME</Badge>
+              </div>
+              <CardTitle className="text-2xl">Scalping Mode</CardTitle>
+              <CardDescription>Ultra high-frequency crypto scalping</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">30s-3m holds</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Zap className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">40-100 trades/hour</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">Micro positions</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Target className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">0.1-0.5% targets</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Shield className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">Tight stops</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Activity className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">Hotkey trading</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="pt-4">
+                <Button className="w-full bg-red-500 hover:bg-red-600" size="lg">
+                  Enter Scalping Mode
+                  <Flame className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+              
+              <div className="text-xs text-muted-foreground text-center">
+                ⚠️ High-risk, high-reward trading strategy
               </div>
             </CardContent>
           </Card>

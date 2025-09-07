@@ -8,7 +8,7 @@ import {
   TrendingUp, TrendingDown, Activity, DollarSign, BarChart3, 
   Settings, AlertCircle, CheckCircle, XCircle, Clock, 
   RefreshCw, Zap, Shield, Target, TrendingDown as Loss,
-  Bitcoin, ArrowLeft
+  Bitcoin, ArrowLeft, Flame, ArrowRight
 } from "lucide-react"
 import { 
   useAccount, usePositions, useOrders, useSignals, 
@@ -160,6 +160,13 @@ export default function CryptoTradingPage() {
                 <Zap className="mr-2 h-4 w-4" />
                 {isCryptoBotActive ? "⚡ CRYPTO BOT ACTIVE" : "Start Crypto Bot"}
               </Button>
+              <Link href="/scalping">
+                <Button variant="destructive" className="bg-orange-500 hover:bg-orange-600">
+                  <Flame className="mr-2 h-4 w-4" />
+                  Scalping Mode
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
               <Button variant="outline" size="icon">
                 <RefreshCw className="h-4 w-4" />
               </Button>
