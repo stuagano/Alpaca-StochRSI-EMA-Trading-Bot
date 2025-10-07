@@ -18,9 +18,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from dotenv import load_dotenv
-
-load_dotenv()
+from config.environment import get_environment_config
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +82,7 @@ class TradingServiceSettings:
 
     alpaca: AlpacaSettings
     crypto_symbols: List[str]
+    enabled_background_workers: Optional[List[str]]
     crypto_scanner_interval_seconds: int
     cache_refresh_seconds: int
     scalper_poll_interval_seconds: int
@@ -121,6 +120,14 @@ def _parse_list(value: Optional[str], default: List[str]) -> List[str]:
         return default
 
     return [item.strip() for item in cleaned_value.split(",") if item.strip()]
+
+
+def _parse_optional_list(value: Optional[str]) -> Optional[List[str]]:
+    if value is None:
+        return None
+
+    parsed = _parse_list(value, [])
+    return parsed
 
 
 def _parse_int(value: Optional[str], default: int, env_name: str) -> int:
@@ -189,10 +196,12 @@ def _parse_metadata(value: Optional[str], symbols: List[str]) -> Dict[str, Dict[
 
 
 def _resolve_alpaca_credentials() -> AlpacaSettings:
+    env_config = get_environment_config()
+
     auth_file = Path(os.getenv("ALPACA_AUTH_FILE", "AUTH/authAlpaca.txt"))
     api_key = os.getenv("APCA_API_KEY_ID")
     api_secret = os.getenv("APCA_API_SECRET_KEY")
-    api_base_url = os.getenv("APCA_API_BASE_URL", "https://paper-api.alpaca.markets")
+    api_base_url = os.getenv("APCA_API_BASE_URL", env_config.alpaca_base_url)
 
     return AlpacaSettings(
         auth_file=auth_file,
@@ -211,6 +220,9 @@ def get_service_settings() -> TradingServiceSettings:
     crypto_symbols = _parse_list(
         os.getenv("TRADING_SERVICE_CRYPTO_SYMBOLS"),
         DEFAULT_CRYPTO_SYMBOLS,
+    )
+    enabled_background_workers = _parse_optional_list(
+        os.getenv("TRADING_SERVICE_BACKGROUND_WORKERS")
     )
     cache_refresh_seconds = _parse_int(
         os.getenv("TRADING_SERVICE_CACHE_REFRESH_SECONDS"),
@@ -247,6 +259,7 @@ def get_service_settings() -> TradingServiceSettings:
     return TradingServiceSettings(
         alpaca=alpaca_settings,
         crypto_symbols=crypto_symbols,
+        enabled_background_workers=enabled_background_workers,
         crypto_scanner_interval_seconds=crypto_scanner_interval,
         cache_refresh_seconds=cache_refresh_seconds,
         scalper_poll_interval_seconds=scalper_poll_seconds,

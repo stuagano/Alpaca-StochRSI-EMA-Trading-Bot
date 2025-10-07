@@ -8,13 +8,19 @@ import os
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional, cast
 from contextlib import asynccontextmanager
 import json
 import numpy as np
-from collections import deque
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import (
+    Depends,
+    FastAPI,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
@@ -22,6 +28,15 @@ import alpaca_trade_api as tradeapi
 import uvicorn
 
 from config.service_settings import get_service_settings
+from services.unified_trading import (
+    TradingState,
+    list_background_workers,
+    manage_background_tasks,
+    refresh_scanner_symbols as sync_scanner_symbols,
+    register_background_worker,
+    resolve_background_workers,
+    to_scanner_symbol,
+)
 
 # Import the crypto scalping strategy
 from strategies.crypto_scalping_strategy import CryptoVolatilityScanner, CryptoSignal
@@ -30,126 +45,27 @@ from strategies.crypto_scalping_strategy import CryptoVolatilityScanner, CryptoS
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-settings = get_service_settings()
 
-QUOTE_SUFFIXES = ("USDT", "USDC", "USD")
+def get_runtime_state(request: Request) -> TradingState:
+    """Resolve the trading state stored on the FastAPI application."""
 
-
-def _to_scanner_symbol(symbol: str) -> str:
-    """Convert display symbols (e.g. ``BTC/USD``) to scanner friendly format."""
-
-    return symbol.replace("/", "").upper()
-
-
-def _to_display_symbol(symbol: str) -> str:
-    """Convert scanner symbols back to Alpaca display format."""
-
-    if "/" in symbol:
-        return symbol
-
-    upper_symbol = symbol.upper()
-    for suffix in QUOTE_SUFFIXES:
-        if upper_symbol.endswith(suffix):
-            base = upper_symbol[: -len(suffix)]
-            return f"{base}/{suffix}"
-
-    if len(upper_symbol) > 3:
-        return f"{upper_symbol[:-3]}/{upper_symbol[-3:]}"
-
-    return upper_symbol
-
-# Session metrics tracking
-class SessionMetrics:
-    def __init__(self):
-        self.session_start = datetime.now(timezone.utc)
-        self.total_profit = 0.0
-        self.total_trades = 0
-        self.winning_trades = 0
-        self.losing_trades = 0
-        self.current_streak = 0
-        self.best_streak = 0
-        self.trades_per_hour = 0
-        self.avg_profit_per_trade = 0.0
-        self.win_rate = 0.0
-        
-    def update_on_trade(self, trade):
-        self.total_trades += 1
-        if trade.get('profit'):
-            self.total_profit += trade['profit']
-            if trade['profit'] > 0:
-                self.winning_trades += 1
-                self.current_streak = max(0, self.current_streak) + 1
-                self.best_streak = max(self.best_streak, self.current_streak)
-            else:
-                self.losing_trades += 1
-                self.current_streak = min(0, self.current_streak) - 1
-        
-        # Calculate derived metrics
-        hours_elapsed = max(0.1, (datetime.now(timezone.utc) - self.session_start).total_seconds() / 3600)
-        self.trades_per_hour = self.total_trades / hours_elapsed
-        if self.total_trades > 0:
-            self.avg_profit_per_trade = self.total_profit / self.total_trades
-            if self.winning_trades + self.losing_trades > 0:
-                self.win_rate = self.winning_trades / (self.winning_trades + self.losing_trades)
-
-# Global state (in-memory, lightweight)
-class TradingState:
-    def __init__(self, service_settings):
-        self.settings = service_settings
-        self.alpaca_api = None
-        self.account_cache = {}
-        self.positions_cache = []
-        self.orders_cache = []
-        self.crypto_metrics = {}
-        self.top_movers = []
-        self.error_log = deque(maxlen=100)
-        self.last_update = {}
-        self.auto_trading_enabled = False
-        
-        # Trade tracking
-        self.trade_history = deque(maxlen=500)  # Keep last 500 trades
-        self.position_entry_prices = {}  # Track entry prices for P&L calculation
-        self.session_metrics = SessionMetrics()
-        
-        # Additional attributes
-        self.current_positions = {}
-        self.current_prices = {}
-        self.signals = []
-
-        # Crypto scalping attributes
-        self.crypto_scanner = None
-        self.active_scalp_positions = {}
-        self.crypto_symbols = list(service_settings.crypto_symbols)
-        self.crypto_metadata = dict(service_settings.crypto_metadata)
-        self.crypto_symbol_prefixes = [symbol.replace('/', '') for symbol in self.crypto_symbols]
-        self.crypto_scanner_symbols = []
-        self.max_concurrent_positions = service_settings.max_concurrent_positions
-        self.daily_loss_limit = service_settings.daily_loss_limit
-        self.current_daily_loss = 0
-
-trading_state = TradingState(settings)
+    state = getattr(request.app.state, "trading_state", None)
+    if state is None:
+        raise HTTPException(status_code=503, detail="Trading state is not initialised")
+    return cast(TradingState, state)
 
 
-def refresh_scanner_symbols() -> List[str]:
+def refresh_scanner_symbols(state: TradingState) -> List[str]:
     """Synchronise cached scanner symbols with the active strategy."""
 
-    if not trading_state.crypto_scanner:
-        return trading_state.crypto_scanner_symbols
+    return sync_scanner_symbols(state)
 
-    enabled_symbols = trading_state.crypto_scanner.get_enabled_symbols()
-    if not enabled_symbols:
-        trading_state.crypto_scanner_symbols = []
-        return trading_state.crypto_scanner_symbols
 
-    trading_state.crypto_scanner_symbols = sorted(
-        {_to_display_symbol(symbol) for symbol in enabled_symbols}
-    )
-    return trading_state.crypto_scanner_symbols
-
-def get_alpaca_api():
+def get_alpaca_api(state: TradingState):
     """Get or create Alpaca API instance with proper credential loading"""
-    if not trading_state.alpaca_api:
-        alpaca_settings = trading_state.settings.alpaca
+
+    if not state.alpaca_api:
+        alpaca_settings = state.settings.alpaca
         auth_file = alpaca_settings.auth_file
         api_key = alpaca_settings.api_key
         api_secret = alpaca_settings.api_secret
@@ -173,19 +89,25 @@ def get_alpaca_api():
             )
             raise ValueError("Missing Alpaca API credentials")
 
-        trading_state.alpaca_api = tradeapi.REST(api_key, api_secret, base_url, api_version='v2')
+        state.alpaca_api = tradeapi.REST(api_key, api_secret, base_url, api_version='v2')
         logger.info(
             "Connected to Alpaca %s Trading",
             'Paper' if 'paper' in base_url else 'Live',
         )
 
-    return trading_state.alpaca_api
+    return state.alpaca_api
 
-def generate_trade_id():
+
+def generate_trade_id(state: TradingState):
     """Generate unique trade ID"""
-    return f"trade-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{len(trading_state.trade_history)}"
 
-async def log_trade(order, filled_price=None):
+    return (
+        f"trade-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+        f"-{len(state.trade_history)}"
+    )
+
+
+async def log_trade(state: TradingState, order, filled_price=None):
     """Log executed trade with P&L calculation"""
     try:
         symbol = order.symbol if hasattr(order, 'symbol') else order.get('symbol')
@@ -195,15 +117,15 @@ async def log_trade(order, filled_price=None):
         
         if price == 0:
             # Try to get current market price
-            api = get_alpaca_api()
+            api = get_alpaca_api(state)
             try:
                 quote = api.get_latest_crypto_quote(symbol if '/' not in symbol else symbol.replace('/', ''))
                 price = float(quote.ap)  # ask price
             except:
                 price = 0
-        
+
         trade_record = {
-            "id": generate_trade_id(),
+            "id": generate_trade_id(state),
             "symbol": symbol,
             "side": side,
             "qty": qty,
@@ -214,22 +136,22 @@ async def log_trade(order, filled_price=None):
         }
         
         # Calculate P&L for sell orders
-        if side == 'sell' and symbol in trading_state.position_entry_prices:
-            entry_price = trading_state.position_entry_prices[symbol]
+        if side == 'sell' and symbol in state.position_entry_prices:
+            entry_price = state.position_entry_prices[symbol]
             trade_record["profit"] = (price - entry_price) * qty
             trade_record["profit_percent"] = ((price - entry_price) / entry_price) * 100
             # Clear entry price after selling
-            del trading_state.position_entry_prices[symbol]
+            del state.position_entry_prices[symbol]
             # Update session metrics
-            trading_state.session_metrics.update_on_trade(trade_record)
+            state.session_metrics.update_on_trade(trade_record)
         elif side == 'buy':
             # Store entry price for P&L calculation
-            trading_state.position_entry_prices[symbol] = price
+            state.position_entry_prices[symbol] = price
             trade_record["profit"] = None
             trade_record["profit_percent"] = None
-        
+
         # Add to trade history
-        trading_state.trade_history.appendleft(trade_record)
+        state.trade_history.appendleft(trade_record)
         
         # Broadcast via WebSocket to all connected clients
         for connection in active_connections:
@@ -250,53 +172,55 @@ async def log_trade(order, filled_price=None):
         logger.error(f"Trade logging error: {e}")
         return None
 
-async def update_cache():
+@register_background_worker
+async def update_cache(state: TradingState):
     """Update cached data periodically (every 5 seconds)"""
     while True:
         try:
-            api = get_alpaca_api()
-            
+            api = get_alpaca_api(state)
+
             # Update account (cached for 30 seconds)
-            if 'account' not in trading_state.last_update or \
-               (datetime.now(timezone.utc) - trading_state.last_update.get('account', datetime.min)).seconds > 30:
-                trading_state.account_cache = api.get_account()._raw
-                trading_state.last_update['account'] = datetime.now(timezone.utc)
-            
+            if 'account' not in state.last_update or \
+               (datetime.now(timezone.utc) - state.last_update.get('account', datetime.min)).seconds > 30:
+                state.account_cache = api.get_account()._raw
+                state.last_update['account'] = datetime.now(timezone.utc)
+
             # Update positions (cached for 5 seconds)
-            if 'positions' not in trading_state.last_update or \
-               (datetime.now(timezone.utc) - trading_state.last_update.get('positions', datetime.min)).seconds > 5:
+            if 'positions' not in state.last_update or \
+               (datetime.now(timezone.utc) - state.last_update.get('positions', datetime.min)).seconds > 5:
                 positions = api.list_positions()
-                trading_state.positions_cache = [p._raw for p in positions]
-                trading_state.last_update['positions'] = datetime.now(timezone.utc)
-            
+                state.positions_cache = [p._raw for p in positions]
+                state.last_update['positions'] = datetime.now(timezone.utc)
+
             # Update orders (cached for 5 seconds)
-            if 'orders' not in trading_state.last_update or \
-               (datetime.now(timezone.utc) - trading_state.last_update.get('orders', datetime.min)).seconds > 5:
+            if 'orders' not in state.last_update or \
+               (datetime.now(timezone.utc) - state.last_update.get('orders', datetime.min)).seconds > 5:
                 orders = api.list_orders(status='open')
-                trading_state.orders_cache = [o._raw for o in orders]
-                trading_state.last_update['orders'] = datetime.now(timezone.utc)
-                
+                state.orders_cache = [o._raw for o in orders]
+                state.last_update['orders'] = datetime.now(timezone.utc)
+
         except Exception as e:
             logger.error(f"Cache update error: {e}")
-            trading_state.error_log.append({
+            state.error_log.append({
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "error": str(e),
                 "source": "cache_update"
             })
-        
-        await asyncio.sleep(trading_state.settings.cache_refresh_seconds)
 
-async def crypto_scanner():
+        await asyncio.sleep(state.settings.cache_refresh_seconds)
+
+@register_background_worker
+async def crypto_scanner(state: TradingState):
     """Lightweight crypto scanner driven by configured interval."""
     while True:
         try:
-            crypto_pairs = refresh_scanner_symbols()
+            crypto_pairs = refresh_scanner_symbols(state)
             if not crypto_pairs:
                 logger.debug("No crypto pairs available for scanning; waiting for configuration")
-                await asyncio.sleep(trading_state.settings.crypto_scanner_interval_seconds)
+                await asyncio.sleep(state.settings.crypto_scanner_interval_seconds)
                 continue
 
-            api = get_alpaca_api()
+            api = get_alpaca_api(state)
             results = []
 
             for symbol in crypto_pairs:
@@ -312,7 +236,7 @@ async def crypto_scanner():
                         volatility = np.std(returns) * 100
                         
                         results.append({
-                            'symbol': _to_scanner_symbol(symbol),
+                            'symbol': to_scanner_symbol(symbol),
                             'display_symbol': symbol,
                             'price': float(current_price),
                             'change': float(change_pct),
@@ -320,97 +244,101 @@ async def crypto_scanner():
                             'timestamp': datetime.now(timezone.utc).isoformat()
                         })
                         
-                        trading_state.crypto_metrics[symbol] = {
+                        state.crypto_metrics[symbol] = {
                             'closes': closes.tolist(),
                             'current_price': float(current_price)
                         }
                 except:
                     continue
-            
-            trading_state.top_movers = sorted(results, key=lambda x: x['volatility'], reverse=True)
-            
+
+            state.top_movers = sorted(results, key=lambda x: x['volatility'], reverse=True)
+
         except Exception as e:
             logger.error(f"Scanner error: {e}")
 
-        await asyncio.sleep(trading_state.settings.crypto_scanner_interval_seconds)
+        await asyncio.sleep(state.settings.crypto_scanner_interval_seconds)
 
-async def crypto_scalping_trader():
+@register_background_worker
+async def crypto_scalping_trader(state: TradingState):
     """Advanced crypto scalping strategy - checks every 10 seconds"""
     logger.info("🚀 Crypto scalping trader started")
     while True:
         try:
-            if not trading_state.auto_trading_enabled:
+            if not state.auto_trading_enabled:
                 logger.debug("Auto-trading disabled, waiting...")
-                await asyncio.sleep(trading_state.settings.scalper_poll_interval_seconds)
+                await asyncio.sleep(state.settings.scalper_poll_interval_seconds)
                 continue
 
             # Check daily loss limit
-            if trading_state.current_daily_loss >= trading_state.daily_loss_limit:
-                logger.warning(f"Daily loss limit reached: ${trading_state.current_daily_loss:.2f}")
-                await asyncio.sleep(trading_state.settings.scalper_cooldown_seconds)
+            if state.current_daily_loss >= state.daily_loss_limit:
+                logger.warning(f"Daily loss limit reached: ${state.current_daily_loss:.2f}")
+                await asyncio.sleep(state.settings.scalper_cooldown_seconds)
                 continue
-                
-            api = get_alpaca_api()
-            
+
+            api = get_alpaca_api(state)
+
             # Update scanner with current market data
-            await update_scanner_data()
-            
+            await update_scanner_data(state)
+
             # Get current crypto positions
-            crypto_positions = [p for p in trading_state.positions_cache
-                               if any(c in p.get('symbol', '') for c in trading_state.crypto_symbol_prefixes)]
-            
+            crypto_positions = [
+                position
+                for position in state.positions_cache
+                if any(prefix in position.get('symbol', '') for prefix in state.crypto_symbol_prefixes)
+            ]
+
             # Check exit conditions for existing positions
-            await check_scalp_exit_conditions(api, crypto_positions)
-            
+            await check_scalp_exit_conditions(state, api, crypto_positions)
+
             # Look for new entries if we have room
-            if len(crypto_positions) < trading_state.max_concurrent_positions:
-                await find_scalp_entry_opportunities(api)
-                    
+            if len(crypto_positions) < state.max_concurrent_positions:
+                await find_scalp_entry_opportunities(state, api)
+
         except Exception as e:
             logger.error(f"Crypto scalping trader error: {e}")
 
-        await asyncio.sleep(trading_state.settings.scalper_poll_interval_seconds)
+        await asyncio.sleep(state.settings.scalper_poll_interval_seconds)
 
-async def update_scanner_data():
+async def update_scanner_data(state: TradingState):
     """Update the crypto volatility scanner with current market data"""
     try:
-        if not trading_state.crypto_scanner:
+        if not state.crypto_scanner:
             logger.debug("No crypto scanner available for data update")
             return
 
         logger.debug("Updating scanner with market data...")
 
-        api = get_alpaca_api()
+        api = get_alpaca_api(state)
 
         # Update market data for all configured scanner symbols
-        for symbol_display in refresh_scanner_symbols():
+        for symbol_display in refresh_scanner_symbols(state):
             try:
                 # Get recent bars to update price data
                 bars = api.get_crypto_bars(symbol_display, '1Min', limit=5).df
                 if not bars.empty:
-                    symbol_clean = _to_scanner_symbol(symbol_display)
+                    symbol_clean = to_scanner_symbol(symbol_display)
                     latest_bar = bars.iloc[-1]
                     price = float(latest_bar['close'])
                     volume = float(latest_bar['volume'])
 
                     # Update scanner data
-                    trading_state.crypto_scanner.update_market_data(symbol_clean, price, volume)
+                    state.crypto_scanner.update_market_data(symbol_clean, price, volume)
             except Exception as e:
                 logger.debug(f"Failed to update data for {symbol_display}: {e}")
                 continue
-                
+
     except Exception as e:
         logger.error(f"Scanner data update error: {e}")
 
-async def find_scalp_entry_opportunities(api):
+async def find_scalp_entry_opportunities(state: TradingState, api):
     """Find new scalping entry opportunities using the volatility scanner"""
     try:
-        if not trading_state.crypto_scanner:
+        if not state.crypto_scanner:
             logger.debug("No crypto scanner available")
             return
-            
+
         # Get trading signals from the scanner
-        signals = trading_state.crypto_scanner.scan_for_opportunities()
+        signals = state.crypto_scanner.scan_for_opportunities()
         
         if not signals:
             logger.debug("No scalping signals found")
@@ -424,7 +352,7 @@ async def find_scalp_entry_opportunities(api):
             
             # Skip if we already have a position in this symbol
             symbol_clean = signal.symbol.replace('USD', '').replace('USDT', '').replace('USDC', '')
-            if any(symbol_clean in pos.get('symbol', '') for pos in trading_state.positions_cache):
+            if any(symbol_clean in pos.get('symbol', '') for pos in state.positions_cache):
                 logger.info(f"  ⏭️ Skipping {signal.symbol} - already have position")
                 continue
                 
@@ -437,12 +365,12 @@ async def find_scalp_entry_opportunities(api):
             logger.info(f"  🎯 EXECUTING: {signal.action.upper()} {signal.symbol} @ ${signal.price:.4f} (confidence: {signal.confidence:.2f}, volatility: {signal.volatility:.3f})")
             
             # Execute the trade
-            await execute_scalp_entry(api, signal)
+            await execute_scalp_entry(state, api, signal)
             
     except Exception as e:
         logger.error(f"Entry opportunity search error: {e}")
 
-async def execute_scalp_entry(api, signal: CryptoSignal):
+async def execute_scalp_entry(state: TradingState, api, signal: CryptoSignal):
     """Execute a scalping entry trade"""
     try:
         account = api.get_account()
@@ -486,7 +414,7 @@ async def execute_scalp_entry(api, signal: CryptoSignal):
         )
         
         # Track the position with scalping parameters
-        trading_state.active_scalp_positions[alpaca_symbol] = {
+        state.active_scalp_positions[alpaca_symbol] = {
             'signal': signal,
             'entry_price': signal.price,
             'quantity': qty,
@@ -500,12 +428,12 @@ async def execute_scalp_entry(api, signal: CryptoSignal):
         logger.info(f"✅ Scalp position opened: {signal.action.upper()} {qty:.8f} {alpaca_symbol} | Target: ±{signal.target_profit*100:.1f}% | Stop: ±{signal.stop_loss*100:.1f}%")
         
         # Log the trade
-        await log_trade(order, signal.price)
+        await log_trade(state, order, signal.price)
         
     except Exception as e:
         logger.error(f"Scalp entry execution error for {signal.symbol}: {e}")
 
-async def check_scalp_exit_conditions(api, crypto_positions):
+async def check_scalp_exit_conditions(state: TradingState, api, crypto_positions):
     """Check exit conditions for scalping positions"""
     try:
         positions_to_close = []
@@ -518,7 +446,7 @@ async def check_scalp_exit_conditions(api, crypto_positions):
             # Get current price
             try:
                 current_price = float(position.get('current_price', 0))
-                entry_price = trading_state.position_entry_prices.get(symbol, current_price)
+                entry_price = state.position_entry_prices.get(symbol, current_price)
                 unrealized_plpc = float(position.get('unrealized_plpc', 0))
                 side = position.get('side', 'long')
                 qty = float(position.get('qty', 0))
@@ -539,8 +467,8 @@ async def check_scalp_exit_conditions(api, crypto_positions):
                     exit_reason = "STOP_LOSS"
                     
                 # Time-based exit: Close after 15 minutes for scalping
-                elif symbol in trading_state.active_scalp_positions:
-                    scalp_pos = trading_state.active_scalp_positions[symbol]
+                elif symbol in state.active_scalp_positions:
+                    scalp_pos = state.active_scalp_positions[symbol]
                     time_held = (datetime.now(timezone.utc) - scalp_pos['entry_time']).total_seconds()
                     if time_held > 900:  # 15 minutes
                         should_exit = True
@@ -549,8 +477,8 @@ async def check_scalp_exit_conditions(api, crypto_positions):
                 # Volatility-based exit: If volatility drops significantly
                 elif unrealized_plpc < 0 and abs(unrealized_plpc) > 0.001:  # Losing position > 0.1%
                     # Check if we should cut losses early
-                    if symbol in trading_state.active_scalp_positions:
-                        scalp_pos = trading_state.active_scalp_positions[symbol]
+                    if symbol in state.active_scalp_positions:
+                        scalp_pos = state.active_scalp_positions[symbol]
                         if scalp_pos['signal'].volatility < 0.005:  # Low volatility
                             should_exit = True
                             exit_reason = "LOW_VOLATILITY"
@@ -564,12 +492,12 @@ async def check_scalp_exit_conditions(api, crypto_positions):
         
         # Execute exits
         for position, reason, pnl_pct in positions_to_close:
-            await execute_scalp_exit(api, position, reason, pnl_pct)
+            await execute_scalp_exit(state, api, position, reason, pnl_pct)
             
     except Exception as e:
         logger.error(f"Scalp exit check error: {e}")
 
-async def execute_scalp_exit(api, position, reason, pnl_pct):
+async def execute_scalp_exit(state: TradingState, api, position, reason, pnl_pct):
     """Execute scalping exit trade"""
     try:
         symbol = position['symbol']
@@ -585,22 +513,22 @@ async def execute_scalp_exit(api, position, reason, pnl_pct):
         )
         
         # Calculate profit/loss
-        entry_price = trading_state.position_entry_prices.get(symbol, 0)
+        entry_price = state.position_entry_prices.get(symbol, 0)
         current_price = float(position.get('current_price', 0))
         profit_loss = float(qty) * entry_price * pnl_pct if entry_price else 0
         
         # Update daily loss tracking
         if profit_loss < 0:
-            trading_state.current_daily_loss += abs(profit_loss)
+            state.current_daily_loss += abs(profit_loss)
         
         # Clean up tracking
-        if symbol in trading_state.active_scalp_positions:
-            del trading_state.active_scalp_positions[symbol]
+        if symbol in state.active_scalp_positions:
+            del state.active_scalp_positions[symbol]
             
         logger.info(f"🏁 Scalp exit: SELL {qty} {symbol} | Reason: {reason} | P&L: {pnl_pct*100:.2f}% (${profit_loss:.2f})")
         
         # Log the trade
-        await log_trade(order, current_price)
+        await log_trade(state, order, current_price)
         
     except Exception as e:
         logger.error(f"Scalp exit execution error for {position.get('symbol', 'unknown')}: {e}")
@@ -610,43 +538,79 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     logger.info("🚀 Starting Complete Unified Trading Service")
     logger.info("📡 Serving API + Frontend on single port 9000")
-    
-    # Initialize Alpaca API
+
+    settings = get_service_settings()
+    state: Optional[TradingState] = None
+
     try:
-        api = get_alpaca_api()
+        state = TradingState(settings)
+        app.state.trading_state = state
+        state.background_tasks.clear()
+        setattr(app.state, "background_tasks", state.background_tasks)
+
+        # Initialize Alpaca API
+        api = get_alpaca_api(state)
         account = api.get_account()
         logger.info(f"✅ Connected to Alpaca - Account: {account.account_number}")
-        
+
         # Initialize crypto volatility scanner from configured symbols
         scanner_seed_symbols = [
-            _to_scanner_symbol(symbol)
-            for symbol in trading_state.crypto_symbols
+            to_scanner_symbol(symbol)
+            for symbol in state.crypto_symbols
             if symbol
         ]
-        trading_state.crypto_scanner = CryptoVolatilityScanner(
+        state.crypto_scanner = CryptoVolatilityScanner(
             enabled_symbols=scanner_seed_symbols or None
         )
-        derived_pairs = refresh_scanner_symbols()
+        derived_pairs = refresh_scanner_symbols(state)
         logger.info(
             "Configured %d crypto pairs for scanning via strategy defaults",
             len(derived_pairs),
         )
 
-        # Start background tasks
-        asyncio.create_task(update_cache())
-        asyncio.create_task(crypto_scanner())
-        asyncio.create_task(crypto_scalping_trader())
-        
-        trading_state.auto_trading_enabled = True
-        logger.info("✅ All systems operational")
-        logger.info("🌐 Frontend available at http://localhost:9000")
-        
+        configured_workers = settings.enabled_background_workers
+        if configured_workers is None:
+            background_workers = list_background_workers()
+        else:
+            background_workers = resolve_background_workers(configured_workers)
+            if not background_workers:
+                logger.warning(
+                    "No background workers matched TRADING_SERVICE_BACKGROUND_WORKERS=%s;"
+                    " defaulting to registry order",
+                    configured_workers,
+                )
+                background_workers = list_background_workers()
+
+        active_worker_names = [
+            getattr(worker, "__name__", "background_worker")
+            for worker in background_workers
+        ]
+        logger.info("Activating background workers: %s", ", ".join(active_worker_names) or "none")
+
+        async with manage_background_tasks(
+            state,
+            background_workers,
+        ):
+            state.auto_trading_enabled = True
+            logger.info("✅ All systems operational")
+            logger.info("🌐 Frontend available at http://localhost:9000")
+
+            yield
+
     except Exception as e:
         logger.error(f"❌ Startup failed: {e}")
-    
-    yield
-    
-    logger.info("🛑 Complete Unified Trading Service stopped")
+        raise
+
+    finally:
+        if state is not None:
+            state.auto_trading_enabled = False
+
+        if hasattr(app.state, "background_tasks"):
+            delattr(app.state, "background_tasks")
+        if hasattr(app.state, "trading_state"):
+            delattr(app.state, "trading_state")
+
+        logger.info("🛑 Complete Unified Trading Service stopped")
 
 app = FastAPI(
     title="Complete Unified Trading Service",
@@ -681,28 +645,28 @@ async def health_check():
     }
 
 @app.get("/api/account")
-async def get_account():
+async def get_account(state: TradingState = Depends(get_runtime_state)):
     """Get account information (cached)"""
-    if not trading_state.account_cache:
-        api = get_alpaca_api()
-        trading_state.account_cache = api.get_account()._raw
-    
+    if not state.account_cache:
+        api = get_alpaca_api(state)
+        state.account_cache = api.get_account()._raw
+
     # Add data source marker for live data validation
-    account_data = trading_state.account_cache.copy()
+    account_data = state.account_cache.copy()
     account_data["data_source"] = "live"
     return account_data
 
 @app.get("/api/positions")
-async def get_positions(market_mode: str = "stocks"):
+async def get_positions(market_mode: str = "stocks", state: TradingState = Depends(get_runtime_state)):
     """Get positions filtered by market mode"""
-    all_positions = trading_state.positions_cache
+    all_positions = state.positions_cache
     
     if market_mode == "crypto":
         # Filter for crypto positions only
         # Crypto symbols typically contain these patterns
         crypto_patterns = ['BTC', 'ETH', 'LTC', 'BCH', 'DOGE', 'SHIB', 'AVAX', 'SOL', 
                           'ADA', 'MATIC', 'LINK', 'UNI', 'AAVE', 'MKR', 'XRP', 'XLM', 'ALGO']
-        positions = [p for p in all_positions 
+        positions = [p for p in all_positions
                     if any(pattern in p.get('symbol', '') for pattern in crypto_patterns)]
     else:
         # Filter for stock positions (exclude crypto)
@@ -720,9 +684,9 @@ async def get_positions(market_mode: str = "stocks"):
     }
 
 @app.get("/api/crypto/positions")
-async def get_crypto_positions():
+async def get_crypto_positions(state: TradingState = Depends(get_runtime_state)):
     """Get crypto positions (cached)"""
-    crypto_positions = [p for p in trading_state.positions_cache 
+    crypto_positions = [p for p in state.positions_cache
                        if any(c in p.get('symbol', '') for c in ['BTC', 'ETH', 'LTC', 'DOGE', 'AVAX'])]
     
     return {
@@ -731,33 +695,33 @@ async def get_crypto_positions():
     }
 
 @app.get("/api/orders")
-async def get_orders(status: str = 'open'):
+async def get_orders(status: str = 'open', state: TradingState = Depends(get_runtime_state)):
     """Get orders (cached)"""
     return {
-        "orders": trading_state.orders_cache,
-        "count": len(trading_state.orders_cache),
+        "orders": state.orders_cache,
+        "count": len(state.orders_cache),
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "data_source": "live"
     }
 
 @app.get("/api/leaderboard")
-async def get_leaderboard():
+async def get_leaderboard(state: TradingState = Depends(get_runtime_state)):
     """Get crypto leaderboard"""
     return {
-        "leaders": trading_state.top_movers,
-        "last_scan": trading_state.last_update.get('scanner', datetime.now(timezone.utc)).isoformat(),
+        "leaders": state.top_movers,
+        "last_scan": state.last_update.get('scanner', datetime.now(timezone.utc)).isoformat(),
         "data_source": "alpaca_real"
     }
 
 @app.get("/api/signals")
-async def get_signals():
+async def get_signals(state: TradingState = Depends(get_runtime_state)):
     """Get advanced scalping trading signals"""
     signals = []
-    
+
     try:
-        if trading_state.crypto_scanner:
+        if state.crypto_scanner:
             # Get signals from the volatility scanner
-            scanner_signals = trading_state.crypto_scanner.scan_for_opportunities()
+            scanner_signals = state.crypto_scanner.scan_for_opportunities()
             
             for signal in scanner_signals[:5]:  # Top 5 signals
                 signals.append({
@@ -776,7 +740,7 @@ async def get_signals():
         
         # Fallback to simple signals if scanner not available
         if not signals:
-            for mover in trading_state.top_movers[:3]:
+            for mover in state.top_movers[:3]:
                 signal = "BUY" if mover['change'] > 0 else "NEUTRAL"
                 signals.append({
                     "symbol": mover['display_symbol'],
@@ -794,17 +758,17 @@ async def get_signals():
     return signals
 
 @app.get("/api/signals/{symbol}")
-async def get_symbol_signals(symbol: str):
+async def get_symbol_signals(symbol: str, state: TradingState = Depends(get_runtime_state)):
     """Get scalping trading signals for a specific symbol"""
     try:
-        if trading_state.crypto_scanner:
+        if state.crypto_scanner:
             # Convert symbol format for scanner (BTC/USD -> BTCUSD)
             scanner_symbol = symbol.replace('/', '').upper()
             if not scanner_symbol.endswith('USD'):
                 scanner_symbol += 'USD'
-            
+
             # Get all signals and filter for the specific symbol
-            all_signals = trading_state.crypto_scanner.scan_for_opportunities()
+            all_signals = state.crypto_scanner.scan_for_opportunities()
             
             for signal in all_signals:
                 if signal.symbol == scanner_symbol:
@@ -824,7 +788,7 @@ async def get_symbol_signals(symbol: str):
                     }
         
         # Fallback to simple logic
-        for mover in trading_state.top_movers:
+        for mover in state.top_movers:
             if mover['display_symbol'] == symbol or mover['symbol'] == symbol:
                 signal = "BUY" if mover['change'] > 0 else "SELL" if mover['change'] < -1 else "NEUTRAL"
                 strength = min(abs(mover['change']) * 20, 100)
@@ -861,45 +825,45 @@ async def get_symbol_signals(symbol: str):
         }
 
 @app.post("/api/bot/activate")
-async def activate_bot():
+async def activate_bot(state: TradingState = Depends(get_runtime_state)):
     """Activate the trading bot"""
-    trading_state.auto_trading_enabled = True
+    state.auto_trading_enabled = True
     return {
-        "status": "activated", 
+        "status": "activated",
         "enabled": True,
         "message": "Trading bot activated successfully"
     }
 
 @app.post("/api/bot/deactivate")
-async def deactivate_bot():
+async def deactivate_bot(state: TradingState = Depends(get_runtime_state)):
     """Deactivate the trading bot"""
-    trading_state.auto_trading_enabled = False
+    state.auto_trading_enabled = False
     return {
         "status": "deactivated",
-        "enabled": False, 
+        "enabled": False,
         "message": "Trading bot deactivated successfully"
     }
 
 @app.get("/api/analytics/performance")
-async def get_performance():
+async def get_performance(state: TradingState = Depends(get_runtime_state)):
     """Get performance metrics"""
-    positions = trading_state.positions_cache
-    
+    positions = state.positions_cache
+
     total_pl = sum(float(p.get('unrealized_pl', 0)) for p in positions)
     win_count = sum(1 for p in positions if float(p.get('unrealized_pl', 0)) > 0)
-    
+
     return {
         "total_return": total_pl,
-        "portfolio_value": float(trading_state.account_cache.get('portfolio_value', 0)),
+        "portfolio_value": float(state.account_cache.get('portfolio_value', 0)),
         "win_rate": win_count / len(positions) if positions else 0,
         "total_trades": len(positions),
         "data_source": "real"
     }
 
 @app.get("/api/trade-log")
-async def get_trade_log():
+async def get_trade_log(state: TradingState = Depends(get_runtime_state)):
     """Get recent trades with P&L and metrics"""
-    trades = list(trading_state.trade_history)[:50]  # Get last 50 trades
+    trades = list(state.trade_history)[:50]  # Get last 50 trades
     
     # Format duration
     def format_duration(seconds):
@@ -921,54 +885,54 @@ async def get_trade_log():
     return {
         "trades": trades,
         "metrics": {
-            "trades_per_hour": trading_state.session_metrics.trades_per_hour,
+            "trades_per_hour": state.session_metrics.trades_per_hour,
             "avg_trade_duration": format_duration(avg_duration),
-            "avg_profit_per_trade": trading_state.session_metrics.avg_profit_per_trade,
-            "win_rate": trading_state.session_metrics.win_rate,
-            "total_trades_today": trading_state.session_metrics.total_trades,
-            "current_streak": abs(trading_state.session_metrics.current_streak),
-            "best_streak": trading_state.session_metrics.best_streak,
-            "active_signals": len([s for s in trading_state.signals if s.get('active', False)]),
-            "session_profit": trading_state.session_metrics.total_profit,
-            "win_count": trading_state.session_metrics.winning_trades,
-            "loss_count": trading_state.session_metrics.losing_trades
+            "avg_profit_per_trade": state.session_metrics.avg_profit_per_trade,
+            "win_rate": state.session_metrics.win_rate,
+            "total_trades_today": state.session_metrics.total_trades,
+            "current_streak": abs(state.session_metrics.current_streak),
+            "best_streak": state.session_metrics.best_streak,
+            "active_signals": len([s for s in state.signals if s.get('active', False)]),
+            "session_profit": state.session_metrics.total_profit,
+            "win_count": state.session_metrics.winning_trades,
+            "loss_count": state.session_metrics.losing_trades
         },
         "data_source": "live"
     }
 
 @app.get("/api/status")
-async def get_status():
+async def get_status(state: TradingState = Depends(get_runtime_state)):
     """Get crypto scalping trading status"""
-    account = trading_state.account_cache
-    
+    account = state.account_cache
+
     # Calculate scalping-specific metrics
-    active_scalp_positions = len(trading_state.active_scalp_positions)
-    daily_loss_remaining = trading_state.daily_loss_limit - trading_state.current_daily_loss
-    
+    active_scalp_positions = len(state.active_scalp_positions)
+    daily_loss_remaining = state.daily_loss_limit - state.current_daily_loss
+
     return {
         "status": "active",
         "buying_power": float(account.get('buying_power', 0)),
         "portfolio_value": float(account.get('portfolio_value', 0)),
-        "auto_trading": trading_state.auto_trading_enabled,
-        "scalping_enabled": trading_state.crypto_scanner is not None,
+        "auto_trading": state.auto_trading_enabled,
+        "scalping_enabled": state.crypto_scanner is not None,
         "active_scalp_positions": active_scalp_positions,
-        "max_positions": trading_state.max_concurrent_positions,
-        "daily_loss_limit": trading_state.daily_loss_limit,
-        "current_daily_loss": trading_state.current_daily_loss,
+        "max_positions": state.max_concurrent_positions,
+        "daily_loss_limit": state.daily_loss_limit,
+        "current_daily_loss": state.current_daily_loss,
         "daily_loss_remaining": daily_loss_remaining,
-        "top_movers": [m['display_symbol'] for m in trading_state.top_movers[:3]],
-        "scanner_symbols": len(trading_state.crypto_scanner.get_enabled_symbols()) if trading_state.crypto_scanner else 0
+        "top_movers": [m['display_symbol'] for m in state.top_movers[:3]],
+        "scanner_symbols": len(state.crypto_scanner.get_enabled_symbols()) if state.crypto_scanner else 0
     }
 
 @app.get("/api/config")
-async def get_config():
+async def get_config(state: TradingState = Depends(get_runtime_state)):
     """Get scalping configuration"""
     return {
-        "auto_trading": trading_state.auto_trading_enabled,
-        "scalping_enabled": trading_state.crypto_scanner is not None,
-        "supported_crypto": list(trading_state.crypto_symbols),
-        "max_positions": trading_state.max_concurrent_positions,
-        "daily_loss_limit": trading_state.daily_loss_limit,
+        "auto_trading": state.auto_trading_enabled,
+        "scalping_enabled": state.crypto_scanner is not None,
+        "supported_crypto": list(state.crypto_symbols),
+        "max_positions": state.max_concurrent_positions,
+        "daily_loss_limit": state.daily_loss_limit,
         "min_volatility": 0.005,  # 0.5%
         "profit_targets": "0.3-0.8%",
         "stop_losses": "0.15-0.5%",
@@ -977,16 +941,16 @@ async def get_config():
     }
 
 @app.post("/api/toggle-trading")
-async def toggle_trading():
+async def toggle_trading(state: TradingState = Depends(get_runtime_state)):
     """Toggle auto-trading"""
-    trading_state.auto_trading_enabled = not trading_state.auto_trading_enabled
-    return {"enabled": trading_state.auto_trading_enabled}
+    state.auto_trading_enabled = not state.auto_trading_enabled
+    return {"enabled": state.auto_trading_enabled}
 
 @app.get("/api/scalping/generate-signal/{symbol}")
-async def generate_scalping_signal(symbol: str):
+async def generate_scalping_signal(symbol: str, state: TradingState = Depends(get_runtime_state)):
     """Generate a specific scalping signal for a symbol using the scanner"""
     try:
-        if not trading_state.crypto_scanner:
+        if not state.crypto_scanner:
             return {"error": "Scalping scanner not initialized", "data_source": "error"}
         
         # Convert symbol format
@@ -995,16 +959,16 @@ async def generate_scalping_signal(symbol: str):
             scanner_symbol += 'USD'
         
         # Check if we have data for this symbol
-        if scanner_symbol not in trading_state.crypto_scanner.price_data:
+        if scanner_symbol not in state.crypto_scanner.price_data:
             return {
                 "symbol": symbol,
                 "signal": "NO_DATA",
                 "message": "Insufficient market data for signal generation",
                 "data_source": "scanner"
             }
-        
-        prices = trading_state.crypto_scanner.price_data[scanner_symbol]
-        volumes = trading_state.crypto_scanner.volume_data.get(scanner_symbol, [])
+
+        prices = state.crypto_scanner.price_data[scanner_symbol]
+        volumes = state.crypto_scanner.volume_data.get(scanner_symbol, [])
         
         if len(prices) < 20:
             return {
@@ -1016,12 +980,12 @@ async def generate_scalping_signal(symbol: str):
         
         # Calculate all the indicators
         current_price = prices[-1]
-        volatility = trading_state.crypto_scanner.calculate_volatility(prices)
-        volume_surge = trading_state.crypto_scanner.detect_volume_surge(volumes)
-        momentum = trading_state.crypto_scanner.calculate_momentum(prices)
-        
+        volatility = state.crypto_scanner.calculate_volatility(prices)
+        volume_surge = state.crypto_scanner.detect_volume_surge(volumes)
+        momentum = state.crypto_scanner.calculate_momentum(prices)
+
         # Generate signal using the scanner's internal method
-        signal = trading_state.crypto_scanner._generate_signal(
+        signal = state.crypto_scanner._generate_signal(
             scanner_symbol, current_price, volatility, volume_surge, momentum
         )
         
@@ -1073,14 +1037,14 @@ async def generate_scalping_signal(symbol: str):
         }
 
 @app.get("/api/scalping/metrics")
-async def get_scalping_metrics():
+async def get_scalping_metrics(state: TradingState = Depends(get_runtime_state)):
     """Get detailed scalping performance metrics"""
     try:
-        active_positions = len(trading_state.active_scalp_positions)
-        
+        active_positions = len(state.active_scalp_positions)
+
         # Calculate metrics from trade history
-        scalping_trades = [t for t in trading_state.trade_history if t.get('profit') is not None]
-        
+        scalping_trades = [t for t in state.trade_history if t.get('profit') is not None]
+
         total_profit = sum(t.get('profit', 0) for t in scalping_trades)
         win_count = sum(1 for t in scalping_trades if t.get('profit', 0) > 0)
         loss_count = sum(1 for t in scalping_trades if t.get('profit', 0) < 0)
@@ -1091,18 +1055,18 @@ async def get_scalping_metrics():
         return {
             "strategy": "crypto_scalping",
             "active_positions": active_positions,
-            "max_positions": trading_state.max_concurrent_positions,
-            "daily_loss_limit": trading_state.daily_loss_limit,
-            "current_daily_loss": trading_state.current_daily_loss,
-            "daily_loss_remaining": trading_state.daily_loss_limit - trading_state.current_daily_loss,
+            "max_positions": state.max_concurrent_positions,
+            "daily_loss_limit": state.daily_loss_limit,
+            "current_daily_loss": state.current_daily_loss,
+            "daily_loss_remaining": state.daily_loss_limit - state.current_daily_loss,
             "total_trades": len(scalping_trades),
             "winning_trades": win_count,
             "losing_trades": loss_count,
             "win_rate": win_rate,
             "total_profit": total_profit,
             "avg_profit_per_trade": avg_profit,
-            "scanner_enabled": trading_state.crypto_scanner is not None,
-            "enabled_symbols": trading_state.crypto_scanner.get_enabled_symbols() if trading_state.crypto_scanner else [],
+            "scanner_enabled": state.crypto_scanner is not None,
+            "enabled_symbols": state.crypto_scanner.get_enabled_symbols() if state.crypto_scanner else [],
             "data_source": "live"
         }
         
@@ -1114,10 +1078,10 @@ async def get_scalping_metrics():
         }
 
 @app.post("/api/crypto/orders")
-async def submit_crypto_order(request: dict):
+async def submit_crypto_order(request: dict, state: TradingState = Depends(get_runtime_state)):
     """Submit a crypto order and log the trade"""
     try:
-        api = get_alpaca_api()
+        api = get_alpaca_api(state)
         
         symbol = request.get('symbol', '').replace('/', '')
         side = request.get('side', 'buy')
@@ -1137,7 +1101,7 @@ async def submit_crypto_order(request: dict):
         )
         
         # Log the trade
-        await log_trade(order)
+        await log_trade(state, order)
         
         return {
             "id": order.id,
@@ -1156,32 +1120,32 @@ async def submit_crypto_order(request: dict):
 
 # Additional crypto endpoints for compatibility
 @app.get("/api/assets")
-async def get_crypto_assets():
+async def get_crypto_assets(state: TradingState = Depends(get_runtime_state)):
     """Get available crypto assets"""
     return [
         {
             "symbol": symbol,
-            "name": trading_state.crypto_metadata.get(symbol, {}).get("name", symbol.split('/')[0].capitalize()),
-            "exchange": trading_state.crypto_metadata.get(symbol, {}).get("exchange", "FTXU"),
+            "name": state.crypto_metadata.get(symbol, {}).get("name", symbol.split('/')[0].capitalize()),
+            "exchange": state.crypto_metadata.get(symbol, {}).get("exchange", "FTXU"),
         }
-        for symbol in trading_state.crypto_symbols
+        for symbol in state.crypto_symbols
     ]
 
 @app.get("/api/scan")
-async def scan_crypto():
+async def scan_crypto(state: TradingState = Depends(get_runtime_state)):
     """Scan for crypto opportunities"""
     return {
-        "opportunities": trading_state.top_movers[:5] if trading_state.top_movers else [],
+        "opportunities": state.top_movers[:5] if state.top_movers else [],
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 # ============= MISSING ENDPOINTS FOR TESTS =============
 
 @app.get("/api/history")
-async def get_trading_history():
+async def get_trading_history(state: TradingState = Depends(get_runtime_state)):
     """Get trading history from Alpaca"""
     try:
-        api = get_alpaca_api()
+        api = get_alpaca_api(state)
         # Get closed orders from the last 30 days
         closed_orders = api.list_orders(
             status='closed',
@@ -1214,10 +1178,10 @@ async def get_trading_history():
         raise HTTPException(status_code=500, detail=f"Failed to fetch history: {str(e)}")
 
 @app.get("/api/bars/{symbol}")
-async def get_price_bars(symbol: str, timeframe: str = "1Min", limit: int = 100):
+async def get_price_bars(symbol: str, timeframe: str = "1Min", limit: int = 100, state: TradingState = Depends(get_runtime_state)):
     """Get price bars for a symbol"""
     try:
-        api = get_alpaca_api()
+        api = get_alpaca_api(state)
         
         # Convert symbol format (BTCUSD -> BTC/USD)
         if '/' not in symbol:
@@ -1265,10 +1229,10 @@ async def get_price_bars(symbol: str, timeframe: str = "1Min", limit: int = 100)
         raise HTTPException(status_code=500, detail=f"Failed to fetch bars: {str(e)}")
 
 @app.get("/api/pnl-chart")
-async def get_pnl_chart():
+async def get_pnl_chart(state: TradingState = Depends(get_runtime_state)):
     """Get P&L chart data"""
     try:
-        api = get_alpaca_api()
+        api = get_alpaca_api(state)
         
         # Get portfolio history
         portfolio_history = api.get_portfolio_history(
@@ -1304,10 +1268,10 @@ async def get_pnl_chart():
         raise HTTPException(status_code=500, detail=f"Failed to fetch P&L data: {str(e)}")
 
 @app.get("/api/metrics")
-async def get_trading_metrics():
+async def get_trading_metrics(state: TradingState = Depends(get_runtime_state)):
     """Get trading performance metrics"""
     try:
-        api = get_alpaca_api()
+        api = get_alpaca_api(state)
         account = api.get_account()
         
         # Calculate various metrics
@@ -1349,7 +1313,7 @@ async def get_trading_metrics():
         raise HTTPException(status_code=500, detail=f"Failed to fetch metrics: {str(e)}")
 
 @app.get("/api/strategies")
-async def get_trading_strategies():
+async def get_trading_strategies(state: TradingState = Depends(get_runtime_state)):
     """Get available trading strategies"""
     strategies = [
         {
@@ -1389,7 +1353,7 @@ async def get_trading_strategies():
             "id": "scalping",
             "name": "Crypto Scalping",
             "description": "Quick trades on small price movements",
-            "enabled": trading_state.auto_trading_enabled,
+            "enabled": state.auto_trading_enabled,
             "parameters": {
                 "timeframe": "1Min",
                 "profit_target": 0.005,
@@ -1411,10 +1375,10 @@ async def get_trading_strategies():
     }
 
 @app.get("/api/trade-log")
-async def get_trade_log():
+async def get_trade_log(state: TradingState = Depends(get_runtime_state)):
     """Get recent trade execution log - reuse logic from /api/history"""
     try:
-        api = get_alpaca_api()
+        api = get_alpaca_api(state)
         # Get closed orders from the last 30 days - same as /api/history
         closed_orders = api.list_orders(
             status='closed',
@@ -1504,23 +1468,23 @@ async def get_trade_log():
         }
 
 @app.get("/api/crypto/market")
-def get_crypto_market():
+def get_crypto_market(state: TradingState = Depends(get_runtime_state)):
     """Get crypto market overview"""
     return {
         "market_status": "open",  # Crypto markets always open
-        "total_assets": len(trading_state.crypto_symbols),
-        "active_trading": len([s for s in trading_state.crypto_symbols if trading_state.current_prices.get(s)]),
-        "top_gainers": list(trading_state.crypto_symbols[:5]),  # Mock data for now
-        "top_losers": list(trading_state.crypto_symbols[-5:]),
+        "total_assets": len(state.crypto_symbols),
+        "active_trading": len([s for s in state.crypto_symbols if state.current_prices.get(s)]),
+        "top_gainers": list(state.crypto_symbols[:5]),  # Mock data for now
+        "top_losers": list(state.crypto_symbols[-5:]),
         "data_source": "live"
     }
 
 @app.get("/api/crypto/movers")
-def get_crypto_movers(limit: int = 10):
+def get_crypto_movers(limit: int = 10, state: TradingState = Depends(get_runtime_state)):
     """Get top crypto price movers"""
     # Mock data based on available symbols
     movers = []
-    for i, symbol in enumerate(trading_state.crypto_symbols[:limit]):
+    for i, symbol in enumerate(state.crypto_symbols[:limit]):
         price = 45000 + (i * 1000)  # Mock prices
         change = (i - 5) * 2.5  # Mock changes
         movers.append({
@@ -1538,10 +1502,10 @@ def get_crypto_movers(limit: int = 10):
     }
 
 @app.get("/api/bars/{symbol}")
-def get_crypto_bars(symbol: str, timeframe: str = "1Min", limit: int = 100):
+def get_crypto_bars(symbol: str, timeframe: str = "1Min", limit: int = 100, state: TradingState = Depends(get_runtime_state)):
     """Get historical price bars for crypto symbol"""
     try:
-        api = get_alpaca_api()
+        api = get_alpaca_api(state)
         
         # Convert symbol format if needed (BTCUSD -> BTC/USD)
         formatted_symbol = symbol.replace('USD', '/USD') if '/' not in symbol and symbol.endswith('USD') else symbol
@@ -1599,7 +1563,7 @@ def get_crypto_bars(symbol: str, timeframe: str = "1Min", limit: int = 100):
 active_connections: List[WebSocket] = []
 
 @app.websocket("/ws/trading")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(websocket: WebSocket, state: TradingState = Depends(get_runtime_state)):
     """WebSocket endpoint for real-time crypto trading updates"""
     await websocket.accept()
     active_connections.append(websocket)
@@ -1607,14 +1571,14 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             # Send periodic updates
-            await asyncio.sleep(trading_state.settings.cache_refresh_seconds)
+            await asyncio.sleep(state.settings.cache_refresh_seconds)
             
             # Send trading status update
             status_update = {
                 "type": "status",
                 "data": {
-                    "trading_enabled": trading_state.auto_trading_enabled,
-                    "active_trades": len(trading_state.trade_history),
+                    "trading_enabled": state.auto_trading_enabled,
+                    "active_trades": len(state.trade_history),
                     "timestamp": datetime.now().isoformat()
                 }
             }
@@ -1629,7 +1593,7 @@ async def websocket_endpoint(websocket: WebSocket):
             active_connections.remove(websocket)
 
 @app.websocket("/api/stream")
-async def websocket_stream(websocket: WebSocket):
+async def websocket_stream(websocket: WebSocket, state: TradingState = Depends(get_runtime_state)):
     """WebSocket endpoint for real-time stock market updates"""
     await websocket.accept()
     active_connections.append(websocket)
@@ -1650,7 +1614,7 @@ async def websocket_stream(websocket: WebSocket):
                 })
             
             # Send periodic market updates
-            await asyncio.sleep(trading_state.settings.cache_refresh_seconds)
+            await asyncio.sleep(state.settings.cache_refresh_seconds)
             
     except WebSocketDisconnect:
         active_connections.remove(websocket)
