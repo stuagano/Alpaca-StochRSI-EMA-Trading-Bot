@@ -5,6 +5,7 @@ from typing import Optional
 
 from core.service_registry import get_service_registry, setup_core_services, cleanup_service_registry
 from config.unified_config import get_config
+from config.environment import get_environment_config
 from trading_bot import TradingBot
 from strategies.stoch_rsi_strategy import StochRSIStrategy
 from strategies.ma_crossover_strategy import MACrossoverStrategy
@@ -53,6 +54,14 @@ def main():
         # Setup logging
         setup_logging()
         logger.info("Starting Alpaca Trading Bot with unified architecture...")
+
+        env_config = get_environment_config()
+        logger.info("Runtime environment: %s", env_config.name.value)
+        if not env_config.enable_order_execution:
+            logger.warning(
+                "Order execution is disabled for this environment. Set TRADING_ENABLE_EXECUTION=1"
+                " if you intend to place live orders."
+            )
         
         # Setup core services
         logger.info("Initializing service registry...")
