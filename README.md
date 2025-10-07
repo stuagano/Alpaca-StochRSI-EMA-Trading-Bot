@@ -15,7 +15,8 @@ A sophisticated algorithmic trading bot built with Python and the Alpaca API, fe
 
 1. **Setup Configuration**
    ```bash
-   # Configure API credentials in AUTH/authAlpaca.txt
+   cp .env.example .env            # Provide runtime configuration overrides
+   # Configure API credentials in AUTH/authAlpaca.txt or via environment variables
    # Set trading parameters in AUTH/ConfigFile.txt
    # Add tickers in AUTH/Tickers.txt
    ```
@@ -23,6 +24,10 @@ A sophisticated algorithmic trading bot built with Python and the Alpaca API, fe
 2. **Install Dependencies**
    ```bash
    pip install -r requirements.txt
+   # Optional: install strategy runtime extras to exercise scanner-dependent tests
+   pip install -r requirements/strategy-runtime.txt
+   # Or install the equivalent extras directly from the project package definition
+   pip install .[strategy]
    ```
 
 3. **Run the Bot**
@@ -46,11 +51,12 @@ A sophisticated algorithmic trading bot built with Python and the Alpaca API, fe
 
 ## Configuration
 
-All trading parameters are configurable through files in the `AUTH/` directory:
+Runtime configuration is centralized to avoid drift between environments:
 
-- **ConfigFile.txt**: Indicator parameters, risk settings, timeframes
-- **authAlpaca.txt**: API credentials (paper/live trading)
-- **Tickers.txt**: Assets to monitor and trade
+- **.env**: Copy from `.env.example` to declare API credentials, scanner cadence, and runtime guardrails. Scanner symbols are derived from the strategy defaults and automatically sync with the values declared in `TRADING_SERVICE_CRYPTO_SYMBOLS`.
+- **AUTH/authAlpaca.txt**: Optional fallback credentials file for local development.
+- **AUTH/ConfigFile.txt**: Indicator parameters, risk settings, timeframes.
+- **AUTH/Tickers.txt**: Assets to monitor and trade.
 
 ## Documentation
 

@@ -21,6 +21,8 @@ from fastapi.responses import FileResponse, HTMLResponse
 import alpaca_trade_api as tradeapi
 import uvicorn
 
+from config.service_settings import get_service_settings
+
 # Import the crypto scalping strategy
 from strategies.crypto_scalping_strategy import CryptoVolatilityScanner, CryptoSignal
 
@@ -28,12 +30,33 @@ from strategies.crypto_scalping_strategy import CryptoVolatilityScanner, CryptoS
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Supported crypto symbols
-CRYPTO_SYMBOLS = [
-    'BTC/USD', 'ETH/USD', 'LTC/USD', 'BCH/USD', 'LINK/USD', 
-    'UNI/USD', 'AAVE/USD', 'MKR/USD', 'MATIC/USD', 'AVAX/USD',
-    'DOGE/USD', 'SHIB/USD', 'XRP/USD', 'ADA/USD', 'SOL/USD'
-]
+settings = get_service_settings()
+
+QUOTE_SUFFIXES = ("USDT", "USDC", "USD")
+
+
+def _to_scanner_symbol(symbol: str) -> str:
+    """Convert display symbols (e.g. ``BTC/USD``) to scanner friendly format."""
+
+    return symbol.replace("/", "").upper()
+
+
+def _to_display_symbol(symbol: str) -> str:
+    """Convert scanner symbols back to Alpaca display format."""
+
+    if "/" in symbol:
+        return symbol
+
+    upper_symbol = symbol.upper()
+    for suffix in QUOTE_SUFFIXES:
+        if upper_symbol.endswith(suffix):
+            base = upper_symbol[: -len(suffix)]
+            return f"{base}/{suffix}"
+
+    if len(upper_symbol) > 3:
+        return f"{upper_symbol[:-3]}/{upper_symbol[-3:]}"
+
+    return upper_symbol
 
 # Session metrics tracking
 class SessionMetrics:
@@ -71,7 +94,8 @@ class SessionMetrics:
 
 # Global state (in-memory, lightweight)
 class TradingState:
-    def __init__(self):
+    def __init__(self, service_settings):
+        self.settings = service_settings
         self.alpaca_api = None
         self.account_cache = {}
         self.positions_cache = []
@@ -91,48 +115,70 @@ class TradingState:
         self.current_positions = {}
         self.current_prices = {}
         self.signals = []
-        
+
         # Crypto scalping attributes
         self.crypto_scanner = None
         self.active_scalp_positions = {}
-        self.max_concurrent_positions = 3
-        self.daily_loss_limit = 200  # $200 daily loss limit
+        self.crypto_symbols = list(service_settings.crypto_symbols)
+        self.crypto_metadata = dict(service_settings.crypto_metadata)
+        self.crypto_symbol_prefixes = [symbol.replace('/', '') for symbol in self.crypto_symbols]
+        self.crypto_scanner_symbols = []
+        self.max_concurrent_positions = service_settings.max_concurrent_positions
+        self.daily_loss_limit = service_settings.daily_loss_limit
         self.current_daily_loss = 0
-        
-trading_state = TradingState()
+
+trading_state = TradingState(settings)
+
+
+def refresh_scanner_symbols() -> List[str]:
+    """Synchronise cached scanner symbols with the active strategy."""
+
+    if not trading_state.crypto_scanner:
+        return trading_state.crypto_scanner_symbols
+
+    enabled_symbols = trading_state.crypto_scanner.get_enabled_symbols()
+    if not enabled_symbols:
+        trading_state.crypto_scanner_symbols = []
+        return trading_state.crypto_scanner_symbols
+
+    trading_state.crypto_scanner_symbols = sorted(
+        {_to_display_symbol(symbol) for symbol in enabled_symbols}
+    )
+    return trading_state.crypto_scanner_symbols
 
 def get_alpaca_api():
     """Get or create Alpaca API instance with proper credential loading"""
     if not trading_state.alpaca_api:
-        # First try to load from AUTH file
-        auth_file = 'AUTH/authAlpaca.txt'
-        if os.path.exists(auth_file):
+        alpaca_settings = trading_state.settings.alpaca
+        auth_file = alpaca_settings.auth_file
+        api_key = alpaca_settings.api_key
+        api_secret = alpaca_settings.api_secret
+        base_url = alpaca_settings.api_base_url
+
+        if auth_file.exists():
             try:
-                with open(auth_file, 'r') as f:
-                    auth_data = json.load(f)
-                    api_key = auth_data.get('APCA-API-KEY-ID')
-                    api_secret = auth_data.get('APCA-API-SECRET-KEY')
-                    base_url = auth_data.get('BASE-URL', 'https://paper-api.alpaca.markets')
-                    logger.info("Loaded credentials from AUTH/authAlpaca.txt")
-            except Exception as e:
-                logger.error(f"Failed to load AUTH file: {e}")
-                # Fallback to environment variables
-                api_key = os.getenv('APCA_API_KEY_ID')
-                api_secret = os.getenv('APCA_API_SECRET_KEY')
-                base_url = os.getenv('APCA_API_BASE_URL', 'https://paper-api.alpaca.markets')
-        else:
-            # Use environment variables
-            api_key = os.getenv('APCA_API_KEY_ID')
-            api_secret = os.getenv('APCA_API_SECRET_KEY')
-            base_url = os.getenv('APCA_API_BASE_URL', 'https://paper-api.alpaca.markets')
-        
+                with auth_file.open('r', encoding='utf-8') as auth_handle:
+                    auth_data = json.load(auth_handle)
+                    api_key = auth_data.get('APCA-API-KEY-ID', api_key)
+                    api_secret = auth_data.get('APCA-API-SECRET-KEY', api_secret)
+                    base_url = auth_data.get('BASE-URL', base_url)
+                    logger.info("Loaded credentials from %s", auth_file)
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Failed to load Alpaca credentials file %s: %s", auth_file, exc)
+
         if not api_key or not api_secret:
-            logger.error("No API credentials found! Check AUTH/authAlpaca.txt or environment variables")
+            logger.error(
+                "No API credentials found! Provide APCA_API_KEY_ID/APCA_API_SECRET_KEY or configure %s",
+                auth_file,
+            )
             raise ValueError("Missing Alpaca API credentials")
-        
+
         trading_state.alpaca_api = tradeapi.REST(api_key, api_secret, base_url, api_version='v2')
-        logger.info(f"Connected to Alpaca {'Paper' if 'paper' in base_url else 'Live'} Trading")
-    
+        logger.info(
+            "Connected to Alpaca %s Trading",
+            'Paper' if 'paper' in base_url else 'Live',
+        )
+
     return trading_state.alpaca_api
 
 def generate_trade_id():
@@ -238,17 +284,21 @@ async def update_cache():
                 "source": "cache_update"
             })
         
-        await asyncio.sleep(5)
+        await asyncio.sleep(trading_state.settings.cache_refresh_seconds)
 
 async def crypto_scanner():
-    """Lightweight crypto scanner - runs every 60 seconds"""
-    crypto_pairs = ['BTC/USD', 'ETH/USD', 'LTC/USD', 'DOGE/USD', 'AVAX/USD']
-    
+    """Lightweight crypto scanner driven by configured interval."""
     while True:
         try:
+            crypto_pairs = refresh_scanner_symbols()
+            if not crypto_pairs:
+                logger.debug("No crypto pairs available for scanning; waiting for configuration")
+                await asyncio.sleep(trading_state.settings.crypto_scanner_interval_seconds)
+                continue
+
             api = get_alpaca_api()
             results = []
-            
+
             for symbol in crypto_pairs:
                 try:
                     bars = api.get_crypto_bars(symbol, '5Min', limit=20).df
@@ -262,7 +312,7 @@ async def crypto_scanner():
                         volatility = np.std(returns) * 100
                         
                         results.append({
-                            'symbol': symbol.replace('/', ''),
+                            'symbol': _to_scanner_symbol(symbol),
                             'display_symbol': symbol,
                             'price': float(current_price),
                             'change': float(change_pct),
@@ -281,8 +331,8 @@ async def crypto_scanner():
             
         except Exception as e:
             logger.error(f"Scanner error: {e}")
-        
-        await asyncio.sleep(60)
+
+        await asyncio.sleep(trading_state.settings.crypto_scanner_interval_seconds)
 
 async def crypto_scalping_trader():
     """Advanced crypto scalping strategy - checks every 10 seconds"""
@@ -291,13 +341,13 @@ async def crypto_scalping_trader():
         try:
             if not trading_state.auto_trading_enabled:
                 logger.debug("Auto-trading disabled, waiting...")
-                await asyncio.sleep(10)
+                await asyncio.sleep(trading_state.settings.scalper_poll_interval_seconds)
                 continue
-            
+
             # Check daily loss limit
             if trading_state.current_daily_loss >= trading_state.daily_loss_limit:
                 logger.warning(f"Daily loss limit reached: ${trading_state.current_daily_loss:.2f}")
-                await asyncio.sleep(60)
+                await asyncio.sleep(trading_state.settings.scalper_cooldown_seconds)
                 continue
                 
             api = get_alpaca_api()
@@ -306,8 +356,8 @@ async def crypto_scalping_trader():
             await update_scanner_data()
             
             # Get current crypto positions
-            crypto_positions = [p for p in trading_state.positions_cache 
-                               if any(c in p.get('symbol', '') for c in ['BTC', 'ETH', 'LTC', 'DOGE', 'AVAX', 'UNI', 'LINK', 'AAVE', 'MKR', 'MATIC'])]
+            crypto_positions = [p for p in trading_state.positions_cache
+                               if any(c in p.get('symbol', '') for c in trading_state.crypto_symbol_prefixes)]
             
             # Check exit conditions for existing positions
             await check_scalp_exit_conditions(api, crypto_positions)
@@ -318,8 +368,8 @@ async def crypto_scalping_trader():
                     
         except Exception as e:
             logger.error(f"Crypto scalping trader error: {e}")
-        
-        await asyncio.sleep(10)
+
+        await asyncio.sleep(trading_state.settings.scalper_poll_interval_seconds)
 
 async def update_scanner_data():
     """Update the crypto volatility scanner with current market data"""
@@ -327,24 +377,24 @@ async def update_scanner_data():
         if not trading_state.crypto_scanner:
             logger.debug("No crypto scanner available for data update")
             return
-        
+
         logger.debug("Updating scanner with market data...")
-            
+
         api = get_alpaca_api()
-        
-        # Update market data for all scanner symbols
-        for symbol_display in ['BTC/USD', 'ETH/USD', 'LTC/USD', 'DOGE/USD', 'AVAX/USD', 'UNI/USD', 'LINK/USD', 'AAVE/USD']:
+
+        # Update market data for all configured scanner symbols
+        for symbol_display in refresh_scanner_symbols():
             try:
                 # Get recent bars to update price data
                 bars = api.get_crypto_bars(symbol_display, '1Min', limit=5).df
                 if not bars.empty:
-                    symbol_clean = symbol_display.replace('/', '')
+                    symbol_clean = _to_scanner_symbol(symbol_display)
                     latest_bar = bars.iloc[-1]
                     price = float(latest_bar['close'])
                     volume = float(latest_bar['volume'])
-                    
+
                     # Update scanner data
-                    trading_state.crypto_scanner.update_market_data(symbol_clean + 'USD', price, volume)
+                    trading_state.crypto_scanner.update_market_data(symbol_clean, price, volume)
             except Exception as e:
                 logger.debug(f"Failed to update data for {symbol_display}: {e}")
                 continue
@@ -567,9 +617,21 @@ async def lifespan(app: FastAPI):
         account = api.get_account()
         logger.info(f"✅ Connected to Alpaca - Account: {account.account_number}")
         
-        # Initialize crypto volatility scanner
-        trading_state.crypto_scanner = CryptoVolatilityScanner()
-        
+        # Initialize crypto volatility scanner from configured symbols
+        scanner_seed_symbols = [
+            _to_scanner_symbol(symbol)
+            for symbol in trading_state.crypto_symbols
+            if symbol
+        ]
+        trading_state.crypto_scanner = CryptoVolatilityScanner(
+            enabled_symbols=scanner_seed_symbols or None
+        )
+        derived_pairs = refresh_scanner_symbols()
+        logger.info(
+            "Configured %d crypto pairs for scanning via strategy defaults",
+            len(derived_pairs),
+        )
+
         # Start background tasks
         asyncio.create_task(update_cache())
         asyncio.create_task(crypto_scanner())
@@ -904,7 +966,7 @@ async def get_config():
     return {
         "auto_trading": trading_state.auto_trading_enabled,
         "scalping_enabled": trading_state.crypto_scanner is not None,
-        "supported_crypto": ['BTC/USD', 'ETH/USD', 'LTC/USD', 'DOGE/USD', 'AVAX/USD', 'UNI/USD', 'LINK/USD', 'AAVE/USD', 'MKR/USD', 'MATIC/USD'],
+        "supported_crypto": list(trading_state.crypto_symbols),
         "max_positions": trading_state.max_concurrent_positions,
         "daily_loss_limit": trading_state.daily_loss_limit,
         "min_volatility": 0.005,  # 0.5%
@@ -1097,11 +1159,12 @@ async def submit_crypto_order(request: dict):
 async def get_crypto_assets():
     """Get available crypto assets"""
     return [
-        {"symbol": "BTC/USD", "name": "Bitcoin", "exchange": "FTXU"},
-        {"symbol": "ETH/USD", "name": "Ethereum", "exchange": "FTXU"},
-        {"symbol": "LTC/USD", "name": "Litecoin", "exchange": "FTXU"},
-        {"symbol": "DOGE/USD", "name": "Dogecoin", "exchange": "FTXU"},
-        {"symbol": "AVAX/USD", "name": "Avalanche", "exchange": "FTXU"}
+        {
+            "symbol": symbol,
+            "name": trading_state.crypto_metadata.get(symbol, {}).get("name", symbol.split('/')[0].capitalize()),
+            "exchange": trading_state.crypto_metadata.get(symbol, {}).get("exchange", "FTXU"),
+        }
+        for symbol in trading_state.crypto_symbols
     ]
 
 @app.get("/api/scan")
@@ -1445,10 +1508,10 @@ def get_crypto_market():
     """Get crypto market overview"""
     return {
         "market_status": "open",  # Crypto markets always open
-        "total_assets": len(CRYPTO_SYMBOLS),
-        "active_trading": len([s for s in CRYPTO_SYMBOLS if trading_state.current_prices.get(s)]),
-        "top_gainers": list(CRYPTO_SYMBOLS[:5]),  # Mock data for now
-        "top_losers": list(CRYPTO_SYMBOLS[-5:]),
+        "total_assets": len(trading_state.crypto_symbols),
+        "active_trading": len([s for s in trading_state.crypto_symbols if trading_state.current_prices.get(s)]),
+        "top_gainers": list(trading_state.crypto_symbols[:5]),  # Mock data for now
+        "top_losers": list(trading_state.crypto_symbols[-5:]),
         "data_source": "live"
     }
 
@@ -1457,7 +1520,7 @@ def get_crypto_movers(limit: int = 10):
     """Get top crypto price movers"""
     # Mock data based on available symbols
     movers = []
-    for i, symbol in enumerate(CRYPTO_SYMBOLS[:limit]):
+    for i, symbol in enumerate(trading_state.crypto_symbols[:limit]):
         price = 45000 + (i * 1000)  # Mock prices
         change = (i - 5) * 2.5  # Mock changes
         movers.append({
@@ -1544,7 +1607,7 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             # Send periodic updates
-            await asyncio.sleep(5)
+            await asyncio.sleep(trading_state.settings.cache_refresh_seconds)
             
             # Send trading status update
             status_update = {
@@ -1587,7 +1650,7 @@ async def websocket_stream(websocket: WebSocket):
                 })
             
             # Send periodic market updates
-            await asyncio.sleep(5)
+            await asyncio.sleep(trading_state.settings.cache_refresh_seconds)
             
     except WebSocketDisconnect:
         active_connections.remove(websocket)
