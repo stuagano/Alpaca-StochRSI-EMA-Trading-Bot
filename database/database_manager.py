@@ -1,7 +1,9 @@
-import psycopg2
-import pandas as pd
-from datetime import datetime
 import os
+from datetime import datetime
+from typing import Tuple
+
+import pandas as pd
+import psycopg2
 from psycopg2 import pool
 import logging
 
@@ -16,27 +18,57 @@ class DatabaseManager:
         self.db_url = db_url
         self._init_connection_pool()
         self.create_tables()
-    
+
     def _get_secure_db_url(self):
         """Get database URL from environment variables for security"""
+        explicit_url = os.getenv('DATABASE_URL')
+        if explicit_url:
+            return explicit_url
+
+        legacy_url = os.getenv('LOCAL_POSTGRES_DSN')
+        if legacy_url:
+            return legacy_url
+
         host = os.getenv('DB_HOST', 'localhost')
         port = os.getenv('DB_PORT', '5432')
         database = os.getenv('DB_NAME', 'tradingbot_dev')
         username = os.getenv('DB_USER', 'tradingbot')
         password = os.getenv('DB_PASSWORD')
-        
+
         if not password:
             raise ValueError("DB_PASSWORD environment variable must be set")
-        
+
         return f'postgresql://{username}:{password}@{host}:{port}/{database}'
-    
+
+    def _resolve_pool_limits(self) -> Tuple[int, int]:
+        """Return ``(minconn, maxconn)`` for the PostgreSQL pool."""
+
+        try:
+            pool_size = max(int(os.getenv('DB_POOL_SIZE', '5')), 1)
+        except ValueError:
+            pool_size = 5
+
+        try:
+            max_overflow = max(int(os.getenv('DB_MAX_OVERFLOW', '5')), 0)
+        except ValueError:
+            max_overflow = 5
+
+        min_connections = min(pool_size, pool_size + max_overflow)
+        max_connections = max(pool_size + max_overflow, min_connections or 1)
+
+        if min_connections == 0:
+            min_connections = 1
+
+        return min_connections, max_connections
+
     def _init_connection_pool(self):
         """Initialize connection pool for better performance and resource management"""
         if DatabaseManager._connection_pool is None:
             try:
+                minconn, maxconn = self._resolve_pool_limits()
                 DatabaseManager._connection_pool = psycopg2.pool.ThreadedConnectionPool(
-                    minconn=1,
-                    maxconn=20,
+                    minconn=minconn,
+                    maxconn=maxconn,
                     dsn=self.db_url
                 )
                 logger.info("Database connection pool initialized")
