@@ -47,7 +47,32 @@ If you only want to validate API connectivity without the React bundle, run the 
 python unified_trading_service_with_frontend.py
 ```
 
-## 4. Recommended next steps
+## 4. Docker Compose workflow
+
+The repository ships with a Compose stack (`deploy/local/docker-compose.yml`) so you can start Redis, Postgres, Prometheus, Grafana, and the optional ML/risk workers without hand-crafted shell scripts.
+
+1. Review `.env.example` and copy the relevant keys into your `.env`. At a minimum you need to set `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DATABASE_URL`, `REDIS_URL`, `LOCAL_DATA_ROOT`, and the image tags (`POSTGRES_IMAGE`, `REDIS_IMAGE`, `PROMETHEUS_IMAGE`, `GRAFANA_IMAGE`).
+2. Bring up the default profiles:
+
+   ```bash
+   ./scripts/compose_up.sh            # boots the "core" profile
+   ./scripts/compose_up.sh analytics  # adds Grafana + risk services
+   ./scripts/compose_up.sh ml         # only works when ML_PROFILE_ENABLED=true
+   ```
+
+   The wrapper calls `scripts/check_env.py` to derive container-specific variables (`COMPOSE_DATABASE_URL`, `COMPOSE_REDIS_URL`) from your `.env`, creates `${LOCAL_DATA_ROOT}` subdirectories, and injects them into `docker compose` so every container reads the same configuration contract.
+
+3. Tear everything down with the matching helper:
+
+   ```bash
+   ./scripts/compose_down.sh analytics -v
+   ```
+
+   The first argument selects profiles, any additional flags are forwarded to `docker compose down` (e.g. `-v` to prune volumes).
+
+Metrics ship with the stack out of the box: `main.py` exposes a Prometheus exporter on `PROMETHEUS_EXPORTER_PORT`, the risk API publishes `/metrics`, and both Prometheus and Grafana mount their config from `config/observability/`. Custom dashboards live under `config/observability/grafana/provisioning/dashboards/` so you can iterate locally without manual UI steps.
+
+## 5. Recommended next steps
 
 - Use `tests/unit/config/test_service_settings.py` to verify configuration parsing.
 - Consider running the service inside `poetry run` or `pipenv run` once you migrate dependency management to those tools for consistent environments across teammates.

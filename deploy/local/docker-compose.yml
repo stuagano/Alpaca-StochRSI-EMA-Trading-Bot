@@ -1,0 +1,167 @@
+version: "3.9"
+
+x-app-build: &app-build
+  context: ../..
+  dockerfile: deploy/local/Dockerfile
+
+services:
+  unified-trading-service:
+    build: *app-build
+    image: ${TRADING_IMAGE_NAME:-alpaca-scalper:local}
+    command: ["python", "main.py"]
+    working_dir: /app
+    env_file:
+      - ../../.env
+    environment:
+      DATABASE_URL: ${COMPOSE_DATABASE_URL}
+      REDIS_URL: ${COMPOSE_REDIS_URL}
+      LOCAL_DATA_ROOT: ${LOCAL_DATA_ROOT}
+      LOCAL_LOG_LEVEL: ${LOCAL_LOG_LEVEL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ${LOCAL_DATA_ROOT}/logs:/app/logs
+    profiles: ["core"]
+    restart: unless-stopped
+
+  redis:
+    image: ${REDIS_IMAGE}
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    ports:
+      - "${REDIS_PORT}:6379"
+    volumes:
+      - ${LOCAL_DATA_ROOT}/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles: ["core"]
+    restart: unless-stopped
+
+  postgres:
+    image: ${POSTGRES_IMAGE}
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - ${LOCAL_DATA_ROOT}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles: ["core"]
+    restart: unless-stopped
+
+  prometheus:
+    image: ${PROMETHEUS_IMAGE}
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.listen-address=:${PROMETHEUS_WEB_PORT}"
+    ports:
+      - "${PROMETHEUS_WEB_PORT}:9090"
+    volumes:
+      - ${PROMETHEUS_CONFIG_PATH}:/etc/prometheus/prometheus.yml:ro
+      - ${LOCAL_DATA_ROOT}/prometheus:/prometheus
+    depends_on:
+      - unified-trading-service
+    profiles: ["core"]
+    restart: unless-stopped
+
+  risk-api:
+    build: *app-build
+    image: ${TRADING_IMAGE_NAME:-alpaca-scalper:local}
+    command: [
+      "uvicorn",
+      "services.risk_api_app:app",
+      "--host",
+      "0.0.0.0",
+      "--port",
+      "${RISK_API_PORT}"
+    ]
+    env_file:
+      - ../../.env
+    environment:
+      DATABASE_URL: ${COMPOSE_DATABASE_URL}
+      REDIS_URL: ${COMPOSE_REDIS_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${RISK_API_PORT}:${RISK_API_PORT}"
+    profiles: ["analytics"]
+    restart: unless-stopped
+
+  risk-worker:
+    build: *app-build
+    image: ${TRADING_IMAGE_NAME:-alpaca-scalper:local}
+    command: ["python", "scripts/risk_worker.py"]
+    env_file:
+      - ../../.env
+    environment:
+      DATABASE_URL: ${COMPOSE_DATABASE_URL}
+      REDIS_URL: ${COMPOSE_REDIS_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    profiles: ["analytics"]
+    restart: unless-stopped
+
+  grafana:
+    image: ${GRAFANA_IMAGE}
+    env_file:
+      - ../../.env
+    environment:
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+    ports:
+      - "${GRAFANA_PORT}:3000"
+    volumes:
+      - ${GRAFANA_PROVISIONING_PATH}:/etc/grafana/provisioning
+      - ${LOCAL_DATA_ROOT}/grafana:/var/lib/grafana
+    depends_on:
+      - prometheus
+    profiles: ["analytics"]
+    restart: unless-stopped
+
+  signal-gateway:
+    build: *app-build
+    image: ${TRADING_IMAGE_NAME:-alpaca-scalper:local}
+    command: ["python", "scripts/signal_gateway.py"]
+    env_file:
+      - ../../.env
+    environment:
+      DATABASE_URL: ${COMPOSE_DATABASE_URL}
+      REDIS_URL: ${COMPOSE_REDIS_URL}
+    depends_on:
+      redis:
+        condition: service_healthy
+    profiles: ["ml"]
+    restart: unless-stopped
+
+  sentiment-worker:
+    build: *app-build
+    image: ${TRADING_IMAGE_NAME:-alpaca-scalper:local}
+    command: ["python", "scripts/sentiment_worker.py"]
+    env_file:
+      - ../../.env
+    environment:
+      REDIS_URL: ${COMPOSE_REDIS_URL}
+    depends_on:
+      redis:
+        condition: service_healthy
+    profiles: ["ml"]
+    restart: unless-stopped
+
+volumes: {}
