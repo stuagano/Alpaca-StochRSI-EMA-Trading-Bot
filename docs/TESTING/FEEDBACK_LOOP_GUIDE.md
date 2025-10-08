@@ -5,7 +5,7 @@ This guide explains how to quickly validate code fixes by turning them into repr
 ## 1. Start With a Failing Scenario
 1. **Reproduce the bug** using the smallest possible scenario (CLI command, HTTP request, strategy input, etc.). Capture any log snippets or configuration you need.
 2. **Codify the scenario as a test** so it fails before your fix:
-   - Prefer `pytest` unit or integration tests for Python modules. When the regression involves the StochRSI strategy or its volume gating, extend the scenarios in `tests/functional/strategies/test_enhanced_stoch_rsi_strategy.py` so the loop exercises confirmation, rejection, and bypass behaviour together.
+   - Prefer `pytest` unit or integration tests for Python modules. When the regression involves the StochRSI strategy or its volume gating, extend the scenarios in `tests/functional/strategies/test_enhanced_stoch_rsi_strategy.py` so the loop exercises confirmation, rejection, bypass behaviour, and telemetry surfaces like `get_strategy_performance`/`get_dashboard_data` together.
    - For dashboard/UI regressions, add or extend a Playwright spec under `tests/e2e/`.
    - Use shared fixtures and helpers from `tests/` to stay DRY—do not duplicate mock setups.
 3. **Parametrize new tests** when multiple inputs should behave the same. This keeps the suite concise while covering more cases.

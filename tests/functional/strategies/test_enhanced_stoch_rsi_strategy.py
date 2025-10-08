@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from types import ModuleType, SimpleNamespace
 from typing import Callable, Optional
 
@@ -89,16 +88,6 @@ from indicators.volume_analysis import VolumeConfirmationResult
 from strategies.enhanced_stoch_rsi_strategy import EnhancedStochRSIStrategy
 
 
-@dataclass
-class _AnalyzerFactory:
-    """Factory that mirrors the production factory signature."""
-
-    result: Optional[VolumeConfirmationResult]
-
-    def __call__(self, *_: object, **__: object) -> "_StubVolumeAnalyzer":
-        return _StubVolumeAnalyzer(self.result)
-
-
 class _StubVolumeAnalyzer:
     """Minimal stub to exercise volume confirmation branches."""
 
@@ -150,15 +139,75 @@ def market_data() -> pd.DataFrame:
 
 @pytest.fixture
 def patch_indicator(monkeypatch: pytest.MonkeyPatch) -> Callable[[int], None]:
-    def _apply(signal_value: int) -> None:
+    def _apply(signal_value: int, *, indicator_payload: Optional[dict[str, list[float]]] = None) -> None:
         def _stub(self: EnhancedStochRSIStrategy, df: pd.DataFrame) -> pd.DataFrame:
             indicator_df = df.copy()
             indicator_df["StochRSI Signal"] = [0] * (len(df) - 1) + [signal_value]
+            if indicator_payload:
+                for column, values in indicator_payload.items():
+                    indicator_df[column] = values
             return indicator_df
 
         monkeypatch.setattr(EnhancedStochRSIStrategy, "_calculate_stoch_rsi_indicators", _stub)
 
     return _apply
+
+
+class _SequenceVolumeAnalyzer(_StubVolumeAnalyzer):
+    """Stub that yields a sequence of volume confirmation results."""
+
+    def __init__(self, results: list[VolumeConfirmationResult]):
+        super().__init__(result=results[0] if results else None)
+        self._sequence = iter(results)
+        self._last_result: Optional[VolumeConfirmationResult] = None
+
+    def confirm_signal_with_volume(self, df: pd.DataFrame, signal: int) -> VolumeConfirmationResult:
+        self.calls += 1
+        self._last_result = next(self._sequence)
+        return self._last_result
+
+    def get_volume_dashboard_data(self, df: pd.DataFrame) -> dict:
+        source = self._last_result or self._result
+        if source is None:
+            return {"volume_confirmed": False}
+        return {
+            "volume_confirmed": source.is_confirmed,
+            "volume_ratio": source.volume_ratio,
+            "relative_volume": source.relative_volume,
+        }
+
+
+@pytest.fixture
+def strategy_builder(
+    monkeypatch: pytest.MonkeyPatch,
+    strategy_config,
+    patch_indicator,
+) -> Callable[..., tuple[EnhancedStochRSIStrategy, _StubVolumeAnalyzer]]:
+    def _build(
+        *,
+        signal_value: int,
+        analyzer_results: Optional[object] = None,
+        require_volume: bool = True,
+        indicator_payload: Optional[dict[str, list[float]]] = None,
+    ) -> tuple[EnhancedStochRSIStrategy, _StubVolumeAnalyzer]:
+        patch_indicator(signal_value, indicator_payload=indicator_payload)
+        strategy_config.volume_confirmation.require_volume_confirmation = require_volume
+
+        if analyzer_results is None:
+            analyzer = _StubVolumeAnalyzer(result=None)
+        elif isinstance(analyzer_results, list):
+            analyzer = _SequenceVolumeAnalyzer(results=analyzer_results)
+        else:
+            analyzer = _StubVolumeAnalyzer(result=analyzer_results)
+
+        monkeypatch.setattr(
+            "strategies.enhanced_stoch_rsi_strategy.get_volume_analyzer", lambda *_: analyzer
+        )
+
+        strategy = EnhancedStochRSIStrategy(strategy_config)
+        return strategy, analyzer
+
+    return _build
 
 
 def _make_volume_result(
@@ -179,19 +228,15 @@ def _make_volume_result(
     )
 
 
-def test_generate_signal_confirms_volume(
-    monkeypatch: pytest.MonkeyPatch,
-    strategy_config,
-    market_data,
-    patch_indicator,
-):
-    patch_indicator(1)
-    analyzer_factory = _AnalyzerFactory(
-        _make_volume_result(is_confirmed=True, ratio=1.6, rel_volume=1.4, trend="high", strength=0.92)
+def test_generate_signal_confirms_volume(strategy_builder, market_data):
+    result = _make_volume_result(
+        is_confirmed=True,
+        ratio=1.6,
+        rel_volume=1.4,
+        trend="high",
+        strength=0.92,
     )
-    monkeypatch.setattr("strategies.enhanced_stoch_rsi_strategy.get_volume_analyzer", analyzer_factory)
-
-    strategy = EnhancedStochRSIStrategy(strategy_config)
+    strategy, analyzer = strategy_builder(signal_value=1, analyzer_results=result)
     result = strategy.generate_signal(market_data)
 
     assert result == 1
@@ -202,21 +247,20 @@ def test_generate_signal_confirms_volume(
     }
     assert strategy.signal_history[-1]["volume_confirmed"] is True
     assert strategy.signal_history[-1]["volume_data"]["volume_ratio"] == pytest.approx(1.6)
+    assert analyzer.calls == 1
 
 
-def test_generate_signal_rejects_when_volume_fails(
-    monkeypatch: pytest.MonkeyPatch,
-    strategy_config,
-    market_data,
-    patch_indicator,
-):
-    patch_indicator(1)
-    analyzer_factory = _AnalyzerFactory(
-        _make_volume_result(is_confirmed=False, ratio=0.7, rel_volume=0.6, trend="low", strength=0.35)
+def test_generate_signal_rejects_when_volume_fails(strategy_builder, market_data):
+    strategy, analyzer = strategy_builder(
+        signal_value=1,
+        analyzer_results=_make_volume_result(
+            is_confirmed=False,
+            ratio=0.7,
+            rel_volume=0.6,
+            trend="low",
+            strength=0.35,
+        ),
     )
-    monkeypatch.setattr("strategies.enhanced_stoch_rsi_strategy.get_volume_analyzer", analyzer_factory)
-
-    strategy = EnhancedStochRSIStrategy(strategy_config)
     result = strategy.generate_signal(market_data)
 
     assert result == 0
@@ -227,21 +271,11 @@ def test_generate_signal_rejects_when_volume_fails(
     }
     assert strategy.signal_history[-1]["volume_confirmed"] is False
     assert strategy.signal_history[-1]["volume_data"]["volume_ratio"] == pytest.approx(0.7)
+    assert analyzer.calls == 1
 
 
-def test_generate_signal_skips_volume_when_not_required(
-    monkeypatch: pytest.MonkeyPatch,
-    strategy_config,
-    market_data,
-    patch_indicator,
-):
-    strategy_config.volume_confirmation.require_volume_confirmation = False
-    patch_indicator(1)
-
-    analyzer_factory = _AnalyzerFactory(result=None)
-    monkeypatch.setattr("strategies.enhanced_stoch_rsi_strategy.get_volume_analyzer", analyzer_factory)
-
-    strategy = EnhancedStochRSIStrategy(strategy_config)
+def test_generate_signal_skips_volume_when_not_required(strategy_builder, market_data):
+    strategy, analyzer = strategy_builder(signal_value=1, analyzer_results=None, require_volume=False)
     result = strategy.generate_signal(market_data)
 
     assert result == 1
@@ -250,20 +284,11 @@ def test_generate_signal_skips_volume_when_not_required(
         "volume_confirmed": 0,
         "volume_rejected": 0,
     }
+    assert analyzer.calls == 0
 
 
-def test_generate_signal_returns_zero_without_base_signal(
-    monkeypatch: pytest.MonkeyPatch,
-    strategy_config,
-    market_data,
-    patch_indicator,
-):
-    patch_indicator(0)
-
-    analyzer_factory = _AnalyzerFactory(result=None)
-    monkeypatch.setattr("strategies.enhanced_stoch_rsi_strategy.get_volume_analyzer", analyzer_factory)
-
-    strategy = EnhancedStochRSIStrategy(strategy_config)
+def test_generate_signal_returns_zero_without_base_signal(strategy_builder, market_data):
+    strategy, analyzer = strategy_builder(signal_value=0, analyzer_results=None)
     result = strategy.generate_signal(market_data)
 
     assert result == 0
@@ -273,3 +298,71 @@ def test_generate_signal_returns_zero_without_base_signal(
         "volume_rejected": 0,
     }
     assert strategy.signal_history == []
+    assert analyzer.calls == 0
+
+
+def test_get_strategy_performance_tracks_confirmed_and_rejected(strategy_builder, market_data):
+    sequence = [
+        _make_volume_result(is_confirmed=True, ratio=1.8, rel_volume=1.5, trend="rising", strength=0.85),
+        _make_volume_result(is_confirmed=False, ratio=0.6, rel_volume=0.55, trend="falling", strength=0.25),
+    ]
+    strategy, analyzer = strategy_builder(signal_value=1, analyzer_results=sequence)
+
+    first_signal = strategy.generate_signal(market_data)
+    second_signal = strategy.generate_signal(market_data)
+
+    assert first_signal == 1
+    assert second_signal == 0
+    assert analyzer.calls == 2
+
+    stats = strategy.get_strategy_performance()
+
+    assert stats["total_signals"] == 2
+    assert stats["volume_confirmed"] == 1
+    assert stats["volume_rejected"] == 1
+    assert stats["confirmation_rate"] == pytest.approx(0.5)
+    assert stats["rejection_rate"] == pytest.approx(0.5)
+    assert stats["recent_confirmation_rate"] == pytest.approx(0.5)
+    assert stats["avg_confirmed_volume_ratio"] == pytest.approx(1.8)
+    assert stats["avg_confirmed_relative_volume"] == pytest.approx(1.5)
+    assert stats["avg_confirmation_strength"] == pytest.approx(0.85)
+
+
+def test_get_dashboard_data_surfaces_volume_and_indicator_metrics(strategy_builder, market_data):
+    indicator_payload = {
+        "RSI": [35, 45, 55, 60, 65, 70],
+        "Stoch %K": [10, 20, 30, 40, 50, 60],
+        "Stoch %D": [15, 25, 35, 45, 55, 65],
+    }
+    volume_result = _make_volume_result(
+        is_confirmed=True,
+        ratio=1.4,
+        rel_volume=1.3,
+        trend="surging",
+        strength=0.9,
+    )
+    strategy, analyzer = strategy_builder(
+        signal_value=1,
+        analyzer_results=volume_result,
+        indicator_payload=indicator_payload,
+    )
+
+    strategy.generate_signal(market_data)
+
+    dashboard = strategy.get_dashboard_data(market_data)
+
+    assert dashboard["strategy_name"] == "Enhanced StochRSI"
+    assert dashboard["current_signal"] == 1
+    assert dashboard["performance"]["volume_confirmed"] == 1
+    assert dashboard["volume_analysis"] == {
+        "volume_confirmed": True,
+        "volume_ratio": pytest.approx(1.4),
+        "relative_volume": pytest.approx(1.3),
+    }
+    assert dashboard["current_indicators"] == {
+        "rsi": pytest.approx(70),
+        "stoch_k": pytest.approx(60),
+        "stoch_d": pytest.approx(65),
+        "volume": market_data.iloc[-1]["volume"],
+    }
+    assert analyzer.calls == 1
