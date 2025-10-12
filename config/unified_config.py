@@ -137,6 +137,9 @@ class VolumeConfirmationConfig:
     relative_volume_threshold: float = 1.5
     volume_trend_periods: int = 5
     require_volume_confirmation: bool = True
+    min_signal_gap_seconds: int = 300
+    require_confirmation: bool = True
+    confirmation_window: int = 3
     volume_strength_levels: Dict[str, float] = field(default_factory=lambda: {
         'very_low': -2.0,
         'low': -1.0,
@@ -237,16 +240,18 @@ class TradingConfig:
     sleep_time_between_trades: int = 60
     extended_hours: bool = True
     strategy: str = "StochRSI"
-    
+    symbols: List[str] = field(default_factory=lambda: ["BTCUSD", "ETHUSD", "SOLUSD"])
+
+    # Crypto-specific settings
+    crypto_only: bool = True  # Only trade cryptocurrency pairs
+    market_type: str = "crypto"  # "crypto" or "stock"
+
     # Component configurations
     indicators: IndicatorsConfig = field(default_factory=IndicatorsConfig)
     risk_management: RiskManagementConfig = field(default_factory=RiskManagementConfig)
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     api: APIConfig = field(default_factory=APIConfig)
-    
-    # Epic 1 Enhanced Features
-    epic1: Epic1Config = field(default_factory=Epic1Config)
 
 
 class UnifiedConfigManager:
@@ -348,25 +353,9 @@ class UnifiedConfigManager:
         if 'api' in config_dict:
             config_dict['api'] = APIConfig(**config_dict['api'])
         
-        # Handle Epic1 configuration
-        epic1_config = {}
-        
-        # Check if epic1 section exists
-        if 'epic1' in config_dict:
-            epic1_config = config_dict['epic1']
-        
-        # Move volume_confirmation from root to epic1 if it exists at root level
-        if 'volume_confirmation' in config_dict:
-            volume_conf_data = config_dict.pop('volume_confirmation')
-            if isinstance(volume_conf_data, dict):
-                epic1_config['volume_confirmation'] = VolumeConfirmationConfig(**volume_conf_data)
-            else:
-                # If it's not a dict, create default config
-                epic1_config['volume_confirmation'] = VolumeConfirmationConfig()
-        
-        # Create Epic1Config if we have any epic1 settings
-        if epic1_config or 'volume_confirmation' in data:
-            config_dict['epic1'] = Epic1Config(**epic1_config) if isinstance(epic1_config, dict) else epic1_config
+        # Remove any Epic1 configuration sections for simplified crypto scalping
+        config_dict.pop('epic1', None)
+        config_dict.pop('volume_confirmation', None)
         
         return config_dict
     
@@ -536,34 +525,9 @@ class UnifiedConfigManager:
         
         if 'api' in config_dict and isinstance(config_dict['api'], dict):
             config_dict['api'] = APIConfig(**config_dict['api'])
-        
-        # Handle Epic1 configuration
-        if 'epic1' in config_dict and isinstance(config_dict['epic1'], dict):
-            epic1_data = config_dict['epic1']
-            epic1_config_dict = {}
-            
-            # Handle nested Epic1 configs
-            if 'volume_confirmation' in epic1_data and isinstance(epic1_data['volume_confirmation'], dict):
-                epic1_config_dict['volume_confirmation'] = VolumeConfirmationConfig(**epic1_data['volume_confirmation'])
-            
-            if 'dynamic_stochrsi' in epic1_data and isinstance(epic1_data['dynamic_stochrsi'], dict):
-                epic1_config_dict['dynamic_stochrsi'] = DynamicStochRSIConfig(**epic1_data['dynamic_stochrsi'])
-            
-            if 'multi_timeframe' in epic1_data and isinstance(epic1_data['multi_timeframe'], dict):
-                epic1_config_dict['multi_timeframe'] = MultiTimeframeConfig(**epic1_data['multi_timeframe'])
-            
-            if 'signal_quality' in epic1_data and isinstance(epic1_data['signal_quality'], dict):
-                epic1_config_dict['signal_quality'] = SignalQualityConfig(**epic1_data['signal_quality'])
-            
-            if 'performance' in epic1_data and isinstance(epic1_data['performance'], dict):
-                epic1_config_dict['performance'] = Epic1PerformanceConfig(**epic1_data['performance'])
-            
-            # Add any other Epic1 fields
-            for key, value in epic1_data.items():
-                if key not in epic1_config_dict:
-                    epic1_config_dict[key] = value
-            
-            config_dict['epic1'] = Epic1Config(**epic1_config_dict)
+
+        # Remove Epic1 configuration for simplified crypto scalping
+        config_dict.pop('epic1', None)
         
         return TradingConfig(**config_dict)
     
@@ -593,9 +557,13 @@ class UnifiedConfigManager:
             errors.append(f"timeframe must be one of {valid_timeframes}")
         
         # Validate strategy
-        valid_strategies = ["StochRSI", "MACrossover"]
+        valid_strategies = ["StochRSI", "MACrossover", "crypto_scalping"]
         if config.strategy not in valid_strategies:
             errors.append(f"strategy must be one of {valid_strategies}")
+
+        # Validate symbols
+        if not config.symbols or len(config.symbols) == 0:
+            errors.append("At least one symbol must be specified")
         
         # Validate indicator parameters
         if config.indicators.stochRSI.enabled:
@@ -649,6 +617,7 @@ class UnifiedConfigManager:
             "timeframe": config.timeframe,
             "candle_lookback_period": config.candle_lookback_period,
             "sleep_time_between_trades": config.sleep_time_between_trades,
+            "symbols": config.symbols,
             "indicators": {
                 "stochRSI": "True" if config.indicators.stochRSI.enabled else "False",
                 "stochRSI_params": asdict(config.indicators.stochRSI),
