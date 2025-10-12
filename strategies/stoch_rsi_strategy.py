@@ -26,10 +26,10 @@ class StochRSIStrategy(Strategy):
         self.lookback_period = self.config.candle_lookback_period
         
         # Initialize volume analyzer
-        self.volume_analyzer = get_volume_analyzer(self.config.volume_confirmation)
-        self.require_volume_confirmation = getattr(self.config.volume_confirmation, 'require_volume_confirmation', True)
+        # self.volume_analyzer = get_volume_analyzer(self.config.volume_confirmation)
+        # self.require_volume_confirmation = getattr(self.config.volume_confirmation, 'require_volume_confirmation', True)
         
-        logger.info(f"StochRSI Strategy initialized with volume confirmation: {self.require_volume_confirmation}")
+        # logger.info(f"StochRSI Strategy initialized with volume confirmation: {self.require_volume_confirmation}")
         
         # Performance tracking
         self.performance_metrics = {

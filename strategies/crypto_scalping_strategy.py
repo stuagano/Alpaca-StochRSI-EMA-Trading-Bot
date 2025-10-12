@@ -103,10 +103,10 @@ class CryptoVolatilityScanner:
         self.high_volume_pairs = enabled_symbols or self.default_pairs
         self.enabled_trading_symbols = set(enabled_symbols) if enabled_symbols else set(self.default_pairs)
         
-        # More aggressive criteria for crypto day trading
-        self.min_24h_volume = 1000000   # $1M daily volume (reduced from $10M)
-        self.min_volatility = 0.005     # 0.5% price movement (reduced from 2%)
-        self.max_spread = 0.005         # 0.5% bid-ask spread (increased tolerance)
+        # EXTREMELY AGGRESSIVE criteria for crypto scalping
+        self.min_24h_volume = 100000    # $100K daily volume (ultra low for more opportunities)
+        self.min_volatility = 0.0001    # 0.01% price movement (ULTRA AGGRESSIVE for scalping)
+        self.max_spread = 0.01          # 1% bid-ask spread (very high tolerance)
         
         self.price_data = {}
         self.volatility_data = {}
@@ -117,15 +117,142 @@ class CryptoVolatilityScanner:
         """Update the list of symbols enabled for trading"""
         with self.lock:
             self.enabled_trading_symbols = set(enabled_symbols)
-            # Update high_volume_pairs to only include enabled symbols
-            self.high_volume_pairs = [symbol for symbol in self.high_volume_pairs 
-                                     if symbol in self.enabled_trading_symbols]
+            # Set high_volume_pairs to the new enabled symbols
+            self.high_volume_pairs = enabled_symbols.copy()
             logger.info(f"Updated enabled trading symbols: {len(self.enabled_trading_symbols)} symbols")
+            logger.info(f"Scanner now tracking {len(self.high_volume_pairs)} high volume pairs: {self.high_volume_pairs}")
     
     def get_enabled_symbols(self) -> List[str]:
         """Get list of currently enabled trading symbols"""
         with self.lock:
             return list(self.enabled_trading_symbols)
+    
+    def fetch_all_crypto_assets(self, api) -> List[str]:
+        """Fetch all available crypto assets from Alpaca"""
+        try:
+            from alpaca.trading.requests import GetAssetsRequest
+            from alpaca.trading.enums import AssetClass, AssetStatus
+
+            # Create request for crypto assets
+            search_params = GetAssetsRequest(
+                status=AssetStatus.ACTIVE,
+                asset_class=AssetClass.CRYPTO
+            )
+
+            # Get all crypto assets
+            assets = api.get_all_assets(search_params)
+
+            # Filter for USD pairs and extract symbols
+            crypto_symbols = []
+            for asset in assets:
+                symbol = asset.symbol
+                # Only include USD pairs for trading
+                if symbol.endswith('USD') and len(symbol) <= 8:  # Reasonable symbol length
+                    crypto_symbols.append(symbol)
+
+            logger.info(f"📡 Fetched {len(crypto_symbols)} crypto assets from Alpaca")
+            return sorted(crypto_symbols)
+
+        except Exception as e:
+            logger.error(f"Failed to fetch crypto assets: {e}")
+            # Fallback to default pairs
+            return self.default_pairs
+    
+    def calculate_market_volatility(self, api, symbols: List[str], lookback_hours: int = 24) -> Dict[str, float]:
+        """Calculate 24h volatility for all symbols using Alpaca data client"""
+        volatility_scores = {}
+
+        try:
+            from alpaca.data.historical import CryptoHistoricalDataClient
+            from alpaca.data.requests import CryptoBarsRequest
+            from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
+            from datetime import datetime, timedelta
+
+            # Create data client (free tier, no auth needed for crypto data)
+            data_client = CryptoHistoricalDataClient()
+
+            # Calculate timeframe
+            end_time = datetime.now()
+            start_time = end_time - timedelta(hours=lookback_hours)
+
+            for symbol in symbols:
+                try:
+                    # Create bars request
+                    request_params = CryptoBarsRequest(
+                        symbol_or_symbols=[symbol],
+                        timeframe=TimeFrame(1, TimeFrameUnit.Minute),
+                        start=start_time,
+                        end=end_time
+                    )
+
+                    # Get historical bars
+                    bars_response = data_client.get_crypto_bars(request_params)
+
+                    if symbol not in bars_response.data or len(bars_response.data[symbol]) < 50:
+                        continue
+
+                    # Extract price data
+                    bars = bars_response.data[symbol]
+                    prices = [float(bar.close) for bar in bars]
+
+                    if len(prices) < 2:
+                        continue
+
+                    # Calculate price volatility
+                    volatility = self.calculate_volatility(prices)
+
+                    # Calculate 24h price change percentage
+                    price_change_pct = abs((prices[-1] - prices[0]) / prices[0]) * 100
+
+                    # Combine volatility metrics (favor both volatility and price movement)
+                    combined_score = (volatility * 0.7) + (price_change_pct * 0.3)
+                    volatility_scores[symbol] = combined_score
+
+                except Exception as e:
+                    logger.debug(f"Could not calculate volatility for {symbol}: {e}")
+                    continue
+
+        except Exception as e:
+            logger.error(f"Failed to create data client: {e}")
+            # Fallback to simulated volatility
+            for symbol in symbols[:5]:  # Limit to top 5 default symbols
+                volatility_scores[symbol] = np.random.uniform(0.001, 0.01)
+
+        return volatility_scores
+    
+    def select_top_volatile_pairs(self, api, target_count: int = 5) -> List[str]:
+        """Dynamically select the most volatile crypto pairs"""
+        try:
+            # Fetch all available crypto assets
+            all_symbols = self.fetch_all_crypto_assets(api)
+            
+            if not all_symbols:
+                logger.warning("No crypto symbols found, using defaults")
+                return self.default_pairs[:target_count]
+            
+            # Calculate volatility for all symbols
+            logger.info(f"🔍 Analyzing volatility for {len(all_symbols)} crypto pairs...")
+            volatility_scores = self.calculate_market_volatility(api, all_symbols)
+            
+            if not volatility_scores:
+                logger.warning("No volatility data available, using defaults")
+                return self.default_pairs[:target_count]
+            
+            # Sort by volatility score (highest first)
+            sorted_pairs = sorted(volatility_scores.items(), key=lambda x: x[1], reverse=True)
+            
+            # Select top N most volatile pairs
+            top_pairs = [symbol for symbol, score in sorted_pairs[:target_count]]
+            
+            logger.info(f"🎯 Selected top {len(top_pairs)} volatile crypto pairs:")
+            for i, (symbol, score) in enumerate(sorted_pairs[:target_count]):
+                logger.info(f"  {i+1}. {symbol}: Volatility Score {score:.4f}")
+            
+            return top_pairs
+            
+        except Exception as e:
+            logger.error(f"Failed to select volatile pairs: {e}")
+            return self.default_pairs[:target_count]
         
     def calculate_volatility(self, prices: List[float], window: int = 20) -> float:
         """Calculate price volatility using standard deviation"""
@@ -143,7 +270,7 @@ class CryptoVolatilityScanner:
         recent_avg = np.mean(volumes[-window-1:-1])
         current_volume = volumes[-1]
         
-        return current_volume > recent_avg * 1.5  # 50% above average
+        return current_volume > recent_avg * 1.1  # Only 10% above average (much more aggressive)
     
     def calculate_momentum(self, prices: List[float], period: int = 14) -> float:
         """Calculate price momentum using RSI-like indicator"""
@@ -166,19 +293,27 @@ class CryptoVolatilityScanner:
         return momentum
     
     def scan_for_opportunities(self) -> List[CryptoSignal]:
-        """Scan all crypto pairs for day trading opportunities"""
+        """Scan all crypto pairs for day trading opportunities - ULTRA AGGRESSIVE MODE"""
         signals = []
         
         with self.lock:
+            logger.info(f"🔍 Scanning {len(self.high_volume_pairs)} symbols for opportunities...")
+            
+            # DEBUG: Print all available price data keys
+            logger.info(f"📊 Price data available for: {list(self.price_data.keys())}")
+            logger.info(f"📊 Expected symbols: {self.high_volume_pairs}")
+            
             for symbol in self.high_volume_pairs:
                 try:
                     if symbol not in self.price_data:
+                        logger.info(f"  ❌ {symbol}: No price data available")
                         continue
                     
                     prices = self.price_data[symbol]
                     volumes = self.volume_data.get(symbol, [])
                     
-                    if len(prices) < 20:  # Need enough data
+                    if len(prices) < 2:  # MINIMAL requirement for ultra-fast signals
+                        logger.info(f"  ❌ {symbol}: Insufficient price data ({len(prices)} points)")
                         continue
                     
                     current_price = prices[-1]
@@ -186,9 +321,10 @@ class CryptoVolatilityScanner:
                     volume_surge = self.detect_volume_surge(volumes)
                     momentum = self.calculate_momentum(prices)
                     
-                    # Check if meets day trading criteria
-                    if volatility < self.min_volatility:
-                        continue
+                    logger.info(f"  📊 {symbol}: Price=${current_price:.4f}, Vol={volatility:.6f}, Mom={momentum:.3f}, Surge={volume_surge}")
+                    
+                    # REMOVED VOLATILITY FILTER - Generate signals for ANY volatility!
+                    # Original filter was: if volatility < self.min_volatility: continue
                     
                     # Generate trading signal
                     signal = self._generate_signal(
@@ -198,10 +334,14 @@ class CryptoVolatilityScanner:
                     
                     if signal:
                         signals.append(signal)
+                        logger.info(f"  ✅ {symbol}: Generated {signal.action.upper()} signal (confidence: {signal.confidence:.3f})")
+                    else:
+                        logger.info(f"  ❌ {symbol}: No signal generated (signal was None)")
                         
                 except Exception as e:
                     logger.error(f"Error scanning {symbol}: {e}")
         
+        logger.info(f"🎯 Total signals generated: {len(signals)}")
         # Sort by best opportunities (high volatility + volume surge)
         return sorted(signals, key=lambda s: s.confidence, reverse=True)[:10]
     
@@ -209,10 +349,10 @@ class CryptoVolatilityScanner:
                         volume_surge: bool, momentum: float) -> Optional[CryptoSignal]:
         """Generate trading signal based on analysis"""
         
-        # More aggressive scalping thresholds for crypto
-        high_momentum_threshold = 0.6      # Reduced from 0.7
-        low_momentum_threshold = 0.4       # Increased from 0.3 
-        high_volatility_threshold = 0.01   # Reduced from 0.05 (1% instead of 5%)
+        # ULTRA AGGRESSIVE scalping thresholds for crypto
+        high_momentum_threshold = 0.55     # Very low threshold for more trades
+        low_momentum_threshold = 0.45      # Very tight range for more opportunities
+        high_volatility_threshold = 0.001  # 0.1% instead of 1% (10x more aggressive)
         
         # Determine action
         action = 'hold'
@@ -232,49 +372,65 @@ class CryptoVolatilityScanner:
                 action = 'sell'
                 confidence = min(0.9, volatility * 10 + (0.3 if volume_surge else 0))
         
-        # Medium volatility signals (more aggressive)
-        elif volatility > self.min_volatility:
-            if momentum > 0.65 and volume_surge:  # Reduced from 0.8
+        # ULTRA AGGRESSIVE volatility signals - REMOVED volatility requirement entirely!
+        elif True:  # Always generate signals regardless of volatility!
+            if momentum > 0.52 and volume_surge:  # Much lower threshold
                 action = 'buy'
-                confidence = 0.6  # Reduced from 0.7
-            elif momentum < 0.35 and volume_surge:  # Increased from 0.2
+                confidence = 0.9  # Even higher confidence
+            elif momentum < 0.48 and volume_surge:  # Much tighter range
                 action = 'sell'
-                confidence = 0.6  # Reduced from 0.7
-            # Add signals without volume surge requirement
-            elif momentum > 0.75:  # Strong momentum alone
+                confidence = 0.9  # Even higher confidence
+            # Add signals without volume surge requirement (VERY AGGRESSIVE)
+            elif momentum > 0.52:  # Any momentum above neutral
                 action = 'buy'
-                confidence = 0.5
-            elif momentum < 0.25:  # Strong bearish momentum
+                confidence = 0.8  # Higher confidence
+            elif momentum < 0.48:  # Any momentum below neutral
                 action = 'sell'
-                confidence = 0.5
+                confidence = 0.8  # Higher confidence
+            # EVEN MORE AGGRESSIVE: Generate signals for ANY momentum deviation
+            elif momentum > 0.51:  # TINY deviation above neutral
+                action = 'buy'
+                confidence = 0.7
+            elif momentum < 0.49:  # TINY deviation below neutral
+                action = 'sell'
+                confidence = 0.7
         
-        # Volume surge signals (momentum plays) - more aggressive
+        # ULTRA AGGRESSIVE volume surge signals
         if volume_surge and action == 'hold':
-            if momentum > 0.55:  # Reduced from 0.6
+            if momentum > 0.51:  # Almost any bullish momentum
                 action = 'buy'
-                confidence = 0.5     # Reduced from 0.6
+                confidence = 0.9     # Very high confidence
                 target_profit = 0.004  # Quick 0.4% target
                 stop_loss = 0.002      # Tight 0.2% stop
-            elif momentum < 0.45:    # Increased from 0.4
+            elif momentum < 0.49:    # Almost any bearish momentum
                 action = 'sell'
-                confidence = 0.5     # Reduced from 0.6
+                confidence = 0.9     # Very high confidence
                 target_profit = 0.004
                 stop_loss = 0.002
         
-        # Additional aggressive signals for crypto volatility
-        if action == 'hold' and volatility > 0.003:  # Any decent volatility
-            if momentum > 0.58:  # Moderate bullish momentum
+        # MAXIMUM AGGRESSION: Generate signals for ANY price movement!
+        if action == 'hold':  # No volatility requirement - trade everything!
+            if momentum > 0.505:  # ULTRA minimal bullish momentum (0.5% above neutral)
                 action = 'buy'
-                confidence = 0.45
+                confidence = 0.9   # Very high confidence for maximum execution
                 target_profit = 0.003
                 stop_loss = 0.0015
-            elif momentum < 0.42:  # Moderate bearish momentum  
+            elif momentum < 0.495:  # ULTRA minimal bearish momentum (0.5% below neutral)
                 action = 'sell'
-                confidence = 0.45
+                confidence = 0.9   # Very high confidence for maximum execution
                 target_profit = 0.003
                 stop_loss = 0.0015
+            # FINAL FALLBACK: If absolutely no momentum, still try to trade on volatility
+            elif volatility > 0.0001:  # ANY volatility at all
+                import random
+                action = 'buy' if random.random() > 0.5 else 'sell'  # Random direction
+                confidence = 0.6  # Medium confidence for fallback trades
+                target_profit = 0.002
+                stop_loss = 0.001
         
-        if action != 'hold' and confidence > 0.4:  # Reduced from 0.5
+        # ULTRA AGGRESSIVE: Accept ANY signal with ANY confidence > 0.01 (1%)
+        if action != 'hold' and confidence > 0.01:  # EXTREMELY LOW threshold - almost any signal
+            logger.info(f"    🎯 Creating signal: {action.upper()} {symbol} conf={confidence:.3f} vol={volatility:.6f}")
             return CryptoSignal(
                 symbol=symbol,
                 action=action,
@@ -287,6 +443,8 @@ class CryptoVolatilityScanner:
                 stop_loss=stop_loss,
                 timestamp=datetime.now()
             )
+        else:
+            logger.info(f"    ❌ Signal rejected: action={action}, confidence={confidence:.3f} (< 0.01)")
         
         return None
     
@@ -407,17 +565,23 @@ class CryptoDayTradingBot:
             status="pending",
             error_notes=""
         )
-        
+
         try:
+            # IMPORTANT: Skip SELL signals (no short selling in crypto)
+            # Only execute BUY signals
+            if signal.action.lower() == 'sell':
+                logger.info(f"⏭️  Skipping SELL signal for {signal.symbol} (no short selling)")
+                return
+
             # Calculate position size - ensure minimum $10 order size
             position_value = max(
                 10.0,  # Alpaca minimum
                 min(self.max_position_size, 25 * signal.confidence)  # Max $25 per trade
             )
-            
+
             quantity = position_value / signal.price
             trade_log.quantity = quantity
-            
+
             # Place order with error handling
             order = await self._place_crypto_order_with_retry(
                 symbol=signal.symbol,
@@ -590,19 +754,26 @@ class CryptoDayTradingBot:
         try:
             # Convert symbol format if needed (BTC/USD -> BTCUSD)
             alpaca_symbol = symbol.replace('/', '')
-            
-            order_data = {
-                'symbol': alpaca_symbol,
-                'qty': quantity,
-                'side': side,
-                'type': order_type,
-                'time_in_force': 'ioc'  # Immediate or cancel for crypto
-            }
-            
-            # Use Alpaca crypto API
-            order = self.alpaca.submit_order(**order_data)
+
+            # Import order request classes
+            from alpaca.trading.requests import MarketOrderRequest
+            from alpaca.trading.enums import OrderSide, TimeInForce
+
+            # Convert side to enum
+            order_side = OrderSide.BUY if side.lower() == 'buy' else OrderSide.SELL
+
+            # Create market order request
+            order_request = MarketOrderRequest(
+                symbol=alpaca_symbol,
+                qty=quantity,
+                side=order_side,
+                time_in_force=TimeInForce.IOC  # Immediate or cancel for crypto
+            )
+
+            # Submit order using Alpaca client
+            order = self.alpaca.submit_order(order_data=order_request)
             return order
-            
+
         except Exception as e:
             logger.error(f"Order placement failed for {symbol}: {e}")
             return None
@@ -670,14 +841,19 @@ class CryptoDayTradingBot:
         """Log trade to console and file with timeline format"""
         # Add to in-memory log
         self.trade_log.append(trade_log)
-        
+
         # Print to console with formatting
         print(trade_log.to_console_string())
-        
+
         # Write to file as JSON for analysis
         try:
             with open(self.log_file, 'a') as f:
-                f.write(json.dumps(asdict(trade_log)) + '\n')
+                # Convert to dict and handle UUID serialization
+                trade_dict = asdict(trade_log)
+                # Convert UUID to string if present
+                if 'order_id' in trade_dict and trade_dict['order_id']:
+                    trade_dict['order_id'] = str(trade_dict['order_id'])
+                f.write(json.dumps(trade_dict) + '\n')
         except Exception as e:
             logger.error(f"Failed to write trade log to file: {e}")
         

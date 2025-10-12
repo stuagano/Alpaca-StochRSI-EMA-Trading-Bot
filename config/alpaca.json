@@ -1,9 +1,0 @@
-{
-    "base_url": "https://paper-api.alpaca.markets",
-    "api_key": "",
-    "api_secret": "",
-    "paper_trading": true,
-    "timeout": 30,
-    "retry_attempts": 3,
-    "retry_delay": 1.0
-}

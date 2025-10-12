@@ -1,1 +1,0 @@
-{"timestamp": "2025-08-18T21:26:25.650980", "level": "INFO", "logger": "utils.enhanced_logging_config", "message": "\ud83d\udcc1 Log directory: /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/logs", "module": "enhanced_logging_config", "function": "setup_logging", "line": 132}

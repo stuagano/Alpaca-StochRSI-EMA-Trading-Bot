@@ -1,8 +1,9 @@
+import asyncio
 import logging
 import os
 import signal
 import sys
-from typing import Optional
+from typing import Optional, Union
 
 try:
     from prometheus_client import Counter, Gauge, start_http_server
@@ -21,7 +22,18 @@ from config.environment import get_environment_config
 from trading_bot import TradingBot
 from strategies.stoch_rsi_strategy import StochRSIStrategy
 from strategies.ma_crossover_strategy import MACrossoverStrategy
+from strategies.crypto_scalping_strategy import CryptoDayTradingBot, create_crypto_day_trader
 from utils.logging_config import setup_logging
+
+# Import Alpaca client
+try:
+    from alpaca.trading.client import TradingClient
+    from alpaca.trading.requests import GetAssetsRequest
+    from alpaca.data.historical import CryptoHistoricalDataClient
+except ImportError as e:
+    logging.error(f"Failed to import Alpaca modules: {e}")
+    logging.error("Please install alpaca-py: pip install alpaca-py")
+    sys.exit(1)
 
 logger = logging.getLogger(__name__)
 
@@ -61,82 +73,143 @@ def get_strategy(strategy_name: str, config):
         raise ValueError(f"Unknown strategy: {strategy_name}")
 
 
-def setup_signal_handlers(bot: Optional[TradingBot] = None):
+def setup_signal_handlers(bot: Optional[Union[TradingBot, CryptoDayTradingBot]] = None):
     """Setup signal handlers for graceful shutdown."""
     def signal_handler(signum, frame):
         logger.info(f"Received signal {signum}, initiating graceful shutdown...")
-        
+
         if bot:
-            logger.info("Stopping trading bot...")
-            # Add any bot cleanup here if needed
-        
+            if isinstance(bot, CryptoDayTradingBot):
+                logger.info("Stopping crypto scalping bot...")
+            else:
+                logger.info("Stopping trading bot...")
+            bot.stop()
+
         logger.info("Cleaning up services...")
         cleanup_service_registry()
-        
+
         logger.info("Shutdown complete")
         sys.exit(0)
-    
+
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
 
-def main():
+def create_alpaca_client(config):
+    """Create Alpaca trading client from configuration."""
+    try:
+        auth_file = config.api.alpaca_auth_file
+        import json
+
+        with open(auth_file, 'r') as f:
+            auth_data = json.load(f)
+
+        trading_client = TradingClient(
+            api_key=auth_data['APCA-API-KEY-ID'],
+            secret_key=auth_data['APCA-API-SECRET-KEY'],
+            paper=True  # Always use paper trading for crypto scalping
+        )
+
+        logger.info("Alpaca trading client initialized successfully")
+        return trading_client
+
+    except Exception as e:
+        logger.error(f"Failed to create Alpaca client: {e}")
+        raise
+
+
+async def main():
     """Main entry point for the trading bot."""
     bot = None
-    
+
     try:
         # Load configuration
         config = get_config()
-        
+
         # Setup logging
         setup_logging()
         _enable_metrics_if_configured()
-        logger.info("Starting Alpaca Trading Bot with unified architecture...")
 
-        env_config = get_environment_config()
-        logger.info("Runtime environment: %s", env_config.name.value)
-        if not env_config.enable_order_execution:
-            logger.warning(
-                "Order execution is disabled for this environment. Set TRADING_ENABLE_EXECUTION=1"
-                " if you intend to place live orders."
-            )
-        
-        # Setup core services
-        logger.info("Initializing service registry...")
-        setup_core_services()
-        
-        # Get service registry
-        registry = get_service_registry()
+        # Check if we're using crypto scalping strategy
+        if config.strategy == 'crypto_scalping':
+            logger.info("🚀 Starting Crypto Scalping Bot - High Frequency Trading")
 
-        # Start health monitoring
-        registry.start_health_monitoring(check_interval=60.0)
+            # Create Alpaca client
+            alpaca_client = create_alpaca_client(config)
 
-        # Get services from registry
-        data_manager = registry.get('data_manager')
-        logger.info("Data manager service initialized")
-        
-        # Create strategy
-        strategy = get_strategy(config.strategy, config)
-        logger.info(f"Strategy initialized: {config.strategy}")
-        
-        # Create trading bot
-        bot = TradingBot(data_manager, strategy)
-        logger.info("Trading bot initialized")
-        
-        # Setup signal handlers for graceful shutdown
-        setup_signal_handlers(bot)
-        
-        # Log system health
-        health_report = registry.get_health_report()
-        if METRIC_READY_SERVICES and METRIC_TOTAL_SERVICES:
-            METRIC_READY_SERVICES.set(health_report.get('ready_services', 0))
-            METRIC_TOTAL_SERVICES.set(health_report.get('total_services', 0))
-        logger.info(f"System health check: {health_report['ready_services']}/{health_report['total_services']} services ready")
-        
-        # Start the bot
-        logger.info("Starting trading bot execution...")
-        bot.run()
-        
+            # Create crypto day trading bot
+            bot = create_crypto_day_trader(alpaca_client, {
+                'crypto_capital': config.investment_amount,
+                'max_position_size': config.investment_amount * (config.risk_management.max_position_size or 0.05),
+                'max_positions': config.max_trades_active,
+                'min_profit': 0.003,  # 0.3% minimum profit
+                'max_daily_loss': config.investment_amount * (config.risk_management.max_daily_loss or 0.02)
+            })
+
+            logger.info("Crypto scalping bot created and configured")
+
+            # Setup signal handlers for graceful shutdown
+            setup_signal_handlers(bot)
+
+            # Initialize enabled symbols from config
+            if hasattr(config, 'symbols') and config.symbols:
+                bot.scanner.update_enabled_symbols(config.symbols)
+                logger.info(f"Using configured symbols: {config.symbols}")
+            else:
+                # Fallback to dynamic symbol selection
+                logger.info("No symbols configured, will use dynamic selection")
+
+            # Start the crypto scalping bot
+            logger.info("🎯 Starting crypto scalping execution...")
+            await bot.start_trading()
+
+        else:
+            logger.info("Starting Alpaca Trading Bot with unified architecture...")
+
+            env_config = get_environment_config()
+            logger.info("Runtime environment: %s", env_config.name.value)
+            if not env_config.enable_order_execution:
+                logger.warning(
+                    "Order execution is disabled for this environment. Set TRADING_ENABLE_EXECUTION=1"
+                    " if you intend to place live orders."
+                )
+
+            # Setup core services
+            logger.info("Initializing service registry...")
+            setup_core_services()
+
+            # Get service registry
+            registry = get_service_registry()
+
+            # Start health monitoring
+            registry.start_health_monitoring(check_interval=60.0)
+
+            # Get services from registry
+            data_manager = registry.get('data_manager')
+            logger.info("Data manager service initialized")
+
+            # Create strategy
+            strategy = get_strategy(config.strategy, config)
+            logger.info(f"Strategy initialized: {config.strategy}")
+
+            # Create trading bot
+            bot = TradingBot(data_manager, strategy)
+            logger.info("Trading bot initialized")
+
+            # Setup signal handlers for graceful shutdown
+            setup_signal_handlers(bot)
+
+            # Log system health
+            health_report = registry.get_health_report()
+            if METRIC_READY_SERVICES and METRIC_TOTAL_SERVICES:
+                METRIC_READY_SERVICES.set(health_report.get('ready_services', 0))
+                METRIC_TOTAL_SERVICES.set(health_report.get('total_services', 0))
+            logger.info(f"System health check: {health_report['ready_services']}/{health_report['total_services']} services ready")
+
+            # Start the bot
+            logger.info("Starting trading bot execution...")
+            bot.run()
+
     except KeyboardInterrupt:
         logger.info("Keyboard interrupt received, shutting down...")
     except Exception as e:
@@ -145,10 +218,10 @@ def main():
         logger.error(f"Fatal error in main: {e}", exc_info=True)
         raise
     finally:
-        logger.info("Performing cleanup...")
-        cleanup_service_registry()
-        logger.info("Main process completed")
+        if bot:
+            bot.stop()
+        logger.info("Trading bot shutdown completed")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

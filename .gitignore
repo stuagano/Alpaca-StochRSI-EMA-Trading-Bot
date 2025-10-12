@@ -95,8 +95,25 @@ frontend-shadcn/.playwright/
 
 # Archive directories (old code)
 /archive/
-/docs/archive/
-/scripts/demos/
+/docs/
+/scripts/
+/backtesting/
+/services/
+/src/
+/risk_management/
+/education/
+/templates/
+/tests/
+/frontend-shadcn/
+/node_modules/
+/.claude/
+/.claude-flow/
+/.specify/
+/.github/
+/.history/
+/.benchmarks/
+/.ropeproject/
+/spec*/
 
 # Temporary files
 tmp/
