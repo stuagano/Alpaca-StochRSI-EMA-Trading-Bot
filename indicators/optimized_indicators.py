@@ -5,9 +5,21 @@ Performance improvements: 60-75% faster through Numba JIT compilation
 
 import pandas as pd
 import numpy as np
-from numba import jit, vectorize
 import logging
 from typing import Dict, Tuple, Optional, Union
+
+try:  # numba is optional in tests
+    from numba import jit, vectorize
+except ImportError:  # pragma: no cover - fallback for environments without numba
+    def jit(*_args, **_kwargs):
+        def decorator(func):
+            return func
+        return decorator
+
+    def vectorize(*_args, **_kwargs):
+        def decorator(func):
+            return func
+        return decorator
 
 logger = logging.getLogger(__name__)
 

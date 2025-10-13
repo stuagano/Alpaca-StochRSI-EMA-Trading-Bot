@@ -140,6 +140,7 @@ class VolumeConfirmationConfig:
     min_signal_gap_seconds: int = 300
     require_confirmation: bool = True
     confirmation_window: int = 3
+    minimum_quality_score: float = 0.6
     volume_strength_levels: Dict[str, float] = field(default_factory=lambda: {
         'very_low': -2.0,
         'low': -1.0,
@@ -252,6 +253,7 @@ class TradingConfig:
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     api: APIConfig = field(default_factory=APIConfig)
+    signal_filters: VolumeConfirmationConfig = field(default_factory=VolumeConfirmationConfig)
 
 
 class UnifiedConfigManager:
@@ -353,9 +355,15 @@ class UnifiedConfigManager:
         if 'api' in config_dict:
             config_dict['api'] = APIConfig(**config_dict['api'])
         
+        # Map volume confirmation settings into signal filters container
+        if 'signal_filters' in config_dict and isinstance(config_dict['signal_filters'], dict):
+            config_dict['signal_filters'] = VolumeConfirmationConfig(**config_dict['signal_filters'])
+        elif 'volume_confirmation' in config_dict and isinstance(config_dict['volume_confirmation'], dict):
+            # Backward compatibility with older config layout
+            config_dict['signal_filters'] = VolumeConfirmationConfig(**config_dict.pop('volume_confirmation'))
+
         # Remove any Epic1 configuration sections for simplified crypto scalping
         config_dict.pop('epic1', None)
-        config_dict.pop('volume_confirmation', None)
         
         return config_dict
     
@@ -526,9 +534,12 @@ class UnifiedConfigManager:
         if 'api' in config_dict and isinstance(config_dict['api'], dict):
             config_dict['api'] = APIConfig(**config_dict['api'])
 
+        if 'signal_filters' in config_dict and isinstance(config_dict['signal_filters'], dict):
+            config_dict['signal_filters'] = VolumeConfirmationConfig(**config_dict['signal_filters'])
+
         # Remove Epic1 configuration for simplified crypto scalping
         config_dict.pop('epic1', None)
-        
+
         return TradingConfig(**config_dict)
     
     def _validate_config(self, config: TradingConfig) -> None:

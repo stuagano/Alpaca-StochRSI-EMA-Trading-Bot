@@ -76,6 +76,22 @@ class Indicator:
             self.logger.error(f"Error calculating indicators for {symbol}: {e}")
             return self._get_default_indicators(symbol)
 
+    def calculate_rsi(self, prices: np.ndarray, period: int = 14) -> float:
+        """Compute RSI value from a price series."""
+        if len(prices) < period + 1:
+            return 50.0
+
+        series = pd.Series(prices, dtype='float64')
+        delta = series.diff()
+        gains = delta.clip(lower=0)
+        losses = -delta.clip(upper=0)
+
+        avg_gain = gains.rolling(window=period).mean()
+        avg_loss = losses.rolling(window=period).mean()
+        rs = avg_gain / avg_loss.replace(0, np.nan)
+        rsi = 100 - (100 / (1 + rs))
+        return float(rsi.iloc[-1]) if not rsi.dropna().empty else 50.0
+
     def _get_default_indicators(self, symbol: str) -> Dict[str, Any]:
         """Return default indicator values on error"""
         return {

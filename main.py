@@ -24,6 +24,7 @@ from strategies.stoch_rsi_strategy import StochRSIStrategy
 from strategies.ma_crossover_strategy import MACrossoverStrategy
 from strategies.crypto_scalping_strategy import CryptoDayTradingBot, create_crypto_day_trader
 from utils.logging_config import setup_logging
+from utils.alpaca import load_alpaca_credentials
 
 # Import Alpaca client
 try:
@@ -98,16 +99,12 @@ def setup_signal_handlers(bot: Optional[Union[TradingBot, CryptoDayTradingBot]] 
 def create_alpaca_client(config):
     """Create Alpaca trading client from configuration."""
     try:
-        auth_file = config.api.alpaca_auth_file
-        import json
-
-        with open(auth_file, 'r') as f:
-            auth_data = json.load(f)
+        creds = load_alpaca_credentials(config)
 
         trading_client = TradingClient(
-            api_key=auth_data['APCA-API-KEY-ID'],
-            secret_key=auth_data['APCA-API-SECRET-KEY'],
-            paper=True  # Always use paper trading for crypto scalping
+            api_key=creds.key_id,
+            secret_key=creds.secret_key,
+            paper=creds.is_paper  # Always use paper trading for crypto scalping
         )
 
         logger.info("Alpaca trading client initialized successfully")

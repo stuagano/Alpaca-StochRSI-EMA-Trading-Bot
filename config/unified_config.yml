@@ -61,6 +61,24 @@ risk_management:
   max_position_size: 0.15
   use_atr_position_sizing: true
   use_atr_stop_loss: true
+signal_filters:
+  confirmation_threshold: 1.2
+  confirmation_window: 3
+  enable_relative_volume: true
+  enabled: true
+  min_signal_gap_seconds: 300
+  minimum_quality_score: 0.6
+  relative_volume_threshold: 1.5
+  require_confirmation: true
+  require_volume_confirmation: true
+  volume_ma_period: 20
+  volume_strength_levels:
+    high: 1.0
+    low: -1.0
+    normal: 0.0
+    very_high: 2.0
+    very_low: -2.0
+  volume_trend_periods: 5
 sleep_time_between_trades: 1
 start_date: 1 day ago
 stop_loss: 0.015
