@@ -1,0 +1,519 @@
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+
+Running 40 tests using 5 workers
+
+  ✓   5 [chromium] › tests/e2e/api.spec.js:19:3 › API Health Checks › should respond to account endpoint (331ms)
+  ✓   1 [chromium] › tests/e2e/api.spec.js:28:3 › API Health Checks › should respond to positions endpoint (341ms)
+  ✓   2 [chromium] › tests/e2e/api.spec.js:40:3 › API Response Format › should return JSON from status endpoint (333ms)
+  ✓   4 [chromium] › tests/e2e/api.spec.js:11:3 › API Health Checks › should respond to status endpoint (329ms)
+  ✓   3 [chromium] › tests/e2e/api.spec.js:52:3 › API Response Format › should return valid structure from account endpoint (332ms)
+  ✓   6 [chromium] › tests/e2e/api.spec.js:78:3 › API Trading Endpoints › should accept POST to trading/start (308ms)
+  ✓   7 [chromium] › tests/e2e/api.spec.js:89:3 › API Trading Endpoints › should accept POST to trading/stop (304ms)
+  ✓   8 [chromium] › tests/e2e/api.spec.js:65:3 › API Response Format › should return array from positions endpoint (305ms)
+  ✓  10 [chromium] › tests/e2e/api.spec.js:111:3 › API P&L Endpoints › should respond to P&L chart data endpoint (305ms)
+  ✓   9 [chromium] › tests/e2e/api.spec.js:103:3 › API P&L Endpoints › should respond to current P&L endpoint (306ms)
+  ✓  11 [chromium] › tests/e2e/api.spec.js:119:3 › API P&L Endpoints › should return valid chart data structure (321ms)
+  ✘  15 [chromium] › tests/e2e/dashboard.spec.js:43:3 › Trading Dashboard › should display all dashboard cards (426ms)
+  ✘  14 [chromium] › tests/e2e/dashboard.spec.js:35:3 › Trading Dashboard › should show all control buttons (479ms)
+  ✘  13 [chromium] › tests/e2e/dashboard.spec.js:25:3 › Trading Dashboard › should display connection status indicator (502ms)
+  ✘  12 [chromium] › tests/e2e/dashboard.spec.js:16:3 › Trading Dashboard › should load dashboard with correct title (358ms)
+  ✘  16 [chromium] › tests/e2e/dashboard.spec.js:52:3 › Trading Dashboard › should show loading states initially (318ms)
+  ✘  17 [chromium] › tests/e2e/dashboard.spec.js:73:3 › Trading Dashboard › should render chart canvas element (410ms)
+  ✘  18 [chromium] › tests/e2e/dashboard.spec.js:91:3 › Dashboard API Integration › should attempt to fetch account data (361ms)
+  ✘  20 [chromium] › tests/e2e/dashboard.spec.js:79:3 › Trading Dashboard › should have individual card refresh buttons (394ms)
+  ✘  21 [chromium] › tests/e2e/dashboard.spec.js:107:3 › Dashboard API Integration › should attempt to fetch positions data (387ms)
+  ✘  19 [chromium] › tests/e2e/dashboard.spec.js:61:3 › Trading Dashboard › should have working refresh button (376ms)
+  ✘  24 [chromium] › tests/e2e/dashboard.spec.js:142:3 › Dashboard Interactions › should show confirmation dialog on stop trading (405ms)
+  ✘  23 [chromium] › tests/e2e/dashboard.spec.js:121:3 › Dashboard API Integration › should attempt WebSocket connection (408ms)
+  ✘  26 [chromium] › tests/e2e/dashboard.spec.js:185:3 › Dashboard Error Handling › should handle missing API gracefully (371ms)
+  ✘  22 [chromium] › tests/e2e/dashboard.spec.js:156:3 › Dashboard Interactions › should handle refresh button clicks (379ms)
+  ✘  25 [chromium] › tests/e2e/dashboard.spec.js:168:3 › Dashboard Interactions › should maintain responsive layout (358ms)
+  ✘  27 [chromium] › tests/e2e/dashboard.spec.js:202:3 › Dashboard Error Handling › should display empty state for no positions (241ms)
+  ✘  28 [chromium] › tests/e2e/dashboard.spec.js:226:3 › Visual Regression › should match dashboard screenshot (245ms)
+  ✓  29 [chromium] › tests/e2e/static-dashboard.spec.js:12:3 › Static Dashboard Tests › should load dashboard HTML file directly (441ms)
+  ✓  30 [chromium] › tests/e2e/static-dashboard.spec.js:22:3 › Static Dashboard Tests › should have all required CSS styling (365ms)
+  ✓  33 [chromium] › tests/e2e/static-dashboard.spec.js:102:3 › Static Dashboard Tests › should have responsive grid layout (272ms)
+  ✓  34 [chromium] › tests/e2e/static-dashboard.spec.js:117:3 › Static Dashboard Tests › should display loading states initially (251ms)
+  ✓  37 [chromium] › tests/e2e/static-dashboard.spec.js:128:3 › Static Dashboard Tests › should have Chart.js canvas element (402ms)
+  ✓  36 [chromium] › tests/e2e/static-dashboard.spec.js:52:3 › Static Dashboard Tests › should have all dashboard sections present (593ms)
+  ✓  35 [chromium] › tests/e2e/static-dashboard.spec.js:65:3 › Static Dashboard Tests › should have functioning buttons (587ms)
+  ✓  38 [chromium] › tests/e2e/static-dashboard.spec.js:139:3 › Static Dashboard Tests › should show connection status indicator (318ms)
+Errors detected: [33m0[39m
+  ✓  32 [chromium] › tests/e2e/static-dashboard.spec.js:86:3 › Static Dashboard Tests › should initialize JavaScript without errors (2.3s)
+  ✓  31 [chromium] › tests/e2e/static-dashboard.spec.js:34:3 › Static Dashboard Tests › should load external dependencies (Chart.js, Socket.IO) (3.3s)
+
+=== Console Logs ===
+error: Fetch API cannot load file:///api/v1/account. URL scheme "file" is not supported.
+error: Fetch API cannot load file:///api/v1/positions. URL scheme "file" is not supported.
+error: Fetch API cannot load file:///api/v1/signals. URL scheme "file" is not supported.
+error: Fetch API cannot load file:///api/v1/pnl/current. URL scheme "file" is not supported.
+error: Fetch API cannot load file:///api/v1/pnl/chart-data. URL scheme "file" is not supported.
+error: API Error: TypeError: Failed to fetch
+    at fetchAPI (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:372:40)
+    at updateAccount (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:398:32)
+    at refreshAll (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:350:13)
+    at window.onload (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:303:13)
+error: API Error: TypeError: Failed to fetch
+    at fetchAPI (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:372:40)
+    at updatePositions (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:403:32)
+    at refreshAll (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:351:13)
+    at window.onload (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:303:13)
+error: API Error: TypeError: Failed to fetch
+    at fetchAPI (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:372:40)
+    at updateSignals (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:408:32)
+    at refreshAll (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:352:13)
+    at window.onload (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:303:13)
+error: API Error: TypeError: Failed to fetch
+    at fetchAPI (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:372:40)
+    at updatePnL (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:413:32)
+    at refreshAll (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:353:13)
+    at window.onload (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:303:13)
+error: API Error: TypeError: Failed to fetch
+    at fetchAPI (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:372:40)
+    at updateChart (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:418:32)
+    at refreshAll (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:354:13)
+    at window.onload (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:303:13)
+error: Failed to load resource: net::ERR_NAME_NOT_RESOLVED
+error: Failed to load resource: net::ERR_NAME_NOT_RESOLVED
+===================
+
+  ✓  39 [chromium] › tests/e2e/static-dashboard.spec.js:158:3 › Dashboard Console Diagnostics › should log initialization events (2.2s)
+
+=== WebSocket Logs ===
+No WebSocket logs found
+======================
+
+  ✓  40 [chromium] › tests/e2e/static-dashboard.spec.js:177:3 › Dashboard Console Diagnostics › should check for WebSocket connection attempts (3.2s)
+
+
+  1) [chromium] › tests/e2e/dashboard.spec.js:16:3 › Trading Dashboard › should load dashboard with correct title 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5001/dashboard.html
+    Call log:
+    [2m  - navigating to "http://localhost:5001/dashboard.html", waiting until "load"[22m
+
+
+      11 |   test.beforeEach(async ({ page }) => {
+      12 |     // Navigate to dashboard before each test
+    > 13 |     await page.goto('/dashboard.html');
+         |                ^
+      14 |   });
+      15 |
+      16 |   test('should load dashboard with correct title', async ({ page }) => {
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:13:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-48ded-ashboard-with-correct-title-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-48ded-ashboard-with-correct-title-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › tests/e2e/dashboard.spec.js:25:3 › Trading Dashboard › should display connection status indicator 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5001/dashboard.html
+    Call log:
+    [2m  - navigating to "http://localhost:5001/dashboard.html", waiting until "load"[22m
+
+
+      11 |   test.beforeEach(async ({ page }) => {
+      12 |     // Navigate to dashboard before each test
+    > 13 |     await page.goto('/dashboard.html');
+         |                ^
+      14 |   });
+      15 |
+      16 |   test('should load dashboard with correct title', async ({ page }) => {
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:13:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-fe959-connection-status-indicator-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-fe959-connection-status-indicator-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › tests/e2e/dashboard.spec.js:35:3 › Trading Dashboard › should show all control buttons 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5001/dashboard.html
+    Call log:
+    [2m  - navigating to "http://localhost:5001/dashboard.html", waiting until "load"[22m
+
+
+      11 |   test.beforeEach(async ({ page }) => {
+      12 |     // Navigate to dashboard before each test
+    > 13 |     await page.goto('/dashboard.html');
+         |                ^
+      14 |   });
+      15 |
+      16 |   test('should load dashboard with correct title', async ({ page }) => {
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:13:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboard-should-show-all-control-buttons-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboard-should-show-all-control-buttons-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [chromium] › tests/e2e/dashboard.spec.js:43:3 › Trading Dashboard › should display all dashboard cards 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5001/dashboard.html
+    Call log:
+    [2m  - navigating to "http://localhost:5001/dashboard.html", waiting until "load"[22m
+
+
+      11 |   test.beforeEach(async ({ page }) => {
+      12 |     // Navigate to dashboard before each test
+    > 13 |     await page.goto('/dashboard.html');
+         |                ^
+      14 |   });
+      15 |
+      16 |   test('should load dashboard with correct title', async ({ page }) => {
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:13:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-a5e40-display-all-dashboard-cards-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-a5e40-display-all-dashboard-cards-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [chromium] › tests/e2e/dashboard.spec.js:52:3 › Trading Dashboard › should show loading states initially 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5001/dashboard.html
+    Call log:
+    [2m  - navigating to "http://localhost:5001/dashboard.html", waiting until "load"[22m
+
+
+      11 |   test.beforeEach(async ({ page }) => {
+      12 |     // Navigate to dashboard before each test
+    > 13 |     await page.goto('/dashboard.html');
+         |                ^
+      14 |   });
+      15 |
+      16 |   test('should load dashboard with correct title', async ({ page }) => {
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:13:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-31b1c-ow-loading-states-initially-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-31b1c-ow-loading-states-initially-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) [chromium] › tests/e2e/dashboard.spec.js:61:3 › Trading Dashboard › should have working refresh button 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5001/dashboard.html
+    Call log:
+    [2m  - navigating to "http://localhost:5001/dashboard.html", waiting until "load"[22m
+
+
+      11 |   test.beforeEach(async ({ page }) => {
+      12 |     // Navigate to dashboard before each test
+    > 13 |     await page.goto('/dashboard.html');
+         |                ^
+      14 |   });
+      15 |
+      16 |   test('should load dashboard with correct title', async ({ page }) => {
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:13:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-d17d2-have-working-refresh-button-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-d17d2-have-working-refresh-button-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  7) [chromium] › tests/e2e/dashboard.spec.js:73:3 › Trading Dashboard › should render chart canvas element 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5001/dashboard.html
+    Call log:
+    [2m  - navigating to "http://localhost:5001/dashboard.html", waiting until "load"[22m
+
+
+      11 |   test.beforeEach(async ({ page }) => {
+      12 |     // Navigate to dashboard before each test
+    > 13 |     await page.goto('/dashboard.html');
+         |                ^
+      14 |   });
+      15 |
+      16 |   test('should load dashboard with correct title', async ({ page }) => {
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:13:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-20fad-render-chart-canvas-element-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-20fad-render-chart-canvas-element-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8) [chromium] › tests/e2e/dashboard.spec.js:79:3 › Trading Dashboard › should have individual card refresh buttons 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5001/dashboard.html
+    Call log:
+    [2m  - navigating to "http://localhost:5001/dashboard.html", waiting until "load"[22m
+
+
+      11 |   test.beforeEach(async ({ page }) => {
+      12 |     // Navigate to dashboard before each test
+    > 13 |     await page.goto('/dashboard.html');
+         |                ^
+      14 |   });
+      15 |
+      16 |   test('should load dashboard with correct title', async ({ page }) => {
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:13:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-2f603-vidual-card-refresh-buttons-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-2f603-vidual-card-refresh-buttons-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  9) [chromium] › tests/e2e/dashboard.spec.js:91:3 › Dashboard API Integration › should attempt to fetch account data 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5001/dashboard.html
+    Call log:
+    [2m  - navigating to "http://localhost:5001/dashboard.html", waiting until "load"[22m
+
+
+       96 |     ).catch(() => null);
+       97 |
+    >  98 |     await page.goto('/dashboard.html');
+          |                ^
+       99 |
+      100 |     const request = await requestPromise;
+      101 |     // If request was made, verify it's a GET request
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:98:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-API-In-9c47c-tempt-to-fetch-account-data-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-API-In-9c47c-tempt-to-fetch-account-data-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  10) [chromium] › tests/e2e/dashboard.spec.js:107:3 › Dashboard API Integration › should attempt to fetch positions data 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5001/dashboard.html
+    Call log:
+    [2m  - navigating to "http://localhost:5001/dashboard.html", waiting until "load"[22m
+
+
+      111 |     ).catch(() => null);
+      112 |
+    > 113 |     await page.goto('/dashboard.html');
+          |                ^
+      114 |
+      115 |     const request = await requestPromise;
+      116 |     if (request) {
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:113:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-API-In-cfa52-mpt-to-fetch-positions-data-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-API-In-cfa52-mpt-to-fetch-positions-data-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  11) [chromium] › tests/e2e/dashboard.spec.js:121:3 › Dashboard API Integration › should attempt WebSocket connection 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5001/dashboard.html
+    Call log:
+    [2m  - navigating to "http://localhost:5001/dashboard.html", waiting until "load"[22m
+
+
+      128 |     });
+      129 |
+    > 130 |     await page.goto('/dashboard.html');
+          |                ^
+      131 |     await page.waitForTimeout(2000); // Wait for WebSocket connection attempt
+      132 |
+      133 |     // Should have some WebSocket related console activity
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:130:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-API-In-efd44-ttempt-WebSocket-connection-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-API-In-efd44-ttempt-WebSocket-connection-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  12) [chromium] › tests/e2e/dashboard.spec.js:142:3 › Dashboard Interactions › should show confirmation dialog on stop trading 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5001/dashboard.html
+    Call log:
+    [2m  - navigating to "http://localhost:5001/dashboard.html", waiting until "load"[22m
+
+
+      141 |
+      142 |   test('should show confirmation dialog on stop trading', async ({ page }) => {
+    > 143 |     await page.goto('/dashboard.html');
+          |                ^
+      144 |
+      145 |     // Set up dialog handler
+      146 |     page.on('dialog', dialog => {
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:143:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Intera-909cc-tion-dialog-on-stop-trading-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Intera-909cc-tion-dialog-on-stop-trading-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  13) [chromium] › tests/e2e/dashboard.spec.js:156:3 › Dashboard Interactions › should handle refresh button clicks 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5001/dashboard.html
+    Call log:
+    [2m  - navigating to "http://localhost:5001/dashboard.html", waiting until "load"[22m
+
+
+      155 |
+      156 |   test('should handle refresh button clicks', async ({ page }) => {
+    > 157 |     await page.goto('/dashboard.html');
+          |                ^
+      158 |     await page.waitForLoadState('networkidle');
+      159 |
+      160 |     // Click account refresh
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:157:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Intera-6ef4f-andle-refresh-button-clicks-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Intera-6ef4f-andle-refresh-button-clicks-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  14) [chromium] › tests/e2e/dashboard.spec.js:168:3 › Dashboard Interactions › should maintain responsive layout 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5001/dashboard.html
+    Call log:
+    [2m  - navigating to "http://localhost:5001/dashboard.html", waiting until "load"[22m
+
+
+      167 |
+      168 |   test('should maintain responsive layout', async ({ page }) => {
+    > 169 |     await page.goto('/dashboard.html');
+          |                ^
+      170 |
+      171 |     // Check grid layout exists
+      172 |     const grid = page.locator('.dashboard-grid');
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:169:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Intera-70d12--maintain-responsive-layout-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Intera-70d12--maintain-responsive-layout-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  15) [chromium] › tests/e2e/dashboard.spec.js:185:3 › Dashboard Error Handling › should handle missing API gracefully 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5001/dashboard.html
+    Call log:
+    [2m  - navigating to "http://localhost:5001/dashboard.html", waiting until "load"[22m
+
+
+      189 |     });
+      190 |
+    > 191 |     await page.goto('/dashboard.html');
+          |                ^
+      192 |     await page.waitForTimeout(1000);
+      193 |
+      194 |     // Page should still render
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:191:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Error--8578c-ndle-missing-API-gracefully-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Error--8578c-ndle-missing-API-gracefully-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  16) [chromium] › tests/e2e/dashboard.spec.js:202:3 › Dashboard Error Handling › should display empty state for no positions 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5001/dashboard.html
+    Call log:
+    [2m  - navigating to "http://localhost:5001/dashboard.html", waiting until "load"[22m
+
+
+      210 |     });
+      211 |
+    > 212 |     await page.goto('/dashboard.html');
+          |                ^
+      213 |     await page.waitForTimeout(2000);
+      214 |
+      215 |     // Should show "No open positions" message
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:212:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Error--716cb-mpty-state-for-no-positions-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Error--716cb-mpty-state-for-no-positions-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  17) [chromium] › tests/e2e/dashboard.spec.js:226:3 › Visual Regression › should match dashboard screenshot 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5001/dashboard.html
+    Call log:
+    [2m  - navigating to "http://localhost:5001/dashboard.html", waiting until "load"[22m
+
+
+      225 |
+      226 |   test('should match dashboard screenshot', async ({ page }) => {
+    > 227 |     await page.goto('/dashboard.html');
+          |                ^
+      228 |
+      229 |     // Wait for page to stabilize
+      230 |     await page.waitForLoadState('networkidle');
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:227:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Visual-Regressio-396fd--match-dashboard-screenshot-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Visual-Regressio-396fd--match-dashboard-screenshot-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  17 failed
+    [chromium] › tests/e2e/dashboard.spec.js:16:3 › Trading Dashboard › should load dashboard with correct title 
+    [chromium] › tests/e2e/dashboard.spec.js:25:3 › Trading Dashboard › should display connection status indicator 
+    [chromium] › tests/e2e/dashboard.spec.js:35:3 › Trading Dashboard › should show all control buttons 
+    [chromium] › tests/e2e/dashboard.spec.js:43:3 › Trading Dashboard › should display all dashboard cards 
+    [chromium] › tests/e2e/dashboard.spec.js:52:3 › Trading Dashboard › should show loading states initially 
+    [chromium] › tests/e2e/dashboard.spec.js:61:3 › Trading Dashboard › should have working refresh button 
+    [chromium] › tests/e2e/dashboard.spec.js:73:3 › Trading Dashboard › should render chart canvas element 
+    [chromium] › tests/e2e/dashboard.spec.js:79:3 › Trading Dashboard › should have individual card refresh buttons 
+    [chromium] › tests/e2e/dashboard.spec.js:91:3 › Dashboard API Integration › should attempt to fetch account data 
+    [chromium] › tests/e2e/dashboard.spec.js:107:3 › Dashboard API Integration › should attempt to fetch positions data 
+    [chromium] › tests/e2e/dashboard.spec.js:121:3 › Dashboard API Integration › should attempt WebSocket connection 
+    [chromium] › tests/e2e/dashboard.spec.js:142:3 › Dashboard Interactions › should show confirmation dialog on stop trading 
+    [chromium] › tests/e2e/dashboard.spec.js:156:3 › Dashboard Interactions › should handle refresh button clicks 
+    [chromium] › tests/e2e/dashboard.spec.js:168:3 › Dashboard Interactions › should maintain responsive layout 
+    [chromium] › tests/e2e/dashboard.spec.js:185:3 › Dashboard Error Handling › should handle missing API gracefully 
+    [chromium] › tests/e2e/dashboard.spec.js:202:3 › Dashboard Error Handling › should display empty state for no positions 
+    [chromium] › tests/e2e/dashboard.spec.js:226:3 › Visual Regression › should match dashboard screenshot 
+  23 passed (10.7s)
+
+[36m  Serving HTML report at http://localhost:65248. Press Ctrl+C to quit.[39m

@@ -1,0 +1,82 @@
+
+FLASK ARCHITECTURE MIGRATION REPORT
+Generated: 2025-09-30 13:37:12
+============================================================
+
+SUMMARY:
+- Old dashboard files archived in: archive/legacy_2025Q4/
+- Backup created in: /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/backup/20250930_133712
+- New Flask structure created in: backend/api/
+
+MIGRATION ACTIONS:
+BACKUP: app.py -> /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/backup/20250930_133712/app.py
+BACKUP: frontend/index.html -> /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/backup/20250930_133712/frontend/index.html
+VERIFIED: backend/api/__init__.py
+VERIFIED: backend/api/run.py
+VERIFIED: backend/api/blueprints/__init__.py
+VERIFIED: backend/api/services/__init__.py
+VERIFIED: backend/api/utils/__init__.py
+CREATED: .env configuration file
+CREATED: .flaskenv for Flask
+CREATED: Startup scripts (start_flask.sh and start_flask.bat)
+CREATED: frontend/config.js with new API endpoints
+
+NEW FLASK STRUCTURE:
+backend/api/
+├── __init__.py         # Application factory
+├── app.py              # Simplified transitional app
+├── run.py              # Full application runner
+├── config.py           # Flask configuration
+├── blueprints/         # Route blueprints
+│   ├── dashboard.py    # Dashboard routes
+│   ├── api.py          # Core API
+│   ├── trading.py      # Trading operations
+│   ├── pnl.py          # P&L tracking
+│   └── websocket_events.py  # WebSocket
+├── services/           # Business logic
+│   ├── trading_service.py
+│   ├── pnl_service.py
+│   └── alpaca_client.py
+└── utils/              # Utilities
+    ├── decorators.py
+    ├── validators.py
+    └── error_handlers.py
+
+HOW TO USE NEW SYSTEM:
+
+1. Start the simplified Flask app (recommended for transition):
+   python backend/api/run.py
+
+2. Or start the full application factory version:
+   python backend/api/run.py
+
+3. Legacy convenience scripts now live in `archive/legacy_2025Q4/` if you need reference copies.
+
+API ENDPOINTS:
+- Dashboard: http://localhost:5001/
+- API Status: http://localhost:5001/api/v1/status
+- Account: http://localhost:5001/api/v1/account
+- Positions: http://localhost:5001/api/v1/positions
+- Signals: http://localhost:5001/api/v1/signals
+- P&L: http://localhost:5001/api/v1/pnl/current
+
+TESTING:
+1. Test API status:
+   curl http://localhost:5001/api/v1/status
+
+2. Test account endpoint:
+   curl http://localhost:5001/api/v1/account
+
+3. Test WebSocket:
+   Open http://localhost:5001/ in browser
+
+ROLLBACK:
+If you need to rollback to the old system:
+1. Restore files from: /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/backup/20250930_133712
+2. Run old app: python backend/api/run.py
+
+NEXT STEPS:
+1. Test all API endpoints
+2. Update any custom scripts to use new endpoints
+3. Monitor logs for any issues
+4. Consider removing old dashboard files once stable

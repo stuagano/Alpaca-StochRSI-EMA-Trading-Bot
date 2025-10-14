@@ -41,7 +41,7 @@ class TradingService:
 
         # Initialize components
         self.indicator = Indicator()
-        self.signal_processor = SignalProcessor(config)
+        self.signal_processor = None
         self.trading_executor = None
         self.trading_bot = None
 

@@ -14,15 +14,26 @@ api_bp = Blueprint('api', __name__)
 @handle_errors
 def api_status():
     """Get system status"""
+    cfg = current_app.config['TRADING_CONFIG']
     service = current_app.trading_service
-    status = service.get_system_status()
+
+    try:
+        status = service.get_system_status()
+        services_state = status.get('services', {})
+        last_update = status.get('last_update')
+        market_status = status.get('market_status')
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        current_app.logger.error("Status check failed: %s", exc, exc_info=True)
+        services_state = {}
+        last_update = None
+        market_status = 'UNKNOWN'
 
     return jsonify({
         'status': 'running',
-        'last_update': status.get('last_update'),
-        'market_status': status.get('market_status'),
-        'services': status.get('services'),
-        'trading_mode': current_app.config.TRADING_CONFIG.trading.mode
+        'last_update': last_update,
+        'market_status': market_status,
+        'services': services_state,
+        'trading_mode': getattr(cfg, 'market_type', 'crypto')
     })
 
 @api_bp.route('/account')

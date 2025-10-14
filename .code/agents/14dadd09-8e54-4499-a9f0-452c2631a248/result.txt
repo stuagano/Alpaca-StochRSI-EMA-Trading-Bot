@@ -1,0 +1,152 @@
+Cloud task completed: task_e_68edb99c6f4c8330ae8bd61fee1ff0d7
+
+Prompt:
+Review the current state of the Alpaca StochRSI EMA Trading Bot repository and propose next steps now that the legacy Flask stacks have been archived and the docs/tests updated. Focus on identifying high-impact follow-up work (e.g., further DRY refactors, test hardening, crypto-only gaps, deployment or monitoring improvements). Summarize findings as a concise ordered plan with rationale for each step.
+
+[Running in read-only mode - no modifications allowed]
+
+Assistant Messages:
+1. ## Recommended Next Steps
+
+1. **Centralize crypto scalper configuration in shared settings**  
+   - Promote inline thresholds and symbol lists (e.g., `min_profit`, default USD pairs) into `config/unified_config` and `.env` so both the bot entrypoint and strategy share a single source of truth, preventing drift and satisfying the repo’s “no in-file constants” guidance.
+
+2. - Wire the new knobs into `scripts/check_env.py`/`docker-compose.yml` so Compose deployments inherit the same values without duplication.
+
+3. 2. **Finish Phase 1 resilience backlog (heartbeat, cache, pooling) before adding new features**  
+   - Build the planned WebSocket heartbeat/retry helper and Redis caching wrapper as reusable utilities, then refactor the crypto scalper to consume them instead of bespoke loops, improving recoverability and keeping DRY. The current strategy module configures logging on its own, so switching to `utils.logging_config.setup_logging()` avoids double configuration and keeps log wiring centralized.
+
+4. - Apply the documented SQLAlchemy pooling settings so database clients obey the same environment-driven contract across services.
+
+5. 3. **Harden crypto-specific tests and fixtures**  
+   - Replace the heavy monkey-patching smoke test with focused unit tests that exercise `create_crypto_day_trader`, scanner selection, and risk controls using shared fixtures, then add integration tests that mock Alpaca endpoints to validate order/position flows without real API calls.
+
+6. - Backfill FastAPI tests for the risk API rate limiting and metrics wiring so changes to the service surface regressions immediately.
+
+7. 4. **Expand observability beyond startup counters**  
+   - Instrument trade execution, scanner health, and risk decisions with structured metrics/logs rather than only tracking startup/exceptions; expose them via the Prometheus exporter that `main.py` already bootstraps so Grafana dashboards become actionable.
+
+8. - Add smoke tests (even lightweight ones) ensuring `/metrics` endpoints stay available across services to prevent silent breakage before deployment.
+
+9. 5. **Automate Compose and CI verification loops**  
+   - Extend the existing `compose_up.sh` workflow with CI jobs that run `scripts/check_env.py`, bring up the `core` profile, execute the integration suite, and tear the stack down, matching the hardening plan’s acceptance criteria.
+
+10. - Mirror those commands in pre-commit/CI (ruff, mypy, pytest, Playwright, detect-secrets) so every contributor exercises the same validation pipeline before merge, reinforcing DRY automation.
+
+11. These steps keep configuration centralized, close the resilience/test gaps called out in the hardening plan, and strengthen monitoring and automation before layering on new product features.
+
+12. I'm checking for AGENTS.md to get the necessary instructions.
+
+13. I'll check for the AGENTS.md file to gather necessary instructions.
+
+14. I'll check the README or docs for details on architecture and focus on follow-up steps.
+
+15. I need to reference relevant documentation, like architecture and test details, perhaps the README.
+
+16. I'll check if the 'docs' folder uses capital letters and list its contents.
+
+17. I'm reviewing if I need to check docs for local_runtime or other relevant details.
+
+18. I'm considering using `find docs -name AGENTS.md` to locate any documentation.
+
+19. I need to review the tests and docs. I'll check for updates on both.
+
+20. I need to find the `docs/TESTING` file. Let me search for it!
+
+21. I should check for other docs such as `docs/DEPLOYMENT` to gather more information.
+
+22. I need to understand the current state. Let's look for an archived folder under 'backend.'
+
+23. I should look at the new architecture and check config/unified_config for key tasks.
+
+24. I’ll reference key lines, and focus on tasks like unifying config and reviewing tests.
+
+25. I'll check the `test_enhanced_stoch_rsi_strategy.py` to evaluate the improvements.
+
+26. Hmm, this file might not be the one. I need to list the directory.
+
+27. I see there are just a few tests. I'll check `test_crypto_config.py` for potential improvements.
+
+28. I should check the `test_crypto_scalping_main.py` for the minimal functional tests.
+
+29. I need to make a plan to show the existing test coverage, focusing on stubs. I'll also check `tests/functional/test_paper_trade_crypto.py`.
+
+30. I'm checking `main.py` to understand the architecture, possibly related to new features.
+
+31. I’m thinking of cleaning up config values and proposing a unified YAML. I’ll test crypto features, add observability, and align deployment with docs.
+
+32. The file has hard-coded defaults. I’ll check if moving them to config or external is feasible.
+
+33. I need to find the relevant docs, so I'll check `config/environment.py`.
+
+34. I'll consolidate the config and gather line numbers using `nl -ba main.py` for citations.
+
+35. I'll check the config file for the default lists and other related settings.
+
+36. I’ll focus on the default list first and think about centralizing thresholds. Docs may link to `docs/local_runtime.md`.
+
+37. I’m outlining a plan with DRY refactors, test hardening, and deployment improvements as priorities.
+
+38. I need to check if the Compose file is in place.
+
+39. I'll check the `deploy/local/docker-compose.yml` file to reference the fosters.
+
+40. I'll check if `scripts/check_env.py` exists before proceeding.
+
+41. I'll look over `scripts/check_env.py` to figure out the next tasks.
+
+42. I need a plan to address missing features, like crypto thresholds, tests, and observability gaps.
+
+43. I'll suggest aligning the logging in `strategies/crypto_scalping_strategy.py` to the central config.
+
+44. I’ll take a look at the tests in the unit/services directory.
+
+45. I'll need to focus on high-level test gaps, like potentially e2e tests. Let's check `tests/e2e`.
+
+46. I'll structure the plan with line references and brief rationales for each task.
+
+47. I'll note the limited coverage and reference `tests/functional/test_crypto_scalping_main.py` with line numbers.
+
+48. I should confirm the state of `services/` before proceeding with service verification.
+
+49. I'll check `services/risk_api_app.py` to see if tests are missing.
+
+50. I don't see `os`, `logging`, `time`, `threading` at the top—could they be missing?
+
+51. I'll outline some steps: centralize configuration, refactor scanner, improve tests, and add better metrics.
+
+52. I’ll centralize config, build tests, extend observability, integrate Compose, and strengthen resilience.
+
+53. I’ll examine `local_hardening_delivery_plan.md` for task lines to support my plan.
+
+54. I'll verify the implementation for tasks, like `utils/websocket`, to ensure my plan holds.
+
+55. I'll implement configuration changes, improve logging, enhance tests, and add metrics and automation.
+
+I’ll provide a detailed ordered plan with citations, without a testing section since no code changes.
+
+56. ## Recommended Next Steps
+
+1. **Centralize crypto scalper configuration in shared settings**  
+   - Promote inline thresholds and symbol lists (e.g., `min_profit`, default USD pairs) into `config/unified_config` and `.env` so both the bot entrypoint and strategy share a single source of truth, preventing drift and satisfying the repo’s “no in-file constants” guidance.【F:main.py†L138-L144】【F:strategies/crypto_scalping_strategy.py†L85-L109】【F:docs/DEPLOYMENT/local_hardening_delivery_plan.md†L1-L34】  
+   - Wire the new knobs into `scripts/check_env.py`/`docker-compose.yml` so Compose deployments inherit the same values without duplication.【F:scripts/check_env.py†L12-L91】【F:deploy/local/docker-compose.yml†L1-L88】
+
+2. **Finish Phase 1 resilience backlog (heartbeat, cache, pooling) before adding new features**  
+   - Build the planned WebSocket heartbeat/retry helper and Redis caching wrapper as reusable utilities, then refactor the crypto scalper to consume them instead of bespoke loops, improving recoverability and keeping DRY. The current strategy module configures logging on its own, so switching to `utils.logging_config.setup_logging()` avoids double configuration and keeps log wiring centralized.【F:strategies/crypto_scalping_strategy.py†L23-L123】【F:docs/DEPLOYMENT/local_hardening_delivery_plan.md†L35-L43】  
+   - Apply the documented SQLAlchemy pooling settings so database clients obey the same environment-driven contract across services.【F:docs/DEPLOYMENT/local_hardening_delivery_plan.md†L37-L41】
+
+3. **Harden crypto-specific tests and fixtures**  
+   - Replace the heavy monkey-patching smoke test with focused unit tests that exercise `create_crypto_day_trader`, scanner selection, and risk controls using shared fixtures, then add integration tests that mock Alpaca endpoints to validate order/position flows without real API calls.【F:tests/functional/test_crypto_scalping_main.py†L1-L106】【F:tests/functional/test_crypto_config.py†L1-L22】  
+   - Backfill FastAPI tests for the risk API rate limiting and metrics wiring so changes to the service surface regressions immediately.【F:services/risk_api_app.py†L77-L150】
+
+4. **Expand observability beyond startup counters**  
+   - Instrument trade execution, scanner health, and risk decisions with structured metrics/logs rather than only tracking startup/exceptions; expose them via the Prometheus exporter that `main.py` already bootstraps so Grafana dashboards become actionable.【F:main.py†L42-L65】【F:main.py†L200-L208】【F:docs/local_runtime.md†L43-L63】  
+   - Add smoke tests (even lightweight ones) ensuring `/metrics` endpoints stay available across services to prevent silent breakage before deployment.【F:services/risk_api_app.py†L125-L150】【F:docs/DEPLOYMENT/local_hardening_delivery_plan.md†L60-L63】
+
+5. **Automate Compose and CI verification loops**  
+   - Extend the existing `compose_up.sh` workflow with CI jobs that run `scripts/check_env.py`, bring up the `core` profile, execute the integration suite, and tear the stack down, matching the hardening plan’s acceptance criteria.【F:scripts/check_env.py†L12-L107】【F:deploy/local/docker-compose.yml†L1-L118】【F:docs/DEPLOYMENT/local_hardening_delivery_plan.md†L13-L46】  
+   - Mirror those commands in pre-commit/CI (ruff, mypy, pytest, Playwright, detect-secrets) so every contributor exercises the same validation pipeline before merge, reinforcing DRY automation.【F:docs/DEPLOYMENT/local_hardening_delivery_plan.md†L60-L74】
+
+These steps keep configuration centralized, close the resilience/test gaps called out in the hardening plan, and strengthen monitoring and automation before layering on new product features.
+
+No diff available.

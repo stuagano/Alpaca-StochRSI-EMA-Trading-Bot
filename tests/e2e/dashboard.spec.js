@@ -10,7 +10,7 @@ test.describe('Trading Dashboard', () => {
 
   test.beforeEach(async ({ page }) => {
     // Navigate to dashboard before each test
-    await page.goto('/dashboard.html');
+    await page.goto('/');
   });
 
   test('should load dashboard with correct title', async ({ page }) => {
@@ -95,7 +95,7 @@ test.describe('Dashboard API Integration', () => {
       { timeout: 10000 }
     ).catch(() => null);
 
-    await page.goto('/dashboard.html');
+    await page.goto('/');
 
     const request = await requestPromise;
     // If request was made, verify it's a GET request
@@ -110,7 +110,7 @@ test.describe('Dashboard API Integration', () => {
       { timeout: 10000 }
     ).catch(() => null);
 
-    await page.goto('/dashboard.html');
+    await page.goto('/');
 
     const request = await requestPromise;
     if (request) {
@@ -127,7 +127,7 @@ test.describe('Dashboard API Integration', () => {
       }
     });
 
-    await page.goto('/dashboard.html');
+    await page.goto('/');
     await page.waitForTimeout(2000); // Wait for WebSocket connection attempt
 
     // Should have some WebSocket related console activity
@@ -140,7 +140,7 @@ test.describe('Dashboard API Integration', () => {
 test.describe('Dashboard Interactions', () => {
 
   test('should show confirmation dialog on stop trading', async ({ page }) => {
-    await page.goto('/dashboard.html');
+    await page.goto('/');
 
     // Set up dialog handler
     page.on('dialog', dialog => {
@@ -154,7 +154,7 @@ test.describe('Dashboard Interactions', () => {
   });
 
   test('should handle refresh button clicks', async ({ page }) => {
-    await page.goto('/dashboard.html');
+    await page.goto('/');
     await page.waitForLoadState('networkidle');
 
     // Click account refresh
@@ -166,7 +166,7 @@ test.describe('Dashboard Interactions', () => {
   });
 
   test('should maintain responsive layout', async ({ page }) => {
-    await page.goto('/dashboard.html');
+    await page.goto('/');
 
     // Check grid layout exists
     const grid = page.locator('.dashboard-grid');
@@ -188,7 +188,7 @@ test.describe('Dashboard Error Handling', () => {
       route.abort();
     });
 
-    await page.goto('/dashboard.html');
+    await page.goto('/');
     await page.waitForTimeout(1000);
 
     // Page should still render
@@ -209,7 +209,7 @@ test.describe('Dashboard Error Handling', () => {
       });
     });
 
-    await page.goto('/dashboard.html');
+    await page.goto('/');
     await page.waitForTimeout(2000);
 
     // Should show "No open positions" message
@@ -224,7 +224,7 @@ test.describe('Dashboard Error Handling', () => {
 test.describe('Visual Regression', () => {
 
   test('should match dashboard screenshot', async ({ page }) => {
-    await page.goto('/dashboard.html');
+    await page.goto('/');
 
     // Wait for page to stabilize
     await page.waitForLoadState('networkidle');

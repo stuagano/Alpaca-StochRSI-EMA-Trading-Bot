@@ -1,0 +1,559 @@
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+
+Running 40 tests using 5 workers
+
+  ✓   3 [chromium] › tests/e2e/api.spec.js:28:3 › API Health Checks › should respond to positions endpoint (110ms)
+  ✓   6 [chromium] › tests/e2e/api.spec.js:65:3 › API Response Format › should return array from positions endpoint (84ms)
+  ✓   7 [chromium] › tests/e2e/api.spec.js:78:3 › API Trading Endpoints › should accept POST to trading/start (8ms)
+  ✓   8 [chromium] › tests/e2e/api.spec.js:89:3 › API Trading Endpoints › should accept POST to trading/stop (14ms)
+  ✓   2 [chromium] › tests/e2e/api.spec.js:19:3 › API Health Checks › should respond to account endpoint (380ms)
+  ✓   4 [chromium] › tests/e2e/api.spec.js:11:3 › API Health Checks › should respond to status endpoint (379ms)
+  ✓   5 [chromium] › tests/e2e/api.spec.js:40:3 › API Response Format › should return JSON from status endpoint (380ms)
+  ✓   1 [chromium] › tests/e2e/api.spec.js:52:3 › API Response Format › should return valid structure from account endpoint (383ms)
+  ✓  10 [chromium] › tests/e2e/api.spec.js:111:3 › API P&L Endpoints › should respond to P&L chart data endpoint (13ms)
+  ✓   9 [chromium] › tests/e2e/api.spec.js:103:3 › API P&L Endpoints › should respond to current P&L endpoint (162ms)
+  ✓  11 [chromium] › tests/e2e/api.spec.js:119:3 › API P&L Endpoints › should return valid chart data structure (14ms)
+  ✘  16 [chromium] › tests/e2e/dashboard.spec.js:52:3 › Trading Dashboard › should show loading states initially (523ms)
+  ✘  14 [chromium] › tests/e2e/dashboard.spec.js:35:3 › Trading Dashboard › should show all control buttons (5.5s)
+  ✘  12 [chromium] › tests/e2e/dashboard.spec.js:25:3 › Trading Dashboard › should display connection status indicator (5.6s)
+  ✘  13 [chromium] › tests/e2e/dashboard.spec.js:16:3 › Trading Dashboard › should load dashboard with correct title (5.6s)
+  ✘  15 [chromium] › tests/e2e/dashboard.spec.js:43:3 › Trading Dashboard › should display all dashboard cards (5.6s)
+  ✘  18 [chromium] › tests/e2e/dashboard.spec.js:73:3 › Trading Dashboard › should render chart canvas element (5.3s)
+  ✘  19 [chromium] › tests/e2e/dashboard.spec.js:79:3 › Trading Dashboard › should have individual card refresh buttons (5.3s)
+  ✓  22 [chromium] › tests/e2e/dashboard.spec.js:121:3 › Dashboard API Integration › should attempt WebSocket connection (2.2s)
+  ✓  20 [chromium] › tests/e2e/dashboard.spec.js:107:3 › Dashboard API Integration › should attempt to fetch positions data (10.4s)
+  ✓  21 [chromium] › tests/e2e/dashboard.spec.js:91:3 › Dashboard API Integration › should attempt to fetch account data (10.4s)
+  ✘  25 [chromium] › tests/e2e/dashboard.spec.js:168:3 › Dashboard Interactions › should maintain responsive layout (5.2s)
+  ✘  26 [chromium] › tests/e2e/dashboard.spec.js:185:3 › Dashboard Error Handling › should handle missing API gracefully (6.3s)
+  ✘  28 [chromium] › tests/e2e/dashboard.spec.js:226:3 › Visual Regression › should match dashboard screenshot (2.5s)
+  ✓  29 [chromium] › tests/e2e/static-dashboard.spec.js:12:3 › Static Dashboard Tests › should load dashboard HTML file directly (389ms)
+  ✓  30 [chromium] › tests/e2e/static-dashboard.spec.js:22:3 › Static Dashboard Tests › should have all required CSS styling (266ms)
+  ✓  31 [chromium] › tests/e2e/static-dashboard.spec.js:34:3 › Static Dashboard Tests › should load external dependencies (Chart.js, Socket.IO) (3.2s)
+  ✓  32 [chromium] › tests/e2e/static-dashboard.spec.js:52:3 › Static Dashboard Tests › should have all dashboard sections present (265ms)
+  ✓  33 [chromium] › tests/e2e/static-dashboard.spec.js:65:3 › Static Dashboard Tests › should have functioning buttons (301ms)
+  ✘  17 [chromium] › tests/e2e/dashboard.spec.js:61:3 › Trading Dashboard › should have working refresh button (31.0s)
+  ✓  35 [chromium] › tests/e2e/static-dashboard.spec.js:102:3 › Static Dashboard Tests › should have responsive grid layout (316ms)
+  ✓  36 [chromium] › tests/e2e/static-dashboard.spec.js:117:3 › Static Dashboard Tests › should display loading states initially (246ms)
+Errors detected: [33m0[39m
+  ✓  34 [chromium] › tests/e2e/static-dashboard.spec.js:86:3 › Static Dashboard Tests › should initialize JavaScript without errors (2.3s)
+  ✓  37 [chromium] › tests/e2e/static-dashboard.spec.js:128:3 › Static Dashboard Tests › should have Chart.js canvas element (308ms)
+  ✓  38 [chromium] › tests/e2e/static-dashboard.spec.js:139:3 › Static Dashboard Tests › should show connection status indicator (268ms)
+
+=== Console Logs ===
+error: Fetch API cannot load file:///api/v1/account. URL scheme "file" is not supported.
+error: Fetch API cannot load file:///api/v1/positions. URL scheme "file" is not supported.
+error: Fetch API cannot load file:///api/v1/signals. URL scheme "file" is not supported.
+error: Fetch API cannot load file:///api/v1/pnl/current. URL scheme "file" is not supported.
+error: Fetch API cannot load file:///api/v1/pnl/chart-data. URL scheme "file" is not supported.
+error: API Error: TypeError: Failed to fetch
+    at fetchAPI (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:372:40)
+    at updateAccount (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:398:32)
+    at refreshAll (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:350:13)
+    at window.onload (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:303:13)
+error: API Error: TypeError: Failed to fetch
+    at fetchAPI (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:372:40)
+    at updatePositions (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:403:32)
+    at refreshAll (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:351:13)
+    at window.onload (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:303:13)
+error: API Error: TypeError: Failed to fetch
+    at fetchAPI (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:372:40)
+    at updateSignals (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:408:32)
+    at refreshAll (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:352:13)
+    at window.onload (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:303:13)
+error: API Error: TypeError: Failed to fetch
+    at fetchAPI (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:372:40)
+    at updatePnL (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:413:32)
+    at refreshAll (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:353:13)
+    at window.onload (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:303:13)
+error: API Error: TypeError: Failed to fetch
+    at fetchAPI (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:372:40)
+    at updateChart (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:418:32)
+    at refreshAll (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:354:13)
+    at window.onload (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:303:13)
+error: Failed to load resource: net::ERR_NAME_NOT_RESOLVED
+error: Failed to load resource: net::ERR_NAME_NOT_RESOLVED
+===================
+
+  ✓  39 [chromium] › tests/e2e/static-dashboard.spec.js:158:3 › Dashboard Console Diagnostics › should log initialization events (2.2s)
+
+=== WebSocket Logs ===
+No WebSocket logs found
+======================
+
+  ✓  40 [chromium] › tests/e2e/static-dashboard.spec.js:177:3 › Dashboard Console Diagnostics › should check for WebSocket connection attempts (3.2s)
+  ✘  23 [chromium] › tests/e2e/dashboard.spec.js:142:3 › Dashboard Interactions › should show confirmation dialog on stop trading (30.8s)
+  ✘  24 [chromium] › tests/e2e/dashboard.spec.js:156:3 › Dashboard Interactions › should handle refresh button clicks (30.9s)
+  ✘  27 [chromium] › tests/e2e/dashboard.spec.js:202:3 › Dashboard Error Handling › should display empty state for no positions (30.8s)
+
+
+  1) [chromium] › tests/e2e/dashboard.spec.js:16:3 › Trading Dashboard › should load dashboard with correct title 
+
+    Error: [2mexpect([22m[31mpage[39m[2m).[22mtoHaveTitle[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Expected pattern: [32m/Trading Bot Dashboard/[39m
+    Received string:  [31m""[39m
+    Timeout: 5000ms
+
+    Call log:
+    [2m  - Expect "toHaveTitle" with timeout 5000ms[22m
+    [2m    9 × unexpected value ""[22m
+
+
+      16 |   test('should load dashboard with correct title', async ({ page }) => {
+      17 |     // Check page title
+    > 18 |     await expect(page).toHaveTitle(/Trading Bot Dashboard/);
+         |                        ^
+      19 |
+      20 |     // Check header is visible
+      21 |     const header = page.locator('h1:has-text("Trading Bot Dashboard")');
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:18:24
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-48ded-ashboard-with-correct-title-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-48ded-ashboard-with-correct-title-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/dashboard-Trading-Dashboar-48ded-ashboard-with-correct-title-chromium/error-context.md
+
+  2) [chromium] › tests/e2e/dashboard.spec.js:25:3 › Trading Dashboard › should display connection status indicator 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m()[22m failed
+
+    Locator:  locator('#connection-status')
+    Expected: visible
+    Received: <element(s) not found>
+    Timeout:  5000ms
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('#connection-status')[22m
+
+
+      26 |     // Check connection status text exists
+      27 |     const statusText = page.locator('#connection-status');
+    > 28 |     await expect(statusText).toBeVisible();
+         |                              ^
+      29 |
+      30 |     // Check status dot exists
+      31 |     const statusDot = page.locator('#status-dot');
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:28:30
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-fe959-connection-status-indicator-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-fe959-connection-status-indicator-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/dashboard-Trading-Dashboar-fe959-connection-status-indicator-chromium/error-context.md
+
+  3) [chromium] › tests/e2e/dashboard.spec.js:35:3 › Trading Dashboard › should show all control buttons 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m()[22m failed
+
+    Locator:  locator('button:has-text("Start Trading")')
+    Expected: visible
+    Received: <element(s) not found>
+    Timeout:  5000ms
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('button:has-text("Start Trading")')[22m
+
+
+      35 |   test('should show all control buttons', async ({ page }) => {
+      36 |     // Verify all main control buttons are present
+    > 37 |     await expect(page.locator('button:has-text("Start Trading")')).toBeVisible();
+         |                                                                    ^
+      38 |     await expect(page.locator('button:has-text("Stop Trading")')).toBeVisible();
+      39 |     await expect(page.locator('button:has-text("Refresh All")')).toBeVisible();
+      40 |     await expect(page.locator('button:has-text("Export P&L")')).toBeVisible();
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:37:68
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboard-should-show-all-control-buttons-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboard-should-show-all-control-buttons-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/dashboard-Trading-Dashboard-should-show-all-control-buttons-chromium/error-context.md
+
+  4) [chromium] › tests/e2e/dashboard.spec.js:43:3 › Trading Dashboard › should display all dashboard cards 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m()[22m failed
+
+    Locator:  locator('.card:has-text("Account")')
+    Expected: visible
+    Received: <element(s) not found>
+    Timeout:  5000ms
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('.card:has-text("Account")')[22m
+
+
+      43 |   test('should display all dashboard cards', async ({ page }) => {
+      44 |     // Check all main cards are present
+    > 45 |     await expect(page.locator('.card:has-text("Account")')).toBeVisible();
+         |                                                             ^
+      46 |     await expect(page.locator('.card:has-text("P&L Summary")')).toBeVisible();
+      47 |     await expect(page.locator('.card:has-text("Positions")')).toBeVisible();
+      48 |     await expect(page.locator('.card:has-text("Trading Signals")')).toBeVisible();
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:45:61
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-a5e40-display-all-dashboard-cards-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-a5e40-display-all-dashboard-cards-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/dashboard-Trading-Dashboar-a5e40-display-all-dashboard-cards-chromium/error-context.md
+
+  5) [chromium] › tests/e2e/dashboard.spec.js:52:3 › Trading Dashboard › should show loading states initially 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBeGreaterThan[2m([22m[32mexpected[39m[2m)[22m
+
+    Expected: > [32m0[39m
+    Received:   [31m0[39m
+
+      56 |
+      57 |     // Should have at least one loading indicator
+    > 58 |     expect(count).toBeGreaterThan(0);
+         |                   ^
+      59 |   });
+      60 |
+      61 |   test('should have working refresh button', async ({ page }) => {
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:58:19
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-31b1c-ow-loading-states-initially-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-31b1c-ow-loading-states-initially-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/dashboard-Trading-Dashboar-31b1c-ow-loading-states-initially-chromium/error-context.md
+
+  6) [chromium] › tests/e2e/dashboard.spec.js:61:3 › Trading Dashboard › should have working refresh button 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('button:has-text("Refresh All")')[22m
+
+
+      65 |     // Click refresh button
+      66 |     const refreshBtn = page.locator('button:has-text("Refresh All")');
+    > 67 |     await refreshBtn.click();
+         |                      ^
+      68 |
+      69 |     // Button should still be visible after click
+      70 |     await expect(refreshBtn).toBeVisible();
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:67:22
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-d17d2-have-working-refresh-button-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-d17d2-have-working-refresh-button-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/dashboard-Trading-Dashboar-d17d2-have-working-refresh-button-chromium/error-context.md
+
+  7) [chromium] › tests/e2e/dashboard.spec.js:73:3 › Trading Dashboard › should render chart canvas element 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m()[22m failed
+
+    Locator:  locator('#pnlChart')
+    Expected: visible
+    Received: <element(s) not found>
+    Timeout:  5000ms
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('#pnlChart')[22m
+
+
+      74 |     // Check chart canvas exists
+      75 |     const canvas = page.locator('#pnlChart');
+    > 76 |     await expect(canvas).toBeVisible();
+         |                          ^
+      77 |   });
+      78 |
+      79 |   test('should have individual card refresh buttons', async ({ page }) => {
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:76:26
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-20fad-render-chart-canvas-element-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-20fad-render-chart-canvas-element-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/dashboard-Trading-Dashboar-20fad-render-chart-canvas-element-chromium/error-context.md
+
+  8) [chromium] › tests/e2e/dashboard.spec.js:79:3 › Trading Dashboard › should have individual card refresh buttons 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m()[22m failed
+
+    Locator:  locator('[data-testid="refresh-account"]')
+    Expected: visible
+    Received: <element(s) not found>
+    Timeout:  5000ms
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('[data-testid="refresh-account"]')[22m
+
+
+      79 |   test('should have individual card refresh buttons', async ({ page }) => {
+      80 |     // Check each card has a refresh button
+    > 81 |     await expect(page.locator('[data-testid="refresh-account"]')).toBeVisible();
+         |                                                                   ^
+      82 |     await expect(page.locator('[data-testid="refresh-pnl"]')).toBeVisible();
+      83 |     await expect(page.locator('[data-testid="refresh-positions"]')).toBeVisible();
+      84 |     await expect(page.locator('[data-testid="refresh-signals"]')).toBeVisible();
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:81:67
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-2f603-vidual-card-refresh-buttons-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Trading-Dashboar-2f603-vidual-card-refresh-buttons-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/dashboard-Trading-Dashboar-2f603-vidual-card-refresh-buttons-chromium/error-context.md
+
+  9) [chromium] › tests/e2e/dashboard.spec.js:142:3 › Dashboard Interactions › should show confirmation dialog on stop trading 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('button:has-text("Stop Trading")')[22m
+
+
+      151 |     // Click stop trading button
+      152 |     const stopBtn = page.locator('button:has-text("Stop Trading")');
+    > 153 |     await stopBtn.click();
+          |                   ^
+      154 |   });
+      155 |
+      156 |   test('should handle refresh button clicks', async ({ page }) => {
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:153:19
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Intera-909cc-tion-dialog-on-stop-trading-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Intera-909cc-tion-dialog-on-stop-trading-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/dashboard-Dashboard-Intera-909cc-tion-dialog-on-stop-trading-chromium/error-context.md
+
+  10) [chromium] › tests/e2e/dashboard.spec.js:156:3 › Dashboard Interactions › should handle refresh button clicks 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[data-testid="refresh-account"]')[22m
+
+
+      160 |     // Click account refresh
+      161 |     const accountRefresh = page.locator('[data-testid="refresh-account"]');
+    > 162 |     await accountRefresh.click();
+          |                          ^
+      163 |
+      164 |     // Should still be on the same page
+      165 |     await expect(page.locator('h1')).toBeVisible();
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:162:26
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Intera-6ef4f-andle-refresh-button-clicks-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Intera-6ef4f-andle-refresh-button-clicks-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/dashboard-Dashboard-Intera-6ef4f-andle-refresh-button-clicks-chromium/error-context.md
+
+  11) [chromium] › tests/e2e/dashboard.spec.js:168:3 › Dashboard Interactions › should maintain responsive layout 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m()[22m failed
+
+    Locator:  locator('.dashboard-grid')
+    Expected: visible
+    Received: <element(s) not found>
+    Timeout:  5000ms
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('.dashboard-grid')[22m
+
+
+      171 |     // Check grid layout exists
+      172 |     const grid = page.locator('.dashboard-grid');
+    > 173 |     await expect(grid).toBeVisible();
+          |                        ^
+      174 |
+      175 |     // Verify cards are in grid
+      176 |     const cards = page.locator('.card');
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:173:24
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Intera-70d12--maintain-responsive-layout-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Intera-70d12--maintain-responsive-layout-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/dashboard-Dashboard-Intera-70d12--maintain-responsive-layout-chromium/error-context.md
+
+  12) [chromium] › tests/e2e/dashboard.spec.js:185:3 › Dashboard Error Handling › should handle missing API gracefully 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m()[22m failed
+
+    Locator:  locator('h1')
+    Expected: visible
+    Received: <element(s) not found>
+    Timeout:  5000ms
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('h1')[22m
+
+
+      193 |
+      194 |     // Page should still render
+    > 195 |     await expect(page.locator('h1')).toBeVisible();
+          |                                      ^
+      196 |
+      197 |     // Should show loading or error state
+      198 |     const content = await page.content();
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:195:38
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Error--8578c-ndle-missing-API-gracefully-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Error--8578c-ndle-missing-API-gracefully-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/dashboard-Dashboard-Error--8578c-ndle-missing-API-gracefully-chromium/error-context.md
+
+  13) [chromium] › tests/e2e/dashboard.spec.js:202:3 › Dashboard Error Handling › should display empty state for no positions 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.textContent: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('#positions-content')[22m
+
+
+      215 |     // Should show "No open positions" message
+      216 |     const positionsCard = page.locator('#positions-content');
+    > 217 |     const text = await positionsCard.textContent();
+          |                                      ^
+      218 |     // Either loading or "No open positions" is acceptable
+      219 |     expect(text.length).toBeGreaterThan(0);
+      220 |   });
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:217:38
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Error--716cb-mpty-state-for-no-positions-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Error--716cb-mpty-state-for-no-positions-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/dashboard-Dashboard-Error--716cb-mpty-state-for-no-positions-chromium/error-context.md
+
+  14) [chromium] › tests/e2e/dashboard.spec.js:226:3 › Visual Regression › should match dashboard screenshot 
+
+    Error: [2mexpect([22m[31mpage[39m[2m).[22mtoHaveScreenshot[2m([22m[32mexpected[39m[2m)[22m failed
+
+      Expected an image 1280px by 1384px, received 1280px by 720px. 1740687 pixels (ratio 0.99 of all image pixels) are different.
+
+      Snapshot: dashboard-full.png
+
+    Call log:
+    [2m  - Expect "toHaveScreenshot(dashboard-full.png)" with timeout 5000ms[22m
+    [2m    - verifying given screenshot expectation[22m
+    [2m  - taking page screenshot[22m
+    [2m    - disabled all CSS animations[22m
+    [2m  - waiting for fonts to load...[22m
+    [2m  - fonts loaded[22m
+    [2m  - Expected an image 1280px by 1384px, received 1280px by 720px. 1740687 pixels (ratio 0.99 of all image pixels) are different.[22m
+    [2m  - waiting 100ms before taking screenshot[22m
+    [2m  - taking page screenshot[22m
+    [2m    - disabled all CSS animations[22m
+    [2m  - waiting for fonts to load...[22m
+    [2m  - fonts loaded[22m
+    [2m  - captured a stable screenshot[22m
+    [2m  - Expected an image 1280px by 1384px, received 1280px by 720px. 1740687 pixels (ratio 0.99 of all image pixels) are different.[22m
+
+
+      232 |
+      233 |     // Take screenshot
+    > 234 |     await expect(page).toHaveScreenshot('dashboard-full.png', {
+          |                        ^
+      235 |       fullPage: true,
+      236 |       maxDiffPixels: 800,
+      237 |       mask: [
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:234:24
+
+    attachment #1: dashboard-full (image/png) ──────────────────────────────────────────────────────
+    Expected: tests/e2e/dashboard.spec.js-snapshots/dashboard-full-chromium-darwin.png
+    Received: test-results/dashboard-Visual-Regressio-396fd--match-dashboard-screenshot-chromium/dashboard-full-actual.png
+    Diff:     test-results/dashboard-Visual-Regressio-396fd--match-dashboard-screenshot-chromium/dashboard-full-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Visual-Regressio-396fd--match-dashboard-screenshot-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Visual-Regressio-396fd--match-dashboard-screenshot-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/dashboard-Visual-Regressio-396fd--match-dashboard-screenshot-chromium/error-context.md
+
+  14 failed
+    [chromium] › tests/e2e/dashboard.spec.js:16:3 › Trading Dashboard › should load dashboard with correct title 
+    [chromium] › tests/e2e/dashboard.spec.js:25:3 › Trading Dashboard › should display connection status indicator 
+    [chromium] › tests/e2e/dashboard.spec.js:35:3 › Trading Dashboard › should show all control buttons 
+    [chromium] › tests/e2e/dashboard.spec.js:43:3 › Trading Dashboard › should display all dashboard cards 
+    [chromium] › tests/e2e/dashboard.spec.js:52:3 › Trading Dashboard › should show loading states initially 
+    [chromium] › tests/e2e/dashboard.spec.js:61:3 › Trading Dashboard › should have working refresh button 
+    [chromium] › tests/e2e/dashboard.spec.js:73:3 › Trading Dashboard › should render chart canvas element 
+    [chromium] › tests/e2e/dashboard.spec.js:79:3 › Trading Dashboard › should have individual card refresh buttons 
+    [chromium] › tests/e2e/dashboard.spec.js:142:3 › Dashboard Interactions › should show confirmation dialog on stop trading 
+    [chromium] › tests/e2e/dashboard.spec.js:156:3 › Dashboard Interactions › should handle refresh button clicks 
+    [chromium] › tests/e2e/dashboard.spec.js:168:3 › Dashboard Interactions › should maintain responsive layout 
+    [chromium] › tests/e2e/dashboard.spec.js:185:3 › Dashboard Error Handling › should handle missing API gracefully 
+    [chromium] › tests/e2e/dashboard.spec.js:202:3 › Dashboard Error Handling › should display empty state for no positions 
+    [chromium] › tests/e2e/dashboard.spec.js:226:3 › Visual Regression › should match dashboard screenshot 
+  26 passed (55.1s)
+
+[36m  Serving HTML report at http://localhost:58103. Press Ctrl+C to quit.[39m

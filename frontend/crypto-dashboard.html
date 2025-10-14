@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>24/7 Crypto Trading Bot 🚀</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-dark: #0a0e27;
+            --bg-card: #131936;
+            --accent-green: #00ff88;
+            --accent-red: #ff4444;
+            --accent-blue: #4488ff;
+            --accent-gold: #ffd700;
+            --text-primary: #ffffff;
+            --text-secondary: #8a8fa8;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background: radial-gradient(circle at 20% 50%, rgba(0, 255, 136, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(68, 136, 255, 0.1) 0%, transparent 50%);
+            animation: bgShift 10s ease-in-out infinite;
+        }
+
+        @keyframes bgShift {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.6; }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 30px;
+            background: rgba(19, 25, 54, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .market-status {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 25px;
+            border: 1px solid var(--accent-green);
+        }
+
+        .pulse-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        /* Main Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-green), var(--accent-blue));
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(0, 255, 136, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .card-icon {
+            font-size: 24px;
+        }
+
+        /* Account Card */
+        .account-value {
+            font-size: 42px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 15px 0;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .metric-label {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        /* Position Multiplier Card */
+        .multiplier-card {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 136, 0, 0.1));
+            border: 2px solid var(--accent-gold);
+        }
+
+        .multiplier-display {
+            text-align: center;
+            margin: 25px 0;
+        }
+
+        .multiplier-value {
+            font-size: 72px;
+            font-weight: 900;
+            color: var(--accent-gold);
+            text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+            animation: glow 2s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { text-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
+            50% { text-shadow: 0 0 40px rgba(255, 215, 0, 0.8); }
+        }
+
+        .multiplier-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 10px;
+        }
+
+        .lucky-button {
+            width: 100%;
+            padding: 20px;
+            font-size: 20px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-gold), #ff8800);
+            border: none;
+            border-radius: 12px;
+            color: #000;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .lucky-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .lucky-button:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .lucky-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 40px rgba(255, 215, 0, 0.5);
+        }
+
+        .lucky-button:active {
+            transform: scale(0.95);
+        }
+
+        .reset-button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            font-size: 14px;
+            background: rgba(255, 68, 68, 0.2);
+            border: 1px solid var(--accent-red);
+            border-radius: 8px;
+            color: var(--accent-red);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .reset-button:hover {
+            background: var(--accent-red);
+            color: #000;
+        }
+
+        /* Positions Table */
+        .positions-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .positions-table th,
+        .positions-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .positions-table th {
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .positions-table td {
+            font-size: 14px;
+        }
+
+        .symbol-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 6px;
+            font-weight: 700;
+            color: var(--accent-green);
+        }
+
+        .pnl-positive {
+            color: var(--accent-green);
+            font-weight: 700;
+        }
+
+        .pnl-negative {
+            color: var(--accent-red);
+            font-weight: 700;
+        }
+
+        /* Trading Activity */
+        .activity-log {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .activity-item {
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border-left: 3px solid var(--accent-green);
+            transition: all 0.3s;
+        }
+
+        .activity-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateX(5px);
+        }
+
+        .activity-item.sell {
+            border-left-color: var(--accent-red);
+        }
+
+        .activity-time {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .activity-action {
+            font-weight: 700;
+            font-size: 16px;
+            margin: 5px 0;
+        }
+
+        .activity-action.buy {
+            color: var(--accent-green);
+        }
+
+        .activity-action.sell {
+            color: var(--accent-red);
+        }
+
+        /* Controls */
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: var(--accent-green);
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            background: #00dd70;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: var(--accent-red);
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            background: #dd3333;
+            transform: translateY(-2px);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .account-value {
+                font-size: 32px;
+            }
+
+            .multiplier-value {
+                font-size: 52px;
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent-green);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">🌍 24/7 CRYPTO TRADER</div>
+            <div class="market-status">
+                <div class="status-badge">
+                    <div class="pulse-dot"></div>
+                    <span><strong>LIVE</strong> • Markets Always Open</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="dashboard-grid">
+            <!-- Account Card -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">💼 Account</span>
+                    <span class="card-icon">📊</span>
+                </div>
+                <div class="account-value" id="portfolio-value">$0.00</div>
+                <div class="metric-row">
+                    <span class="metric-label">Buying Power</span>
+                    <span class="metric-value" id="buying-power">$0.00</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Cash</span>
+                    <span class="metric-value" id="cash">$0.00</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Status</span>
+                    <span class="metric-value pnl-positive" id="account-status">ACTIVE</span>
+                </div>
+            </div>
+
+            <!-- P&L Card -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">📈 P&L</span>
+                    <span class="card-icon">💰</span>
+                </div>
+                <div class="account-value" id="total-pnl">$0.00</div>
+                <div class="metric-row">
+                    <span class="metric-label">Unrealized</span>
+                    <span class="metric-value" id="unrealized-pnl">$0.00</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Open Positions</span>
+                    <span class="metric-value" id="positions-count">0</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Trades Today</span>
+                    <span class="metric-value" id="trades-today">0</span>
+                </div>
+            </div>
+
+            <!-- DOUBLE DOWN Card -->
+            <div class="card multiplier-card">
+                <div class="card-header">
+                    <span class="card-title">🎰 FEELING LUCKY?</span>
+                    <span class="card-icon">🍀</span>
+                </div>
+                <div class="multiplier-display">
+                    <div class="multiplier-value" id="multiplier-value">1x</div>
+                    <div class="multiplier-label">Position Size Multiplier</div>
+                </div>
+                <button class="lucky-button" onclick="doubleDown()">
+                    🚀 DOUBLE DOWN! 🚀
+                </button>
+                <button class="reset-button" onclick="resetMultiplier()">
+                    Reset to Normal (1x)
+                </button>
+                <div style="margin-top: 15px; text-align: center; font-size: 12px; color: var(--text-secondary);">
+                    Next trade will be <span id="next-trade-size" style="color: var(--accent-gold); font-weight: 700;">1x</span> normal size
+                </div>
+            </div>
+
+            <!-- Trading Activity -->
+            <div class="card" style="grid-column: span 2;">
+                <div class="card-header">
+                    <span class="card-title">⚡ Recent Activity</span>
+                    <span class="card-icon">📝</span>
+                </div>
+                <div class="activity-log" id="activity-log">
+                    <div class="activity-item">
+                        <div class="activity-time">Waiting for trades...</div>
+                        <div class="activity-action buy">Bot is monitoring markets 24/7</div>
+                        <div style="font-size: 12px; color: var(--text-secondary);">Watching 10 crypto pairs</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Positions Table -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">💎 Active Positions</span>
+                <span class="card-icon">📊</span>
+            </div>
+            <table class="positions-table">
+                <thead>
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Qty</th>
+                        <th>Entry</th>
+                        <th>Current</th>
+                        <th>P&L</th>
+                        <th>P&L %</th>
+                    </tr>
+                </thead>
+                <tbody id="positions-table-body">
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 30px; color: var(--text-secondary);">
+                            No open positions yet. Bot will trade when signals appear!
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Controls -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">🎮 Bot Controls</span>
+                <span class="card-icon">⚙️</span>
+            </div>
+            <div class="control-buttons">
+                <button class="btn btn-primary" onclick="startBot()">▶️ Start Trading</button>
+                <button class="btn btn-danger" onclick="stopBot()">⏹ Stop Trading</button>
+                <button class="btn btn-primary" onclick="refreshData()">🔄 Refresh</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let positionMultiplier = 1;
+        let ws = null;
+
+        // Update multiplier display
+        function updateMultiplierDisplay() {
+            document.getElementById('multiplier-value').textContent = positionMultiplier + 'x';
+            document.getElementById('next-trade-size').textContent = positionMultiplier + 'x';
+        }
+
+        // Double down function
+        function doubleDown() {
+            positionMultiplier *= 2;
+            updateMultiplierDisplay();
+
+            // Send to backend
+            fetch('/api/v1/trading/set-multiplier', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ multiplier: positionMultiplier })
+            })
+            .then(res => res.json())
+            .then(data => {
+                console.log('Multiplier updated:', positionMultiplier);
+                addActivity('settings', `Position size multiplier set to ${positionMultiplier}x! 🚀`);
+
+                // Visual feedback
+                const button = document.querySelector('.lucky-button');
+                button.textContent = `🔥 ${positionMultiplier}x! DOUBLE AGAIN? 🔥`;
+                setTimeout(() => {
+                    button.textContent = '🚀 DOUBLE DOWN! 🚀';
+                }, 2000);
+            })
+            .catch(err => console.error('Error setting multiplier:', err));
+        }
+
+        // Reset multiplier
+        function resetMultiplier() {
+            positionMultiplier = 1;
+            updateMultiplierDisplay();
+
+            fetch('/api/v1/trading/set-multiplier', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ multiplier: 1 })
+            })
+            .then(() => {
+                addActivity('settings', 'Position size reset to normal (1x)');
+            });
+        }
+
+        // Add activity item
+        function addActivity(type, message) {
+            const log = document.getElementById('activity-log');
+            const item = document.createElement('div');
+            item.className = `activity-item ${type}`;
+            item.innerHTML = `
+                <div class="activity-time">${new Date().toLocaleTimeString()}</div>
+                <div class="activity-action ${type}">${message}</div>
+            `;
+            log.insertBefore(item, log.firstChild);
+
+            // Keep only last 10 items
+            while (log.children.length > 10) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        // Refresh data
+        async function refreshData() {
+            try {
+                // Fetch account
+                const account = await fetch('/api/v1/account').then(r => r.json());
+                document.getElementById('portfolio-value').textContent = '$' + parseFloat(account.portfolio_value).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('buying-power').textContent = '$' + parseFloat(account.buying_power).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('cash').textContent = '$' + parseFloat(account.cash).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('account-status').textContent = account.status;
+
+                // Fetch positions
+                const positions = await fetch('/api/v1/positions').then(r => r.json());
+                renderPositions(positions);
+
+                // Fetch P&L
+                const pnl = await fetch('/api/v1/pnl/current').then(r => r.json());
+                renderPnL(pnl);
+
+            } catch (err) {
+                console.error('Error refreshing data:', err);
+            }
+        }
+
+        // Render positions
+        function renderPositions(positions) {
+            const tbody = document.getElementById('positions-table-body');
+
+            if (!positions || positions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 30px; color: var(--text-secondary);">No open positions</td></tr>';
+                document.getElementById('positions-count').textContent = '0';
+                return;
+            }
+
+            document.getElementById('positions-count').textContent = positions.length;
+
+            tbody.innerHTML = positions.map(pos => {
+                const plClass = pos.unrealized_pl >= 0 ? 'pnl-positive' : 'pnl-negative';
+                return `<tr>
+                    <td><span class="symbol-badge">${pos.symbol}</span></td>
+                    <td>${pos.qty}</td>
+                    <td>$${parseFloat(pos.avg_entry_price).toFixed(2)}</td>
+                    <td>$${parseFloat(pos.current_price || pos.avg_entry_price).toFixed(2)}</td>
+                    <td class="${plClass}">$${parseFloat(pos.unrealized_pl).toFixed(2)}</td>
+                    <td class="${plClass}">${(pos.unrealized_plpc * 100).toFixed(2)}%</td>
+                </tr>`;
+            }).join('');
+        }
+
+        // Render P&L
+        function renderPnL(pnl) {
+            const totalClass = pnl.total_pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+            const unrealizedClass = pnl.unrealized_pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+
+            document.getElementById('total-pnl').textContent = '$' + parseFloat(pnl.total_pnl).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('total-pnl').className = 'account-value ' + totalClass;
+
+            document.getElementById('unrealized-pnl').textContent = '$' + parseFloat(pnl.unrealized_pnl).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('unrealized-pnl').className = 'metric-value ' + unrealizedClass;
+        }
+
+        // Bot controls
+        function startBot() {
+            fetch('/api/v1/trading/start', { method: 'POST' })
+                .then(() => {
+                    addActivity('buy', 'Trading bot started! Watching markets 24/7 🚀');
+                });
+        }
+
+        function stopBot() {
+            if (confirm('Stop the trading bot?')) {
+                fetch('/api/v1/trading/stop', { method: 'POST' })
+                    .then(() => {
+                        addActivity('sell', 'Trading bot stopped');
+                    });
+            }
+        }
+
+        // Initialize on load
+        window.onload = function() {
+            refreshData();
+            setInterval(refreshData, 5000); // Update every 5 seconds
+        };
+    </script>
+</body>
+</html>

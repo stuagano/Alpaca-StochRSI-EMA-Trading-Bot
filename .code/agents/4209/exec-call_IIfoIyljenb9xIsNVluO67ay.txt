@@ -1,0 +1,516 @@
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+
+> alpaca-stochrsi-ema-trading-bot@1.0.0 test
+> playwright test
+
+
+Running 120 tests using 5 workers
+
+  ✓    1 [chromium] › tests/e2e/api.spec.js:52:3 › API Response Format › should return valid structure from account endpoint (513ms)
+  ✓    3 [chromium] › tests/e2e/api.spec.js:40:3 › API Response Format › should return JSON from status endpoint (549ms)
+  ✓    2 [chromium] › tests/e2e/api.spec.js:19:3 › API Health Checks › should respond to account endpoint (552ms)
+  ✓    4 [chromium] › tests/e2e/api.spec.js:28:3 › API Health Checks › should respond to positions endpoint (602ms)
+  ✓    5 [chromium] › tests/e2e/api.spec.js:11:3 › API Health Checks › should respond to status endpoint (601ms)
+  ✓    6 [chromium] › tests/e2e/api.spec.js:65:3 › API Response Format › should return array from positions endpoint (205ms)
+  ✓    8 [chromium] › tests/e2e/api.spec.js:78:3 › API Trading Endpoints › should accept POST to trading/start (150ms)
+  ✓    7 [chromium] › tests/e2e/api.spec.js:89:3 › API Trading Endpoints › should accept POST to trading/stop (150ms)
+  ✓    9 [chromium] › tests/e2e/api.spec.js:103:3 › API P&L Endpoints › should respond to current P&L endpoint (244ms)
+  ✓   11 [chromium] › tests/e2e/api.spec.js:119:3 › API P&L Endpoints › should return valid chart data structure (167ms)
+  ✘   10 [chromium] › tests/e2e/api.spec.js:111:3 › API P&L Endpoints › should respond to P&L chart data endpoint (255ms)
+  ✓   15 [chromium] › tests/e2e/dashboard.spec.js:35:3 › Trading Dashboard › should show all control buttons (2.7s)
+  ✓   12 [chromium] › tests/e2e/dashboard.spec.js:16:3 › Trading Dashboard › should load dashboard with correct title (2.7s)
+  ✓   13 [chromium] › tests/e2e/dashboard.spec.js:25:3 › Trading Dashboard › should display connection status indicator (2.8s)
+  ✓   14 [chromium] › tests/e2e/dashboard.spec.js:43:3 › Trading Dashboard › should display all dashboard cards (2.7s)
+  ✓   18 [chromium] › tests/e2e/dashboard.spec.js:73:3 › Trading Dashboard › should render chart canvas element (2.5s)
+  ✓   20 [chromium] › tests/e2e/dashboard.spec.js:92:3 › Dashboard API Integration › should attempt to fetch account data (2.5s)
+  ✓   19 [chromium] › tests/e2e/dashboard.spec.js:79:3 › Trading Dashboard › should have individual card refresh buttons (2.5s)
+  ✓   16 [chromium] › tests/e2e/dashboard.spec.js:52:3 › Trading Dashboard › should show loading states initially (2.4s)
+  ✓   21 [chromium] › tests/e2e/dashboard.spec.js:108:3 › Dashboard API Integration › should attempt to fetch positions data (5.9s)
+  ✓   17 [chromium] › tests/e2e/dashboard.spec.js:61:3 › Trading Dashboard › should have working refresh button (9.4s)
+  ✓   22 [chromium] › tests/e2e/dashboard.spec.js:122:3 › Dashboard API Integration › should attempt WebSocket connection (6.7s)
+  ✓   25 [chromium] › tests/e2e/dashboard.spec.js:169:3 › Dashboard Interactions › should maintain responsive layout (916ms)
+  ✓   23 [chromium] › tests/e2e/dashboard.spec.js:143:3 › Dashboard Interactions › should show confirmation dialog on stop trading (7.1s)
+  ✓   29 [chromium] › tests/e2e/static-dashboard.spec.js:12:3 › Static Dashboard Tests › should load dashboard HTML file directly (751ms)
+  ✘   24 [chromium] › tests/e2e/dashboard.spec.js:157:3 › Dashboard Interactions › should handle refresh button clicks (7.3s)
+  ✓   30 [chromium] › tests/e2e/static-dashboard.spec.js:22:3 › Static Dashboard Tests › should have all required CSS styling (644ms)
+  ✓   26 [chromium] › tests/e2e/dashboard.spec.js:186:3 › Dashboard Error Handling › should handle missing API gracefully (1.6s)
+  ✓   31 [chromium] › tests/e2e/static-dashboard.spec.js:52:3 › Static Dashboard Tests › should have all dashboard sections present (516ms)
+  ✓   32 [chromium] › tests/e2e/static-dashboard.spec.js:65:3 › Static Dashboard Tests › should have functioning buttons (473ms)
+  ✓   27 [chromium] › tests/e2e/dashboard.spec.js:203:3 › Dashboard Error Handling › should display empty state for no positions (2.7s)
+  ✓   34 [chromium] › tests/e2e/static-dashboard.spec.js:102:3 › Static Dashboard Tests › should have responsive grid layout (1.1s)
+  ✓   35 [chromium] › tests/e2e/static-dashboard.spec.js:117:3 › Static Dashboard Tests › should display loading states initially (1.6s)
+Errors detected: [33m0[39m
+  ✓   33 [chromium] › tests/e2e/static-dashboard.spec.js:86:3 › Static Dashboard Tests › should initialize JavaScript without errors (2.4s)
+  ✓   36 [chromium] › tests/e2e/static-dashboard.spec.js:128:3 › Static Dashboard Tests › should have Chart.js canvas element (1.2s)
+  ✓   37 [chromium] › tests/e2e/static-dashboard.spec.js:139:3 › Static Dashboard Tests › should show connection status indicator (822ms)
+
+=== Console Logs ===
+error: Fetch API cannot load file:///api/v1/account. URL scheme "file" is not supported.
+error: Fetch API cannot load file:///api/v1/positions. URL scheme "file" is not supported.
+error: Fetch API cannot load file:///api/v1/signals. URL scheme "file" is not supported.
+error: Fetch API cannot load file:///api/v1/pnl/current. URL scheme "file" is not supported.
+error: Fetch API cannot load file:///api/v1/pnl/chart-data. URL scheme "file" is not supported.
+error: API Error: TypeError: Failed to fetch
+    at fetchAPI (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:372:40)
+    at updateAccount (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:398:32)
+    at refreshAll (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:350:13)
+    at window.onload (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:303:13)
+error: API Error: TypeError: Failed to fetch
+    at fetchAPI (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:372:40)
+    at updatePositions (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:403:32)
+    at refreshAll (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:351:13)
+    at window.onload (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:303:13)
+error: API Error: TypeError: Failed to fetch
+    at fetchAPI (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:372:40)
+    at updateSignals (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:408:32)
+    at refreshAll (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:352:13)
+    at window.onload (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:303:13)
+error: API Error: TypeError: Failed to fetch
+    at fetchAPI (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:372:40)
+    at updatePnL (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:413:32)
+    at refreshAll (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:353:13)
+    at window.onload (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:303:13)
+error: API Error: TypeError: Failed to fetch
+    at fetchAPI (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:372:40)
+    at updateChart (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:418:32)
+    at refreshAll (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:354:13)
+    at window.onload (file:///Users/stuartgano/Desktop/Penny%20Personal%20Assistant/Alpaca-StochRSI-EMA-Trading-Bot/frontend/dashboard.html:303:13)
+error: Failed to load resource: net::ERR_NAME_NOT_RESOLVED
+error: Failed to load resource: net::ERR_NAME_NOT_RESOLVED
+===================
+
+  ✓   38 [chromium] › tests/e2e/static-dashboard.spec.js:158:3 › Dashboard Console Diagnostics › should log initialization events (2.6s)
+  ✓   41 [firefox] › tests/e2e/api.spec.js:11:3 › API Health Checks › should respond to status endpoint (49ms)
+  ✓   42 [firefox] › tests/e2e/api.spec.js:28:3 › API Health Checks › should respond to positions endpoint (80ms)
+  ✓   43 [firefox] › tests/e2e/api.spec.js:40:3 › API Response Format › should return JSON from status endpoint (12ms)
+  ✓   44 [firefox] › tests/e2e/api.spec.js:52:3 › API Response Format › should return valid structure from account endpoint (115ms)
+  ✓   45 [firefox] › tests/e2e/api.spec.js:65:3 › API Response Format › should return array from positions endpoint (89ms)
+  ✓   46 [firefox] › tests/e2e/api.spec.js:78:3 › API Trading Endpoints › should accept POST to trading/start (11ms)
+  ✓   47 [firefox] › tests/e2e/api.spec.js:89:3 › API Trading Endpoints › should accept POST to trading/stop (7ms)
+  ✓   48 [firefox] › tests/e2e/api.spec.js:103:3 › API P&L Endpoints › should respond to current P&L endpoint (172ms)
+  ✘   49 [firefox] › tests/e2e/api.spec.js:111:3 › API P&L Endpoints › should respond to P&L chart data endpoint (16ms)
+
+=== WebSocket Logs ===
+No WebSocket logs found
+======================
+
+  ✘   28 [chromium] › tests/e2e/dashboard.spec.js:227:3 › Visual Regression › should match dashboard screenshot (7.1s)
+  ✓   39 [chromium] › tests/e2e/static-dashboard.spec.js:177:3 › Dashboard Console Diagnostics › should check for WebSocket connection attempts (3.5s)
+  ✓   50 [firefox] › tests/e2e/api.spec.js:19:3 › API Health Checks › should respond to account endpoint (115ms)
+  ✓   52 [firefox] › tests/e2e/api.spec.js:119:3 › API P&L Endpoints › should return valid chart data structure (29ms)
+  ✓   40 [chromium] › tests/e2e/static-dashboard.spec.js:34:3 › Static Dashboard Tests › should load external dependencies (Chart.js, Socket.IO) (3.4s)
+  ✓   51 [firefox] › tests/e2e/dashboard.spec.js:35:3 › Trading Dashboard › should show all control buttons (2.7s)
+  ✓   54 [firefox] › tests/e2e/dashboard.spec.js:16:3 › Trading Dashboard › should load dashboard with correct title (2.5s)
+  ✓   58 [firefox] › tests/e2e/dashboard.spec.js:73:3 › Trading Dashboard › should render chart canvas element (1.7s)
+  ✓   55 [firefox] › tests/e2e/dashboard.spec.js:25:3 › Trading Dashboard › should display connection status indicator (3.8s)
+  ✓   57 [firefox] › tests/e2e/dashboard.spec.js:61:3 › Trading Dashboard › should have working refresh button (3.4s)
+  ✓   59 [firefox] › tests/e2e/dashboard.spec.js:79:3 › Trading Dashboard › should have individual card refresh buttons (1.9s)
+  ✓   53 [firefox] › tests/e2e/dashboard.spec.js:43:3 › Trading Dashboard › should display all dashboard cards (5.0s)
+  ✓   60 [firefox] › tests/e2e/dashboard.spec.js:92:3 › Dashboard API Integration › should attempt to fetch account data (2.6s)
+  ✓   61 [firefox] › tests/e2e/dashboard.spec.js:108:3 › Dashboard API Integration › should attempt to fetch positions data (2.2s)
+  ✓   56 [firefox] › tests/e2e/dashboard.spec.js:52:3 › Trading Dashboard › should show loading states initially (4.9s)
+  ✓   63 [firefox] › tests/e2e/dashboard.spec.js:143:3 › Dashboard Interactions › should show confirmation dialog on stop trading (2.0s)
+  ✓   65 [firefox] › tests/e2e/dashboard.spec.js:169:3 › Dashboard Interactions › should maintain responsive layout (1.6s)
+  ✓   62 [firefox] › tests/e2e/dashboard.spec.js:122:3 › Dashboard API Integration › should attempt WebSocket connection (4.0s)
+  ✓   66 [firefox] › tests/e2e/dashboard.spec.js:186:3 › Dashboard Error Handling › should handle missing API gracefully (2.3s)
+  ✘   64 [firefox] › tests/e2e/dashboard.spec.js:157:3 › Dashboard Interactions › should handle refresh button clicks (3.3s)
+  ✓   70 [firefox] › tests/e2e/static-dashboard.spec.js:22:3 › Static Dashboard Tests › should have all required CSS styling (1.1s)
+  ✓   69 [firefox] › tests/e2e/static-dashboard.spec.js:12:3 › Static Dashboard Tests › should load dashboard HTML file directly (1.2s)
+  ✓   67 [firefox] › tests/e2e/dashboard.spec.js:203:3 › Dashboard Error Handling › should display empty state for no positions (3.3s)
+  ✓   71 [firefox] › tests/e2e/static-dashboard.spec.js:52:3 › Static Dashboard Tests › should have all dashboard sections present (1.6s)
+  ✓   72 [firefox] › tests/e2e/static-dashboard.spec.js:65:3 › Static Dashboard Tests › should have functioning buttons (1.6s)
+  ✓   75 [firefox] › tests/e2e/static-dashboard.spec.js:102:3 › Static Dashboard Tests › should have responsive grid layout (1.7s)
+  ✓   76 [firefox] › tests/e2e/static-dashboard.spec.js:117:3 › Static Dashboard Tests › should display loading states initially (1.6s)
+Errors detected: [33m0[39m
+  ✓   73 [firefox] › tests/e2e/static-dashboard.spec.js:86:3 › Static Dashboard Tests › should initialize JavaScript without errors (3.4s)
+  ✘   68 [firefox] › tests/e2e/dashboard.spec.js:227:3 › Visual Regression › should match dashboard screenshot (5.7s)
+  ✓   78 [firefox] › tests/e2e/static-dashboard.spec.js:139:3 › Static Dashboard Tests › should show connection status indicator (1.3s)
+  ✓   77 [firefox] › tests/e2e/static-dashboard.spec.js:128:3 › Static Dashboard Tests › should have Chart.js canvas element (1.5s)
+  ✓   81 [webkit] › tests/e2e/api.spec.js:11:3 › API Health Checks › should respond to status endpoint (31ms)
+  ✓   82 [webkit] › tests/e2e/api.spec.js:28:3 › API Health Checks › should respond to positions endpoint (203ms)
+  ✓   84 [webkit] › tests/e2e/api.spec.js:40:3 › API Response Format › should return JSON from status endpoint (33ms)
+  ✓   83 [webkit] › tests/e2e/api.spec.js:19:3 › API Health Checks › should respond to account endpoint (210ms)
+  ✓   85 [webkit] › tests/e2e/api.spec.js:52:3 › API Response Format › should return valid structure from account endpoint (161ms)
+  ✓   87 [webkit] › tests/e2e/api.spec.js:78:3 › API Trading Endpoints › should accept POST to trading/start (62ms)
+  ✓   86 [webkit] › tests/e2e/api.spec.js:65:3 › API Response Format › should return array from positions endpoint (130ms)
+  ✓   89 [webkit] › tests/e2e/api.spec.js:89:3 › API Trading Endpoints › should accept POST to trading/stop (6ms)
+  ✓   88 [webkit] › tests/e2e/api.spec.js:103:3 › API P&L Endpoints › should respond to current P&L endpoint (156ms)
+  ✘   90 [webkit] › tests/e2e/api.spec.js:111:3 › API P&L Endpoints › should respond to P&L chart data endpoint (146ms)
+  ✓   91 [webkit] › tests/e2e/api.spec.js:119:3 › API P&L Endpoints › should return valid chart data structure (6ms)
+
+=== Console Logs ===
+error: API Error: Error
+error: [JavaScript Error: "Cross-Origin Request Blocked: The Same Origin Policy disallows reading the remote resource at http://file/socket.io/?EIO=4&transport=polling&t=PdVebDg. (Reason: CORS request did not succeed). Status code: (null)."]
+error: API Error: Error
+error: API Error: Error
+error: API Error: Error
+error: API Error: Error
+error: [JavaScript Error: "Cross-Origin Request Blocked: The Same Origin Policy disallows reading the remote resource at http://file/socket.io/?EIO=4&transport=polling&t=PdVebX3. (Reason: CORS request did not succeed). Status code: (null)."]
+===================
+
+  ✓   79 [firefox] › tests/e2e/static-dashboard.spec.js:158:3 › Dashboard Console Diagnostics › should log initialization events (3.2s)
+  ✓   74 [firefox] › tests/e2e/static-dashboard.spec.js:34:3 › Static Dashboard Tests › should load external dependencies (Chart.js, Socket.IO) (6.0s)
+  ✓   92 [webkit] › tests/e2e/dashboard.spec.js:25:3 › Trading Dashboard › should display connection status indicator (1.6s)
+  ✓   93 [webkit] › tests/e2e/dashboard.spec.js:16:3 › Trading Dashboard › should load dashboard with correct title (1.5s)
+  ✓   95 [webkit] › tests/e2e/dashboard.spec.js:52:3 › Trading Dashboard › should show loading states initially (969ms)
+  ✓   94 [webkit] › tests/e2e/dashboard.spec.js:35:3 › Trading Dashboard › should show all control buttons (1.1s)
+
+=== WebSocket Logs ===
+No WebSocket logs found
+======================
+
+  ✓   97 [webkit] › tests/e2e/dashboard.spec.js:73:3 › Trading Dashboard › should render chart canvas element (1.3s)
+  ✓   98 [webkit] › tests/e2e/dashboard.spec.js:79:3 › Trading Dashboard › should have individual card refresh buttons (1.3s)
+  ✓   80 [firefox] › tests/e2e/static-dashboard.spec.js:177:3 › Dashboard Console Diagnostics › should check for WebSocket connection attempts (5.2s)
+  ✓   96 [webkit] › tests/e2e/dashboard.spec.js:61:3 › Trading Dashboard › should have working refresh button (2.5s)
+  ✓   99 [webkit] › tests/e2e/dashboard.spec.js:43:3 › Trading Dashboard › should display all dashboard cards (1.3s)
+  ✓  101 [webkit] › tests/e2e/dashboard.spec.js:108:3 › Dashboard API Integration › should attempt to fetch positions data (1.0s)
+  ✓  100 [webkit] › tests/e2e/dashboard.spec.js:92:3 › Dashboard API Integration › should attempt to fetch account data (1.1s)
+  ✓  102 [webkit] › tests/e2e/dashboard.spec.js:143:3 › Dashboard Interactions › should show confirmation dialog on stop trading (1.1s)
+  ✓  104 [webkit] › tests/e2e/dashboard.spec.js:169:3 › Dashboard Interactions › should maintain responsive layout (1.5s)
+  ✓  105 [webkit] › tests/e2e/dashboard.spec.js:186:3 › Dashboard Error Handling › should handle missing API gracefully (2.7s)
+  ✓  109 [webkit] › tests/e2e/static-dashboard.spec.js:12:3 › Static Dashboard Tests › should load dashboard HTML file directly (525ms)
+  ✘  103 [webkit] › tests/e2e/dashboard.spec.js:157:3 › Dashboard Interactions › should handle refresh button clicks (3.4s)
+  ✓  106 [webkit] › tests/e2e/dashboard.spec.js:203:3 › Dashboard Error Handling › should display empty state for no positions (3.4s)
+  ✓  110 [webkit] › tests/e2e/static-dashboard.spec.js:22:3 › Static Dashboard Tests › should have all required CSS styling (589ms)
+  ✓  111 [webkit] › tests/e2e/static-dashboard.spec.js:52:3 › Static Dashboard Tests › should have all dashboard sections present (606ms)
+  ✓  112 [webkit] › tests/e2e/static-dashboard.spec.js:65:3 › Static Dashboard Tests › should have functioning buttons (530ms)
+  ✓  115 [webkit] › tests/e2e/static-dashboard.spec.js:102:3 › Static Dashboard Tests › should have responsive grid layout (672ms)
+  ✓  107 [webkit] › tests/e2e/dashboard.spec.js:122:3 › Dashboard API Integration › should attempt WebSocket connection (4.2s)
+  ✓  116 [webkit] › tests/e2e/static-dashboard.spec.js:117:3 › Static Dashboard Tests › should display loading states initially (769ms)
+  ✓  117 [webkit] › tests/e2e/static-dashboard.spec.js:128:3 › Static Dashboard Tests › should have Chart.js canvas element (851ms)
+  ✓  118 [webkit] › tests/e2e/static-dashboard.spec.js:139:3 › Static Dashboard Tests › should show connection status indicator (492ms)
+Errors detected: [33m5[39m
+  - //api/v1/account due to access control checks.
+  - //api/v1/positions due to access control checks.
+  - //api/v1/signals due to access control checks.
+  - //api/v1/pnl/current due to access control checks.
+  - //api/v1/pnl/chart-data due to access control checks.
+  ✓  113 [webkit] › tests/e2e/static-dashboard.spec.js:86:3 › Static Dashboard Tests › should initialize JavaScript without errors (2.6s)
+  ✘  108 [webkit] › tests/e2e/dashboard.spec.js:227:3 › Visual Regression › should match dashboard screenshot (5.8s)
+
+=== Console Logs ===
+error: Cross origin requests are only supported for HTTP.
+error: Cross origin requests are only supported for HTTP.
+error: Cross origin requests are only supported for HTTP.
+error: Cross origin requests are only supported for HTTP.
+error: Cross origin requests are only supported for HTTP.
+error: Failed to load resource: A server with the specified hostname could not be found.
+error: API Error: TypeError: Load failed
+error: API Error: TypeError: Load failed
+error: API Error: TypeError: Load failed
+error: API Error: TypeError: Load failed
+error: API Error: TypeError: Load failed
+error: Failed to load resource: A server with the specified hostname could not be found.
+===================
+
+  ✓  119 [webkit] › tests/e2e/static-dashboard.spec.js:158:3 › Dashboard Console Diagnostics › should log initialization events (2.5s)
+  ✓  114 [webkit] › tests/e2e/static-dashboard.spec.js:34:3 › Static Dashboard Tests › should load external dependencies (Chart.js, Socket.IO) (4.2s)
+
+=== WebSocket Logs ===
+No WebSocket logs found
+======================
+
+  ✓  120 [webkit] › tests/e2e/static-dashboard.spec.js:177:3 › Dashboard Console Diagnostics › should check for WebSocket connection attempts (3.6s)
+
+
+  1) [chromium] › tests/e2e/api.spec.js:111:3 › API P&L Endpoints › should respond to P&L chart data endpoint 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoContain[2m([22m[32mexpected[39m[2m) // indexOf[22m
+
+    Expected value: [32m404[39m
+    Received array: [31m[200, 401, 403, 500, 503][39m
+
+      113 |
+      114 |     if (response) {
+    > 115 |       expect([200, 401, 403, 500, 503]).toContain(response.status());
+          |                                         ^
+      116 |     }
+      117 |   });
+      118 |
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/api.spec.js:115:41
+
+  2) [chromium] › tests/e2e/dashboard.spec.js:157:3 › Dashboard Interactions › should handle refresh button clicks 
+
+    Error: locator.click: Error: strict mode violation: locator('.card:has-text("Account")').locator('button:has-text("↻")') resolved to 2 elements:
+        1) <button class="btn" onclick="updateAccount()">↻</button> aka getByRole('button', { name: '↻' }).first()
+        2) <button class="btn" onclick="updatePnL()">↻</button> aka getByRole('button', { name: '↻' }).nth(1)
+
+    Call log:
+    [2m  - waiting for locator('.card:has-text("Account")').locator('button:has-text("↻")')[22m
+
+
+      161 |     // Click account refresh
+      162 |     const accountRefresh = page.locator('.card:has-text("Account")').locator('button:has-text("↻")');
+    > 163 |     await accountRefresh.click();
+          |                          ^
+      164 |
+      165 |     // Should still be on the same page
+      166 |     await expect(page.locator('h1')).toBeVisible();
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:163:26
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Intera-6ef4f-andle-refresh-button-clicks-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Intera-6ef4f-andle-refresh-button-clicks-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/dashboard-Dashboard-Intera-6ef4f-andle-refresh-button-clicks-chromium/error-context.md
+
+  3) [chromium] › tests/e2e/dashboard.spec.js:227:3 › Visual Regression › should match dashboard screenshot 
+
+    Error: [2mexpect([22m[31mpage[39m[2m).[22mtoHaveScreenshot[2m([22m[32mexpected[39m[2m)[22m failed
+
+      Expected an image 1280px by 720px, received 1280px by 1424px. 1789634 pixels (ratio 0.99 of all image pixels) are different.
+
+      Snapshot: dashboard-full.png
+
+    Call log:
+    [2m  - Expect "toHaveScreenshot(dashboard-full.png)" with timeout 5000ms[22m
+    [2m    - verifying given screenshot expectation[22m
+    [2m  - taking page screenshot[22m
+    [2m    - disabled all CSS animations[22m
+    [2m  - waiting for fonts to load...[22m
+    [2m  - fonts loaded[22m
+    [2m  - Expected an image 1280px by 720px, received 1280px by 1424px. 1789662 pixels (ratio 0.99 of all image pixels) are different.[22m
+    [2m  - waiting 100ms before taking screenshot[22m
+    [2m  - taking page screenshot[22m
+    [2m    - disabled all CSS animations[22m
+    [2m  - waiting for fonts to load...[22m
+    [2m  - fonts loaded[22m
+    [2m  - captured a stable screenshot[22m
+    [2m  - Expected an image 1280px by 720px, received 1280px by 1424px. 1789634 pixels (ratio 0.99 of all image pixels) are different.[22m
+
+
+      233 |
+      234 |     // Take screenshot
+    > 235 |     await expect(page).toHaveScreenshot('dashboard-full.png', {
+          |                        ^
+      236 |       fullPage: true,
+      237 |       maxDiffPixels: 100
+      238 |     });
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:235:24
+
+    attachment #1: dashboard-full (image/png) ──────────────────────────────────────────────────────
+    Expected: tests/e2e/dashboard.spec.js-snapshots/dashboard-full-chromium-darwin.png
+    Received: test-results/dashboard-Visual-Regressio-396fd--match-dashboard-screenshot-chromium/dashboard-full-actual.png
+    Diff:     test-results/dashboard-Visual-Regressio-396fd--match-dashboard-screenshot-chromium/dashboard-full-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Visual-Regressio-396fd--match-dashboard-screenshot-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Visual-Regressio-396fd--match-dashboard-screenshot-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/dashboard-Visual-Regressio-396fd--match-dashboard-screenshot-chromium/error-context.md
+
+  4) [firefox] › tests/e2e/api.spec.js:111:3 › API P&L Endpoints › should respond to P&L chart data endpoint 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoContain[2m([22m[32mexpected[39m[2m) // indexOf[22m
+
+    Expected value: [32m404[39m
+    Received array: [31m[200, 401, 403, 500, 503][39m
+
+      113 |
+      114 |     if (response) {
+    > 115 |       expect([200, 401, 403, 500, 503]).toContain(response.status());
+          |                                         ^
+      116 |     }
+      117 |   });
+      118 |
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/api.spec.js:115:41
+
+  5) [firefox] › tests/e2e/dashboard.spec.js:157:3 › Dashboard Interactions › should handle refresh button clicks 
+
+    Error: locator.click: Error: strict mode violation: locator('.card:has-text("Account")').locator('button:has-text("↻")') resolved to 2 elements:
+        1) <button class="btn" onclick="updateAccount()">↻</button> aka getByRole('button', { name: '↻' }).first()
+        2) <button class="btn" onclick="updatePnL()">↻</button> aka getByRole('button', { name: '↻' }).nth(1)
+
+    Call log:
+    [2m  - waiting for locator('.card:has-text("Account")').locator('button:has-text("↻")')[22m
+
+
+      161 |     // Click account refresh
+      162 |     const accountRefresh = page.locator('.card:has-text("Account")').locator('button:has-text("↻")');
+    > 163 |     await accountRefresh.click();
+          |                          ^
+      164 |
+      165 |     // Should still be on the same page
+      166 |     await expect(page.locator('h1')).toBeVisible();
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:163:26
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Intera-6ef4f-andle-refresh-button-clicks-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Intera-6ef4f-andle-refresh-button-clicks-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/dashboard-Dashboard-Intera-6ef4f-andle-refresh-button-clicks-firefox/error-context.md
+
+  6) [firefox] › tests/e2e/dashboard.spec.js:227:3 › Visual Regression › should match dashboard screenshot 
+
+    Error: [2mexpect([22m[31mpage[39m[2m).[22mtoHaveScreenshot[2m([22m[32mexpected[39m[2m)[22m failed
+
+      Expected an image 1280px by 720px, received 1280px by 1446px. 1818877 pixels (ratio 0.99 of all image pixels) are different.
+
+      Snapshot: dashboard-full.png
+
+    Call log:
+    [2m  - Expect "toHaveScreenshot(dashboard-full.png)" with timeout 5000ms[22m
+    [2m    - verifying given screenshot expectation[22m
+    [2m  - taking page screenshot[22m
+    [2m    - disabled all CSS animations[22m
+    [2m  - waiting for fonts to load...[22m
+    [2m  - fonts loaded[22m
+    [2m  - Expected an image 1280px by 720px, received 1280px by 1446px. 1818877 pixels (ratio 0.99 of all image pixels) are different.[22m
+    [2m  - waiting 100ms before taking screenshot[22m
+    [2m  - taking page screenshot[22m
+    [2m    - disabled all CSS animations[22m
+    [2m  - waiting for fonts to load...[22m
+    [2m  - fonts loaded[22m
+    [2m  - captured a stable screenshot[22m
+    [2m  - Expected an image 1280px by 720px, received 1280px by 1446px. 1818877 pixels (ratio 0.99 of all image pixels) are different.[22m
+
+
+      233 |
+      234 |     // Take screenshot
+    > 235 |     await expect(page).toHaveScreenshot('dashboard-full.png', {
+          |                        ^
+      236 |       fullPage: true,
+      237 |       maxDiffPixels: 100
+      238 |     });
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:235:24
+
+    attachment #1: dashboard-full (image/png) ──────────────────────────────────────────────────────
+    Expected: tests/e2e/dashboard.spec.js-snapshots/dashboard-full-firefox-darwin.png
+    Received: test-results/dashboard-Visual-Regressio-396fd--match-dashboard-screenshot-firefox/dashboard-full-actual.png
+    Diff:     test-results/dashboard-Visual-Regressio-396fd--match-dashboard-screenshot-firefox/dashboard-full-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Visual-Regressio-396fd--match-dashboard-screenshot-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Visual-Regressio-396fd--match-dashboard-screenshot-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/dashboard-Visual-Regressio-396fd--match-dashboard-screenshot-firefox/error-context.md
+
+  7) [webkit] › tests/e2e/api.spec.js:111:3 › API P&L Endpoints › should respond to P&L chart data endpoint 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoContain[2m([22m[32mexpected[39m[2m) // indexOf[22m
+
+    Expected value: [32m404[39m
+    Received array: [31m[200, 401, 403, 500, 503][39m
+
+      113 |
+      114 |     if (response) {
+    > 115 |       expect([200, 401, 403, 500, 503]).toContain(response.status());
+          |                                         ^
+      116 |     }
+      117 |   });
+      118 |
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/api.spec.js:115:41
+
+  8) [webkit] › tests/e2e/dashboard.spec.js:157:3 › Dashboard Interactions › should handle refresh button clicks 
+
+    Error: locator.click: Error: strict mode violation: locator('.card:has-text("Account")').locator('button:has-text("↻")') resolved to 2 elements:
+        1) <button class="btn" onclick="updateAccount()">↻</button> aka getByRole('button', { name: '↻' }).first()
+        2) <button class="btn" onclick="updatePnL()">↻</button> aka getByRole('button', { name: '↻' }).nth(1)
+
+    Call log:
+    [2m  - waiting for locator('.card:has-text("Account")').locator('button:has-text("↻")')[22m
+
+
+      161 |     // Click account refresh
+      162 |     const accountRefresh = page.locator('.card:has-text("Account")').locator('button:has-text("↻")');
+    > 163 |     await accountRefresh.click();
+          |                          ^
+      164 |
+      165 |     // Should still be on the same page
+      166 |     await expect(page.locator('h1')).toBeVisible();
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:163:26
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Intera-6ef4f-andle-refresh-button-clicks-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Dashboard-Intera-6ef4f-andle-refresh-button-clicks-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/dashboard-Dashboard-Intera-6ef4f-andle-refresh-button-clicks-webkit/error-context.md
+
+  9) [webkit] › tests/e2e/dashboard.spec.js:227:3 › Visual Regression › should match dashboard screenshot 
+
+    Error: [2mexpect([22m[31mpage[39m[2m).[22mtoHaveScreenshot[2m([22m[32mexpected[39m[2m)[22m failed
+
+      Expected an image 1280px by 720px, received 1280px by 1421px. 1774409 pixels (ratio 0.98 of all image pixels) are different.
+
+      Snapshot: dashboard-full.png
+
+    Call log:
+    [2m  - Expect "toHaveScreenshot(dashboard-full.png)" with timeout 5000ms[22m
+    [2m    - verifying given screenshot expectation[22m
+    [2m  - taking page screenshot[22m
+    [2m    - disabled all CSS animations[22m
+    [2m  - waiting for fonts to load...[22m
+    [2m  - fonts loaded[22m
+    [2m  - Expected an image 1280px by 720px, received 1280px by 1421px. 1774409 pixels (ratio 0.98 of all image pixels) are different.[22m
+    [2m  - waiting 100ms before taking screenshot[22m
+    [2m  - taking page screenshot[22m
+    [2m    - disabled all CSS animations[22m
+    [2m  - waiting for fonts to load...[22m
+    [2m  - fonts loaded[22m
+    [2m  - captured a stable screenshot[22m
+    [2m  - Expected an image 1280px by 720px, received 1280px by 1421px. 1774409 pixels (ratio 0.98 of all image pixels) are different.[22m
+
+
+      233 |
+      234 |     // Take screenshot
+    > 235 |     await expect(page).toHaveScreenshot('dashboard-full.png', {
+          |                        ^
+      236 |       fullPage: true,
+      237 |       maxDiffPixels: 100
+      238 |     });
+        at /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot/tests/e2e/dashboard.spec.js:235:24
+
+    attachment #1: dashboard-full (image/png) ──────────────────────────────────────────────────────
+    Expected: tests/e2e/dashboard.spec.js-snapshots/dashboard-full-webkit-darwin.png
+    Received: test-results/dashboard-Visual-Regressio-396fd--match-dashboard-screenshot-webkit/dashboard-full-actual.png
+    Diff:     test-results/dashboard-Visual-Regressio-396fd--match-dashboard-screenshot-webkit/dashboard-full-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/dashboard-Visual-Regressio-396fd--match-dashboard-screenshot-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/dashboard-Visual-Regressio-396fd--match-dashboard-screenshot-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/dashboard-Visual-Regressio-396fd--match-dashboard-screenshot-webkit/error-context.md
+
+  9 failed
+    [chromium] › tests/e2e/api.spec.js:111:3 › API P&L Endpoints › should respond to P&L chart data endpoint 
+    [chromium] › tests/e2e/dashboard.spec.js:157:3 › Dashboard Interactions › should handle refresh button clicks 
+    [chromium] › tests/e2e/dashboard.spec.js:227:3 › Visual Regression › should match dashboard screenshot 
+    [firefox] › tests/e2e/api.spec.js:111:3 › API P&L Endpoints › should respond to P&L chart data endpoint 
+    [firefox] › tests/e2e/dashboard.spec.js:157:3 › Dashboard Interactions › should handle refresh button clicks 
+    [firefox] › tests/e2e/dashboard.spec.js:227:3 › Visual Regression › should match dashboard screenshot 
+    [webkit] › tests/e2e/api.spec.js:111:3 › API P&L Endpoints › should respond to P&L chart data endpoint 
+    [webkit] › tests/e2e/dashboard.spec.js:157:3 › Dashboard Interactions › should handle refresh button clicks 
+    [webkit] › tests/e2e/dashboard.spec.js:227:3 › Visual Regression › should match dashboard screenshot 
+  111 passed (59.8s)
+
+[36m  Serving HTML report at http://localhost:61014. Press Ctrl+C to quit.[39m

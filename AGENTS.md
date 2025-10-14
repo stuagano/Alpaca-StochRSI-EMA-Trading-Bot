@@ -9,7 +9,7 @@
 ## Build, Test, and Development Commands
 - `python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt` – bootstrap Python tooling.
 - `python main.py` – launch the trading bot.
-- `python backend/api/app.py` – start the dashboard server.
+- `python backend/api/run.py` – start the dashboard server.
 - `pytest tests/functional -m "not paper_trading"` – run core backend checks.
 - `npm install` (once) then `npm test` or `npm run test:headed` – install UI deps and execute Playwright suites.
 - `./run_crypto_tests.sh` – menu-driven end-to-end scenarios.

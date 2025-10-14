@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Scalping Bot Dashboard</title>
+    <link rel="stylesheet" href="/frontend/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 Crypto Scalping Bot Dashboard</h1>
+            <div class="status-indicator" id="connection-status">
+                <span class="status-dot"></span>
+                <span class="status-text">Connecting...</span>
+            </div>
+        </header>
+
+        <div class="dashboard-grid">
+            <!-- Account Overview -->
+            <div class="card account-card">
+                <h2>💰 Account Overview</h2>
+                <div id="account-info">
+                    <div class="metric">
+                        <span class="label">Portfolio Value:</span>
+                        <span class="value" id="portfolio-value">$0.00</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">Buying Power:</span>
+                        <span class="value" id="buying-power">$0.00</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">Cash:</span>
+                        <span class="value" id="cash">$0.00</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">Status:</span>
+                        <span class="value" id="account-status">Unknown</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Crypto Positions -->
+            <div class="card positions-card">
+                <h2>📈 Crypto Positions</h2>
+                <div id="positions-container">
+                    <div id="positions-list">No open positions</div>
+                </div>
+            </div>
+
+            <!-- Trading Signals -->
+            <div class="card signals-card">
+                <h2>🎯 Trading Signals</h2>
+                <div id="signals-container">
+                    <div id="signals-list">Loading signals...</div>
+                </div>
+            </div>
+
+            <!-- Performance Metrics -->
+            <div class="card performance-card">
+                <h2>📊 Performance</h2>
+                <div id="performance-metrics">
+                    <div class="metric">
+                        <span class="label">Total P&L:</span>
+                        <span class="value pnl" id="total-pnl">$0.00</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">Daily P&L:</span>
+                        <span class="value pnl" id="daily-pnl">$0.00</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">Open Positions:</span>
+                        <span class="value" id="positions-count">0</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">Market Status:</span>
+                        <span class="value crypto-status">24/7 OPEN</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Trades -->
+            <div class="card trades-card full-width">
+                <h2>📰 Recent Trades</h2>
+                <div id="trades-container">
+                    <div id="trades-table-container">
+                        <table id="trades-table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Symbol</th>
+                                    <th>Side</th>
+                                    <th>Quantity</th>
+                                    <th>Price</th>
+                                    <th>Value</th>
+                                </tr>
+                            </thead>
+                            <tbody id="trades-body">
+                                <tr>
+                                    <td colspan="6" class="no-data">No recent trades</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <button class="btn btn-primary" onclick="refreshDashboard()">
+                🔄 Refresh Data
+            </button>
+            <button class="btn btn-secondary" onclick="toggleAutoRefresh()">
+                ⏱️ <span id="auto-refresh-text">Auto Refresh: ON</span>
+            </button>
+            <span class="last-update">
+                Last updated: <span id="last-update">Never</span>
+            </span>
+        </div>
+    </div>
+
+    <script src="/frontend/script.js"></script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+# Testing Dependencies for Trading Bot
+
+# Core testing framework
+pytest>=7.4.0
+pytest-html>=3.2.0
+pytest-cov>=4.1.0
+
+# Async testing
+pytest-asyncio>=0.21.0
+
+# Mock and fixtures
+pytest-mock>=3.11.1
+
+# For functional testing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# For API testing
+requests>=2.31.0
+requests-mock>=1.11.0
+
+# For test data generation
+Faker>=19.0.0
+
+# Test markers and organization
+pytest-xdist>=3.3.1  # Parallel test execution
+
+# Code coverage reports
+coverage[toml]>=7.2.7

@@ -1,0 +1,77 @@
+{
+  "mcpServers": {
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "${projectDir}"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "postgres": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://localhost/trading_bot"],
+      "disabled": true
+    },
+    "sqlite": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sqlite", "--db", "${projectDir}/database/trading_data.db"]
+    },
+    "fetch": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-fetch"]
+    },
+    "ref-tools": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-ref-tools"]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-playwright"]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "trading-bot": {
+      "command": "python",
+      "args": ["-m", "mcp_server"],
+      "env": {
+        "PYTHONPATH": "${projectDir}",
+        "TRADING_ENV": "paper"
+      },
+      "disabled": true
+    }
+  },
+  "customInstructions": "This is an Alpaca trading bot using StochRSI/EMA indicators. When working with trading logic, always check risk management settings first. Use paper trading mode by default. The bot uses SQLite for data persistence and has a React frontend for P&L visualization.",
+  "alwaysAllowReadOnly": true,
+  "enabledTools": [
+    "memory_*",
+    "filesystem_*",
+    "github_*",
+    "sqlite_*",
+    "fetch_*",
+    "ref_search_documentation",
+    "ref_read_url",
+    "browser_*",
+    "sequentialthinking"
+  ],
+  "projectContext": {
+    "type": "trading-bot",
+    "language": "python",
+    "framework": "flask",
+    "frontend": "react",
+    "database": "sqlite",
+    "api": "alpaca",
+    "mainEntry": "main.py",
+    "webEntry": "backend/api/run.py",
+    "configFile": "config/unified_config.yml"
+  }
+}

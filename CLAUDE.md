@@ -11,7 +11,7 @@ This is an Alpaca StochRSI EMA Trading Bot - a cryptocurrency and stock trading 
 ### Running the Application
 - **Start the main trading bot**: `python main.py`
 - **Start the NEW Flask interface**: `python backend/api/run.py` (starts on http://localhost:5001)
-- **Start legacy web interface**: `python app.py` (deprecated - use new Flask app)
+- **Start legacy web interface**: `python archive/legacy_2025Q4/crypto_bot_with_dashboard.py` (deprecated)
 - **Start P&L Dashboard**: `cd frontend && npm start` (React dashboard on http://localhost:3000)
 - **Install dependencies**: `pip install -r requirements.txt`
 

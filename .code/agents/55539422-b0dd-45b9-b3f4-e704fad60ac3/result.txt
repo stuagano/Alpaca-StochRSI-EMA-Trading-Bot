@@ -1,0 +1,55 @@
+Based on my repository analysis, here's a concise ordered plan for high-impact follow-up work:
+
+## 📋 Next Steps Priority Plan
+
+### 1. **Consolidate Entry Points** (Impact: High, Effort: Low)
+**Rationale**: Multiple entry points (`main.py`, `app.py`, `backend/api/app.py`, `backend/api/run.py`) create confusion and maintenance burden.
+- Merge `app.py` and `backend/api/app.py` into single Flask app
+- Update `main.py` to use unified Flask backend
+- Remove redundant startup scripts
+
+### 2. **Fix Paper Trading Issues** (Impact: Critical, Effort: Low)
+**Rationale**: Bot can't trade effectively due to insufficient balance and misconfigured symbols per BOT-STATUS-REPORT.md.
+- Filter symbols to only BTC/USD and ETH/USD (meet $10 minimum)
+- Increase position size to 20% from 15%
+- Remove inactive MATIC/USD from config
+
+### 3. **Connect Real Market Data** (Impact: Critical, Effort: Medium)
+**Rationale**: Bot currently uses simulated/random prices, making trading decisions meaningless.
+- Replace simulated data with Alpaca WebSocket feed
+- Implement proper market data service in `backend/api/services/`
+- Add reconnection logic for reliability
+
+### 4. **Harden Test Coverage** (Impact: High, Effort: Medium)
+**Rationale**: Tests exist but gaps in integration testing between Flask API and trading core.
+- Add integration tests for Flask→TradingBot flow
+- Test WebSocket event publishing
+- Add mock Alpaca API responses for deterministic testing
+
+### 5. **Implement Proper Deployment** (Impact: High, Effort: Medium)
+**Rationale**: No production deployment configuration exists.
+- Create Docker container with multi-stage build
+- Add systemd service for Linux deployment
+- Implement health checks and auto-restart
+- Add environment-specific configs (dev/staging/prod)
+
+### 6. **Add Monitoring & Alerting** (Impact: High, Effort: Low)
+**Rationale**: No visibility into production issues until they fail.
+- Integrate Prometheus metrics export
+- Add structured logging with log aggregation
+- Create alert rules for critical failures (API down, repeated order failures)
+- Dashboard for key metrics (win rate, P&L, uptime)
+
+### 7. **DRY Signal Processing** (Impact: Medium, Effort: Medium)
+**Rationale**: Signal logic duplicated across `signal_processor.py`, `trading_bot.py`, and strategies.
+- Extract common signal validation to `core/signal_filters.py`
+- Create signal pipeline abstraction
+- Centralize volume confirmation logic
+
+### 8. **Complete Flask API Migration** (Impact: Medium, Effort: Low)
+**Rationale**: TODO in `backend/api/services/trading_service.py` indicates incomplete migration.
+- Implement strategy update endpoint
+- Add position management endpoints
+- Complete WebSocket event handlers for all trading events
+
+The top 3 items (entry points, paper trading, real data) should be addressed immediately as they block effective operation. Items 4-6 prepare for production deployment, while 7-8 improve maintainability.

@@ -1,0 +1,25 @@
+[Unit]
+Description=Alpaca Trading Bot Flask Application
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/Alpaca-StochRSI-EMA-Trading-Bot
+Environment="PATH=/home/ubuntu/Alpaca-StochRSI-EMA-Trading-Bot/venv/bin"
+Environment="FLASK_ENV=production"
+ExecStart=/home/ubuntu/Alpaca-StochRSI-EMA-Trading-Bot/venv/bin/python /home/ubuntu/Alpaca-StochRSI-EMA-Trading-Bot/backend/api/run.py --host 0.0.0.0 --port 5001
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=append:/var/log/trading-bot/app.log
+StandardError=append:/var/log/trading-bot/error.log
+
+# Security
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
