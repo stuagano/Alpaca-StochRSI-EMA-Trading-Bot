@@ -2,14 +2,14 @@
 
 ## Project Structure & Module Organization
 - `main.py` orchestrates the live scalping loop; shared services live under `core/` and strategy logic under `strategies/`.
-- Flask dashboards and APIs sit in `app/`, auxiliary endpoints in `backend/api/`, and static assets in `frontend/`.
+- Flask dashboards and APIs live in `backend/api/`, and static assets in `frontend/`.
 - Shared helpers are in `utils/`, runtime settings (including `unified_config.yml`) belong in `config/`, and Auth templates reside in `AUTH/`.
 - Tests are split into `tests/functional`, `tests/integration`, and `tests/e2e`; Playwright output drops into `playwright-report/` and HTML summaries into `test-reports/`.
 
 ## Build, Test, and Development Commands
 - `python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt` – bootstrap Python tooling.
 - `python main.py` – launch the trading bot.
-- `python run_flask_app.py` or `./start_flask.sh` – start the dashboard server.
+- `python backend/api/app.py` – start the dashboard server.
 - `pytest tests/functional -m "not paper_trading"` – run core backend checks.
 - `npm install` (once) then `npm test` or `npm run test:headed` – install UI deps and execute Playwright suites.
 - `./run_crypto_tests.sh` – menu-driven end-to-end scenarios.
@@ -21,7 +21,7 @@
 
 ## Testing Guidelines
 - Pytest auto-discovers `test_*.py`, `Test*` classes, and `test_*` functions; apply markers (`unit`, `integration`, `slow`, `paper_trading`) to scope runs.
-- Target functional coverage with `pytest tests/functional --cov=app --cov=strategies --cov=config`.
+- Target functional coverage with `pytest tests/functional --cov=backend.api --cov=strategies --cov=config`.
 - Maintain Playwright flows in `tests/e2e/`; align selector updates with `frontend/` changes and regenerate reports via `npm run test:report`.
 
 ## Commit & Pull Request Guidelines

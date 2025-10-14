@@ -32,8 +32,8 @@ A sophisticated algorithmic trading bot built with Python and the Alpaca API, fe
 
 3. **Run the Bot**
    ```bash
-   python main.py                    # Start trading bot
-   python run_enhanced_dashboard.py # Launch web dashboard
+   python main.py                 # Start trading bot
+   python backend/api/app.py      # Launch Flask dashboard + API
    ```
 
 4. **Docker Deployment**
@@ -45,7 +45,7 @@ A sophisticated algorithmic trading bot built with Python and the Alpaca API, fe
 
 - **Trading Engine**: `main.py` - Core trading logic and execution
 - **Indicators**: `indicator.py` - Technical analysis calculations
-- **Dashboard**: `flask_app.py` - Web-based monitoring interface
+- **Dashboard**: `backend/api/app.py` - Unified Flask monitoring interface
 - **Risk Management**: `risk_management/` - Position sizing and stop losses
 - **Backtesting**: `backtesting/` - Strategy validation tools
 
