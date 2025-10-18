@@ -1,0 +1,791 @@
+[2025-10-15T16:51:55] OpenAI Codex v0.0.0 (research preview)
+--------
+workdir: /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-backend-api-services-init-py-tha
+model: gpt-5-codex
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: medium
+reasoning summaries: auto
+--------
+[2025-10-15T16:51:55] User instructions:
+Context: Background: Flask create_app() imports init_services from backend/api/services/__init__.py. After recent edits, that module lost init_services, causing ImportError when running ./run_all.sh. Current file: only fallback class definitions exist; there is no init_services or load_alpaca_credentials usage. Need to reinstate service wiring while preserving graceful fallbacks for missing dependencies.
+
+Key files:
+- backend/api/services/__init__.py (needs rewrite)
+- utils/alpaca.py (provides load_alpaca_credentials)
+- backend/api/__init__.py (calls init_services)
+
+Goal: Provide a working init_services implementation with optional dependency handling and export it. Ensure tests pass (`pytest`).
+
+Agent: Restore backend/api/services/__init__.py so that init_services exists and optional dependency fallbacks remain. Currently the file only defines fallback TradingService/PnLService/AlpacaClient stubs but never provides init_services, leading create_app() to crash. Implement a complete module that:
+- Imports utils.alpaca.load_alpaca_credentials
+- Defines fallback classes if real modules missing (log warnings) but otherwise uses real implementations
+- Defines _sqlite_path_from_url and init_services(app) that initialises AlpacaClient, TradingService, PnLService, registers with ServiceRegistry if available, and logs success.
+- Exposes __all__ = ["init_services", "TradingService", "PnLService", "AlpacaClient"]
+- Keeps behaviour working whether optional dependencies are installed or not
+After changes, run pytest (at least unit tests) to ensure pass. The repo root is /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot.
+[2025-10-15T16:51:59] OpenAI Codex v0.0.0 (research preview)
+--------
+workdir: /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-backend-api-services-init-py-tha
+model: gpt-5-codex
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: medium
+reasoning summaries: auto
+--------
+[2025-10-15T16:51:59] User instructions:
+Context: Background: Flask create_app() imports init_services from backend/api/services/__init__.py. After recent edits, that module lost init_services, causing ImportError when running ./run_all.sh. Current file: only fallback class definitions exist; there is no init_services or load_alpaca_credentials usage. Need to reinstate service wiring while preserving graceful fallbacks for missing dependencies.
+
+Key files:
+- backend/api/services/__init__.py (needs rewrite)
+- utils/alpaca.py (provides load_alpaca_credentials)
+- backend/api/__init__.py (calls init_services)
+
+Goal: Provide a working init_services implementation with optional dependency handling and export it. Ensure tests pass (`pytest`).
+
+Agent: Restore backend/api/services/__init__.py so that init_services exists and optional dependency fallbacks remain. Currently the file only defines fallback TradingService/PnLService/AlpacaClient stubs but never provides init_services, leading create_app() to crash. Implement a complete module that:
+- Imports utils.alpaca.load_alpaca_credentials
+- Defines fallback classes if real modules missing (log warnings) but otherwise uses real implementations
+- Defines _sqlite_path_from_url and init_services(app) that initialises AlpacaClient, TradingService, PnLService, registers with ServiceRegistry if available, and logs success.
+- Exposes __all__ = ["init_services", "TradingService", "PnLService", "AlpacaClient"]
+- Keeps behaviour working whether optional dependencies are installed or not
+After changes, run pytest (at least unit tests) to ensure pass. The repo root is /Users/stuartgano/Desktop/Penny Personal Assistant/Alpaca-StochRSI-EMA-Trading-Bot.
+
+[2025-10-15T16:52:05] thinking
+
+**Confirming read-only environment constraints**
+[2025-10-15T16:52:06] exec bash -lc ls in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-backend-api-services-init-py-tha/.
+[2025-10-15T16:52:07] bash -lc ls succeeded in 960ms:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+AGENTS.md
+ARCHITECTURE-DIAGRAM.md
+archive
+AUTH
+backend
+backup
+BOT-STATUS-REPORT.md
+check_real_account.py
+claude.json
+CLAUDE.md
+COMPLETE-TESTING-SUMMARY.md
+config
+core
+CRYPTO-247-TRADING-GUIDE.md
+DASHBOARD-QUICKSTART.md
+database
+deploy
+[2025-10-15T16:52:07] tokens used: 8,737
+
+[2025-10-15T16:52:10] thinking
+
+**Inspecting backend service initialization**
+[2025-10-15T16:52:11] exec bash -lc "sed -n '1,200p' backend/api/services/__init__.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-backend-api-services-init-py-tha/.
+[2025-10-15T16:52:12] bash -lc "sed -n '1,200p' backend/api/services/__init__.py" succeeded in 981ms:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+#!/usr/bin/env python3
+"""
+Services Module
+Business logic layer for Flask application
+"""
+
+import logging
+from pathlib import Path
+import sys
+
+# Add parent directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+
+from backend.api.services.trading_service import TradingService
+from backend.api.services.pnl_service import PnLService
+from backend.api.services.alpaca_client import AlpacaClient
+from utils.alpaca import load_alpaca_credentials
+[2025-10-15T16:52:12] tokens used: 17,905
+
+[2025-10-15T16:52:21] thinking
+
+**Evaluating fallback import strategy**
+[2025-10-15T16:52:22] exec bash -lc "sed -n '1,200p' utils/alpaca.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-backend-api-services-init-py-tha/.
+[2025-10-15T16:52:23] bash -lc "sed -n '1,200p' utils/alpaca.py" succeeded in 701ms:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+"""Shared helpers for working with Alpaca API credentials."""
+
+from __future__ import annotations
+
+import json
+import logging
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Union
+
+from config.unified_config import TradingConfig
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class AlpacaCredentials:
+[2025-10-15T16:52:23] tokens used: 18,949
+
+[2025-10-15T16:52:30] thinking
+
+**Designing fallback import module**
+[2025-10-15T16:52:47] tool sequential-thinking.sequentialthinking({"thought":"Need to craft fallback-friendly services module. First inspect current file to understand state (done). Next design new code with optional imports, fallback classes, init with logging and registry. Also provide instructions for running pytest (can't run).","nextThoughtNeeded":false,"thoughtNumber":1,"totalThoughts":2,"isRevision":false,"needsMoreThoughts":false,"branchFromThought":0,"branchId":""})
+[2025-10-15T16:52:47] sequential-thinking.sequentialthinking({"thought":"Need to craft fallback-friendly services module. First inspect current file to understand state (done). Next design new code with optional imports, fallback classes, init with logging and registry. Also provide instructions for running pytest (can't run).","nextThoughtNeeded":false,"thoughtNumber":1,"totalThoughts":2,"isRevision":false,"needsMoreThoughts":false,"branchFromThought":0,"branchId":""}) success in 3ms:
+{
+  "content": [
+    {
+      "text": "{\n  \"thoughtNumber\": 1,\n  \"totalThoughts\": 2,\n  \"nextThoughtNeeded\": false,\n  \"branches\": [],\n  \"thoughtHistoryLength\": 1\n}",
+      "type": "text"
+    }
+  ]
+}
+[2025-10-15T16:52:47] tokens used: 19,913
+
+[2025-10-15T16:53:05] thinking
+
+**Designing resilient service module with fallbacks**
+
+I'm drafting a new module to initialize core services like TradingService, AlpacaClient, and PnLService with robust fallbacks if imports fail. I'll provide stub classes mimicking minimal interfaces to keep the app functional and ensure graceful degradation when optional dependencies are missing. Next, I'll compose the full code snippet with these fallbacks, initialization logic, and helpful logging to guide troubleshooting.
+[2025-10-15T16:53:07] exec bash -lc "sed -n '1,200p' backend/api/services/pnl_service.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-backend-api-services-init-py-tha/.
+[2025-10-15T16:53:08] bash -lc "sed -n '1,200p' backend/api/services/pnl_service.py" succeeded in 794ms:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+#!/usr/bin/env python3
+"""
+P&L Service
+Profit and Loss tracking and analytics service
+Consolidated from multiple P&L dashboard implementations
+"""
+
+import logging
+import sqlite3
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional
+import pandas as pd
+import numpy as np
+
+logger = logging.getLogger(__name__)
+
+class PnLService:
+[2025-10-15T16:53:08] tokens used: 22,235
+
+[2025-10-15T16:53:12] thinking
+
+**Planning stub implementation**
+[2025-10-15T16:53:12] exec bash -lc "sed -n '1,200p' backend/api/services/alpaca_client.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-backend-api-services-init-py-tha/.
+[2025-10-15T16:53:13] bash -lc "sed -n '1,200p' backend/api/services/alpaca_client.py" succeeded in 750ms:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+#!/usr/bin/env python3
+"""
+Alpaca Client
+Wrapper for Alpaca API with enhanced functionality
+"""
+
+import logging
+from typing import Dict, Optional, Union
+
+import alpaca_trade_api as tradeapi
+
+from utils.alpaca import AlpacaCredentials
+
+logger = logging.getLogger(__name__)
+
+class AlpacaClient:
+    """
+[2025-10-15T16:53:13] tokens used: 24,108
+
+[2025-10-15T16:53:31] thinking
+
+**Designing robust service fallbacks**
+
+I'm putting together fallback stub classes for AlpacaClient, TradingService, and PnLService to keep the app running smoothly even if imports fail or dependencies are missing. I’m carefully handling logging, signatures, and initialization to gracefully degrade without crashing, while preparing the main service initialization routine to register these services and capture configuration cleanly. This should make the backend resilient during missing modules or config issues.
+[2025-10-15T16:53:32] exec bash -lc "sed -n '1,200p' backend/api/services/trading_service.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-backend-api-services-init-py-tha/.
+[2025-10-15T16:53:33] bash -lc "sed -n '1,200p' backend/api/services/trading_service.py" succeeded in 861ms:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+#!/usr/bin/env python3
+"""
+Trading Service
+Core business logic for trading operations
+Integrates with existing trading_bot.py and trading_executor.py
+"""
+
+import logging
+from datetime import datetime
+from typing import Dict, List, Optional
+import sys
+from pathlib import Path
+
+# Add parent directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+
+from trading_bot import TradingBot
+[2025-10-15T16:53:33] tokens used: 25,967
+
+[2025-10-15T16:53:42] thinking
+
+**Designing fallback stub for TradingService**
+
+I'm thinking through how to build a fallback stub for TradingService that mimics method signatures without crashing—either by raising clear errors or returning safe default values. To avoid breaking code expecting lists or dicts, it might be best to implement key methods with minimal safe returns rather than simple raising. I'll consider inspecting the actual endpoint usage in backend/api/routes/trading.py to guide which methods to stub.
+[2025-10-15T16:53:47] exec bash -lc 'rg -n "trading_service" -g"*.py" -n backend/api' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-backend-api-services-init-py-tha/.
+[2025-10-15T16:53:48] bash -lc 'rg -n "trading_service" -g"*.py" -n backend/api' exited 127 in 999ms:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+
+ERROR
+/opt/homebrew/Library/Homebrew/brew.sh: line 60: cannot create temp file for here document: Operation not permitted
+/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 18: /bin/ps: Operation not permitted
+bash: rg: command not found
+[2025-10-15T16:53:48] tokens used: 28,120
+
+[2025-10-15T16:53:53] thinking
+
+**Choosing alternative search tools**
+[2025-10-15T16:53:58] exec bash -lc 'grep -R "trading_service" -n backend/api | head' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-backend-api-services-init-py-tha/.
+[2025-10-15T16:53:59] bash -lc 'grep -R "trading_service" -n backend/api | head' succeeded in 1.02s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+backend/api/blueprints/websocket_events.py:52:            service = current_app.trading_service
+backend/api/blueprints/websocket_events.py:62:            service = current_app.trading_service
+backend/api/blueprints/trading.py:18:    service = current_app.trading_service
+backend/api/blueprints/trading.py:35:    service = current_app.trading_service
+backend/api/blueprints/trading.py:53:    service = current_app.trading_service
+backend/api/blueprints/trading.py:75:    service = current_app.trading_service
+backend/api/blueprints/trading.py:96:    service = current_app.trading_service
+backend/api/blueprints/trading.py:110:    service = current_app.trading_service
+backend/api/blueprints/trading.py:133:    service = current_app.trading_service
+backend/api/blueprints/api.py:8:from backend.api.services.trading_service import TradingService
+[2025-10-15T16:53:59] tokens used: 28,460
+
+[2025-10-15T16:54:02] thinking
+
+**Checking trading_service method requirements**
+[2025-10-15T16:54:17] exec bash -lc "sed -n '1,200p' backend/api/blueprints/trading.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-backend-api-services-init-py-tha/.
+[2025-10-15T16:54:18] bash -lc "sed -n '1,200p' backend/api/blueprints/trading.py" succeeded in 941ms:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+#!/usr/bin/env python3
+"""
+Trading Blueprint
+Trading operations and control endpoints
+"""
+
+from flask import Blueprint, jsonify, request, current_app
+from backend.api.utils.decorators import handle_errors, require_auth
+from backend.api.utils.validators import validate_order
+
+trading_bp = Blueprint('trading', __name__)
+
+@trading_bp.route('/start', methods=['POST'])
+@handle_errors
+@require_auth
+def start_trading():
+    """Start automated trading"""
+[2025-10-15T16:54:18] tokens used: 28,915
+
+[2025-10-15T16:54:26] thinking
+
+**Continuing to scroll for more details**
+[2025-10-15T16:54:30] exec bash -lc "sed -n '200,400p' backend/api/blueprints/trading.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-backend-api-services-init-py-tha/.
+[2025-10-15T16:54:32] bash -lc "sed -n '200,400p' backend/api/blueprints/trading.py" succeeded in 1.65s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+[2025-10-15T16:54:32] tokens used: 30,190
+
+[2025-10-15T16:54:37] thinking
+
+**Checking required methods for routes**
+[2025-10-15T16:54:38] exec bash -lc "sed -n '1,200p' backend/api/blueprints/websocket_events.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-backend-api-services-init-py-tha/.
+[2025-10-15T16:54:40] bash -lc "sed -n '1,200p' backend/api/blueprints/websocket_events.py" succeeded in 2.21s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+#!/usr/bin/env python3
+"""
+WebSocket Blueprint
+Real-time communication using SocketIO
+Consolidated from realtime_dashboard.py
+"""
+
+from flask import Blueprint
+from flask_socketio import emit, join_room, leave_room
+import logging
+
+logger = logging.getLogger(__name__)
+
+websocket_bp = Blueprint('websocket', __name__)
+
+def register_socketio_handlers(socketio):
+    """Register SocketIO event handlers"""
+[2025-10-15T16:54:40] tokens used: 30,499
+
+[2025-10-15T16:54:49] thinking
+
+**Designing fallback stub methods**
+[2025-10-15T16:54:50] exec bash -lc 'grep -R "get_account_data" -n backend/api | head' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-backend-api-services-init-py-tha/.
+[2025-10-15T16:54:51] bash -lc 'grep -R "get_account_data" -n backend/api | head' succeeded in 909ms:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+backend/api/blueprints/api.py:44:    account_data = service.get_account_data()
+backend/api/services/trading_service.py:76:    def get_account_data(self) -> Dict:
+[2025-10-15T16:54:51] tokens used: 31,650
+
+[2025-10-15T16:54:55] thinking
+
+**Preparing stubs and checking usage**
+[2025-10-15T16:54:57] exec bash -lc "sed -n '1,200p' backend/api/blueprints/api.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-backend-api-services-init-py-tha/.
+[2025-10-15T16:54:58] bash -lc "sed -n '1,200p' backend/api/blueprints/api.py" succeeded in 1.20s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+#!/usr/bin/env python3
+"""
+API Blueprint
+Core API endpoints for account, positions, and signals
+"""
+
+from flask import Blueprint, jsonify, current_app, request
+from backend.api.services.trading_service import TradingService
+from backend.api.utils.decorators import handle_errors, require_auth
+
+api_bp = Blueprint('api', __name__)
+
+@api_bp.route('/status')
+@handle_errors
+def api_status():
+    """Get system status"""
+    cfg = current_app.config['TRADING_CONFIG']
+[2025-10-15T16:54:58] tokens used: 31,854
+
+[2025-10-15T16:55:00] thinking
+
+**Searching for get_orders method**
+[2025-10-15T16:55:01] exec bash -lc 'grep -R "get_orders" -n backend/api | head' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-backend-api-services-init-py-tha/.
+[2025-10-15T16:55:02] bash -lc 'grep -R "get_orders" -n backend/api | head' succeeded in 923ms:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+backend/api/blueprints/api.py:77:    orders = service.get_orders(status=status, limit=limit)
+backend/api/services/trading_service.py:212:    def get_orders(self, status: str = 'all', limit: int = 50) -> List[Dict]:
+[2025-10-15T16:55:02] tokens used: 33,635
+
+[2025-10-15T16:55:06] thinking
+
+**Identifying required stub methods**
+[2025-10-15T16:55:07] exec bash -lc 'grep -R "pnl_service" -n backend/api | head' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-backend-api-services-init-py-tha/.
+[2025-10-15T16:55:08] bash -lc 'grep -R "pnl_service" -n backend/api | head' succeeded in 803ms:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+backend/api/blueprints/websocket_events.py:57:            pnl_service = current_app.pnl_service
+backend/api/blueprints/websocket_events.py:58:            pnl_data = pnl_service.get_current_pnl()
+backend/api/blueprints/pnl.py:13:from backend.api.services.pnl_service import PnLService
+backend/api/blueprints/pnl.py:22:    service = current_app.pnl_service
+backend/api/blueprints/pnl.py:41:    service = current_app.pnl_service
+backend/api/blueprints/pnl.py:60:    service = current_app.pnl_service
+backend/api/blueprints/pnl.py:89:    service = current_app.pnl_service
+backend/api/blueprints/pnl.py:114:    service = current_app.pnl_service
+backend/api/blueprints/pnl.py:150:    service = current_app.pnl_service
+backend/api/blueprints/pnl.py:165:    service = current_app.pnl_service
+[2025-10-15T16:55:08] tokens used: 34,011
+
+[2025-10-15T16:55:12] thinking
+
+**Identifying required method stubs**
+[2025-10-15T16:55:13] exec bash -lc "sed -n '1,200p' backend/api/blueprints/pnl.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-backend-api-services-init-py-tha/.
+[2025-10-15T16:55:14] bash -lc "sed -n '1,200p' backend/api/blueprints/pnl.py" succeeded in 762ms:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+#!/usr/bin/env python3
+"""
+P&L Blueprint
+Profit and Loss tracking, history, and analytics
+Consolidated from realtime_pnl_dashboard.py and other P&L features
+"""
+
+from flask import Blueprint, jsonify, request, send_file, current_app
+from datetime import datetime, timedelta
+import pandas as pd
+import io
+
+from backend.api.services.pnl_service import PnLService
+from backend.api.utils.decorators import handle_errors
+
+pnl_bp = Blueprint('pnl', __name__)
+
+[2025-10-15T16:55:14] tokens used: 34,483
+
+[2025-10-15T16:55:17] thinking
+
+**Identifying required PnLService methods**
+[2025-10-15T16:55:26] exec bash -lc "sed -n '200,400p' backend/api/blueprints/pnl.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-backend-api-services-init-py-tha/.
+[2025-10-15T16:55:28] bash -lc "sed -n '200,400p' backend/api/blueprints/pnl.py" succeeded in 1.93s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+[2025-10-15T16:55:28] tokens used: 36,407
+
+[2025-10-15T16:56:34] thinking
+
+**Implementing service fallbacks and initialization**
+
+I’m creating fallback classes for TradingService, PnLService, and AlpacaClient that return safe default data or errors when their real implementations fail to import. This ensures the app continues running with limited functionality. I’m also defining an `init_services` function to instantiate and wire these services into the app, with logging and optional service registry integration. I plan to organize imports with try/except and provide detailed stubs returning consistent default structures to prevent runtime errors. Finally, I’ll prepare a full patch with instructions for applying and testing these changes.
+[2025-10-15T16:56:36] exec bash -lc 'grep -R "get_chart_data" -n' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-backend-api-services-init-py-tha/.
+[2025-10-15T16:56:37] bash -lc 'grep -R "get_chart_data" -n' succeeded in 829ms:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+./backend/api/blueprints/pnl.py:63:    chart_data = service.get_chart_data(days=days)
+./backend/api/services/pnl_service.py:211:    def get_chart_data(self, days: int = 7) -> Dict:
+[2025-10-15T16:56:37] tokens used: 40,360
+
+[2025-10-15T16:57:51] thinking
+
+**Proposing comprehensive service init patch**
+
+I’m preparing a full replacement patch for `backend/api/services/__init__.py` that adds fallback classes for TradingService, PnLService, and AlpacaClient, includes proper logging setup, an `_sqlite_path_from_url` helper, and a complete `init_services` function initializing and registering those services. Since I can’t modify files here, I’ll provide a detailed diff to apply manually, mention that tests can’t be run in this read-only environment, and suggest verifying with `pytest` once modifications are possible.
+**Presenting detailed full-file replacement patch**
+
+I’m sharing a complete diff for `backend/api/services/__init__.py` that restores the `init_services` function along with fallback classes for TradingService, PnLService, and AlpacaClient, plus logging and helper utilities. Because I can’t apply changes here, this patch can be applied manually. Testing wasn’t run due to the read-only environment; once writable, running `pytest` on relevant tests will verify correctness.
+[2025-10-15T16:58:01] codex
+**Presenting detailed full-file replacement patch**
+
+I’m sharing a complete diff for `backend/api/services/__init__.py` that restores the `init_services` function along with fallback classes for TradingService, PnLService, and AlpacaClient, plus logging and helper utilities. Because I can’t apply changes here, this patch can be applied manually. Testing wasn’t run due to the read-only environment; once writable, running `pytest` on relevant tests will verify correctness.
+[2025-10-15T16:58:01] codex
+
+Rewired `backend/api/services/__init__.py` to restore `init_services`, bring back Alpaca credential loading, and keep the Flask app usable when optional dependencies are missing by providing stubbed Trading, PnL, and Alpaca client services. Patch below replaces the current module with the fallback-friendly implementation:
+
+```diff
+--- a/backend/api/services/__init__.py
++++ b/backend/api/services/__init__.py
+@@
+-#!/usr/bin/env python3
+-"""
+-Services Module
+-Business logic layer for Flask application
+-"""
+-
+-import logging
+-from pathlib import Path
+-import sys
+-
+-# Add parent directory to path
+-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+-
+-from backend.api.services.trading_service import TradingService
+-from backend.api.services.pnl_service import PnLService
+-from backend.api.services.alpaca_client import AlpacaClient
+-from utils.alpaca import load_alpaca_credentials
+-
+-
+-def _sqlite_path_from_url(db_url: str) -> str:
+-    if db_url.startswith('sqlite:///'):
+-        return db_url.replace('sqlite:///', '', 1)
+-    return db_url
+-
+-logger = logging.getLogger(__name__)
+-
+-def init_services(app):
+-    """
+-    Initialize all services and attach to app context
+-
+-    Args:
+-        app: Flask application instance
+-    """
+-    # Initialize Alpaca client
+-    trading_config = app.config['TRADING_CONFIG']
+-    credentials = load_alpaca_credentials(trading_config)
+-    app.alpaca_client = AlpacaClient(credentials)
+-
+-    # Initialize trading service
+-    app.trading_service = TradingService(
+-        alpaca_client=app.alpaca_client,
+-        config=trading_config
+-    )
+-
+-    # Initialize P&L service
+-    db_path = _sqlite_path_from_url(trading_config.database.url)
+-    app.pnl_service = PnLService(
+-        alpaca_client=app.alpaca_client,
+-        db_path=db_path
+-    )
+-
+-    # Register with service registry if available
+-    try:
+-        from core.service_registry import ServiceRegistry
+-        registry = ServiceRegistry()
+-
+-        registry.register('alpaca_client', app.alpaca_client)
+-        registry.register('trading_service', app.trading_service)
+-        registry.register('pnl_service', app.pnl_service)
+-
+-        app.service_registry = registry
+-        logger.info("Services registered with service registry")
+-    except ImportError:
+-        logger.warning("Service registry not available, using direct service attachment")
+-
+-    logger.info("Services initialized successfully")
+-
+-__all__ = [
+-    'init_services',
+-    'TradingService',
+-    'PnLService',
+-    'AlpacaClient'
+-]
++#!/usr/bin/env python3
++"""Service wiring for the Flask backend with optional fallbacks."""
++
++from __future__ import annotations
++
++import logging
++import sys
++from pathlib import Path
++from typing import Any, Dict, List
++
++# Add parent directory to path so legacy modules remain importable.
++sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
++
++from utils.alpaca import load_alpaca_credentials
++
++logger = logging.getLogger(__name__)
++
++try:
++    from backend.api.services.trading_service import TradingService as _TradingServiceImpl
++except Exception as exc:  # pragma: no cover - optional dependency fallback
++    _TRADING_IMPORT_ERROR = exc
++
++    class TradingService:
++        """Fallback trading service when the real implementation cannot be imported."""
++
++        def __init__(self, *args: Any, **kwargs: Any) -> None:
++            self.api = None
++            self.is_trading = False
++            self._error = _TRADING_IMPORT_ERROR
++            logger.warning("TradingService fallback in use: %s", self._error)
++
++        def _unavailable_message(self) -> str:
++            return f"Trading service unavailable: {self._error}"
++
++        def start_trading(self, *_args: Any, **_kwargs: Any) -> Dict[str, Any]:
++            return {
++                "status": "unavailable",
++                "config": {},
++                "message": self._unavailable_message(),
++            }
++
++        def stop_trading(self, *_args: Any, **_kwargs: Any) -> Dict[str, Any]:
++            return {
++                "status": "unavailable",
++                "positions_closed": 0,
++                "message": self._unavailable_message(),
++            }
++
++        def place_order(self, *_args: Any, **_kwargs: Any) -> Dict[str, Any]:
++            return {
++                "status": "unavailable",
++                "reason": self._unavailable_message(),
++            }
++
++        def close_position(self, *_args: Any, **_kwargs: Any) -> None:
++            return None
++
++        def close_all_positions(self, *_args: Any, **_kwargs: Any) -> List[Any]:
++            return []
++
++        def update_strategy(self, *_args: Any, **_kwargs: Any) -> Dict[str, Any]:
++            return {
++                "strategy": None,
++                "parameters": {},
++                "message": self._unavailable_message(),
++            }
++
++        def get_positions(self, *_args: Any, **_kwargs: Any) -> List[Any]:
++            return []
++
++        def calculate_signals(self, *_args: Any, **_kwargs: Any) -> List[Any]:
++            return []
++
++        def get_orders(self, *_args: Any, **_kwargs: Any) -> List[Any]:
++            return []
++
++        def get_account_data(self, *_args: Any, **_kwargs: Any) -> Dict[str, Any]:
++            return {
++                "status": "unavailable",
++                "buying_power": 0,
++                "portfolio_value": 0,
++                "cash": 0,
++                "equity": 0,
++            }
++
++        def get_system_status(self, *_args: Any, **_kwargs: Any) -> Dict[str, Any]:
++            return {
++                "last_update": None,
++                "market_status": "UNKNOWN",
++                "is_trading": False,
++                "services": {"trading": "unavailable"},
++            }
++
++    TradingService.__module__ = __name__
++else:
++    TradingService = _TradingServiceImpl
++
++try:
++    from backend.api.services.pnl_service import PnLService as _PnLServiceImpl
++except Exception as exc:  # pragma: no cover - optional dependency fallback
++    _PNL_IMPORT_ERROR = exc
++
++    class PnLService:
++        """Fallback P&L service that surfaces empty/default data."""
++
++        def __init__(self, *args: Any, **kwargs: Any) -> None:
++            self.db_path = kwargs.get("db_path", "database/trading_data.db")
++            self._error = _PNL_IMPORT_ERROR
++            logger.warning("PnLService fallback in use: %s", self._error)
++
++        def _message(self) -> str:
++            return f"PnL service unavailable: {self._error}"
++
++        def get_current_pnl(self, *_args: Any, **_kwargs: Any) -> Dict[str, Any]:
++            return {
++                "daily_pnl": 0,
++                "total_pnl": 0,
++                "realized_pnl": 0,
++                "unrealized_pnl": 0,
++                "win_rate": 0,
++                "positions": [],
++                "message": self._message(),
++            }
++
++        def get_pnl_history(self, *_args: Any, **_kwargs: Any) -> List[Dict[str, Any]]:
++            return []
++
++        def get_chart_data(self, *_args: Any, **_kwargs: Any) -> Dict[str, List[Any]]:
++            return {"labels": [], "daily_pnl": [], "cumulative_pnl": []}
++
++        def calculate_statistics(self, *_args: Any, **_kwargs: Any) -> Dict[str, Any]:
++            return {
++                "total_trades": 0,
++                "winning_trades": 0,
++                "losing_trades": 0,
++                "win_rate": 0,
++                "average_win": 0,
++                "average_loss": 0,
++                "profit_factor": 0,
++                "sharpe_ratio": 0,
++                "max_drawdown": 0,
++                "best_day": None,
++                "worst_day": None,
++                "current_streak": 0,
++                "max_streak": 0,
++                "message": self._message(),
++            }
++
++        def get_export_data(self, *_args: Any, **_kwargs: Any) -> List[Dict[str, Any]]:
++            return []
++
++        def get_recent_trades(self, *_args: Any, **_kwargs: Any) -> List[Dict[str, Any]]:
++            return []
++
++        def get_performance_by_symbol(self, *_args: Any, **_kwargs: Any) -> Dict[str, Dict[str, Any]]:
++            return {}
++
++    PnLService.__module__ = __name__
++else:
++    PnLService = _PnLServiceImpl
++
++try:
++    from backend.api.services.alpaca_client import AlpacaClient as _AlpacaClientImpl
++except Exception as exc:  # pragma: no cover - optional dependency fallback
++    _ALPACA_IMPORT_ERROR = exc
++
++    class AlpacaClient:
++        """Fallback Alpaca client when alpaca_trade_api or wrapper is missing."""
++
++        def __init__(self, *args: Any, **kwargs: Any) -> None:
++            self.api = None
++            self._error = _ALPACA_IMPORT_ERROR
++            logger.warning("AlpacaClient fallback in use: %s", self._error)
++
++        def is_connected(self) -> bool:
++            return False
++
++        def reconnect(self) -> None:
++            raise RuntimeError(f"Alpaca client unavailable: {self._error}") from self._error
++
++        def get_api(self):
++            raise RuntimeError(f"Alpaca client unavailable: {self._error}") from self._error
++
++    AlpacaClient.__module__ = __name__
++else:
++    AlpacaClient = _AlpacaClientImpl
++
++
++def _sqlite_path_from_url(db_url: str) -> str:
++    if db_url.startswith("sqlite:///"):
++        return db_url.replace("sqlite:///", "", 1)
++    return db_url
++
++
++def init_services(app) -> None:
++    """Initialise core services and attach them to the Flask app."""
++    if "TRADING_CONFIG" not in app.config:
++        raise KeyError("TRADING_CONFIG missing from app.config; cannot initialise services")
++
++    trading_config = app.config["TRADING_CONFIG"]
++    logger.info("Initialising backend services")
++
++    credentials = load_alpaca_credentials(trading_config)
++    alpaca_client = AlpacaClient(credentials)
++    app.alpaca_client = alpaca_client
++
++    trading_service = TradingService(alpaca_client=alpaca_client, config=trading_config)
++    app.trading_service = trading_service
++
++    database_url = getattr(getattr(trading_config, "database", None), "url", "")
++    if database_url:
++        db_path = _sqlite_path_from_url(database_url)
++    else:
++        db_path = "database/trading_data.db"
++        logger.warning("Trading config missing database URL; using default path %s", db_path)
++
++    pnl_service = PnLService(alpaca_client=alpaca_client, db_path=db_path)
++    app.pnl_service = pnl_service
++
++    try:
++        from core.service_registry import ServiceRegistry
++    except ImportError as exc:  # pragma: no cover - optional dependency fallback
++        logger.info("ServiceRegistry unavailable; skipping registration: %s", exc)
++    else:
++        registry = ServiceRegistry()
++        registry.register("alpaca_client", alpaca_client)
++        registry.register("trading_service", trading_service)
++        registry.register("pnl_service", pnl_service)
++        app.service_registry = registry
++        logger.info("Services registered with ServiceRegistry")
++
++    logger.info("Services initialised successfully")
++
++
++__all__ = ["init_services", "TradingService", "PnLService", "AlpacaClient"]
+```
+
+I’m operating in a read-only sandbox, so please apply the above update manually. Testing was not run here; once the change is in place, confirm with `pytest tests/functional -m "not paper_trading"` (or your preferred subset) to ensure everything passes.
+[2025-10-15T16:58:45] tokens used: 49,230

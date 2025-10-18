@@ -1,0 +1,44 @@
+Perfect! All tests are passing. Let's create a summary of what we've accomplished:
+
+## Summary
+
+I've successfully fixed the crypto order sizing issues to prevent insufficient balance errors (Alpaca error 40310000). Here's what was implemented:
+
+### 1. **Shared Order Sizing Helper** (`utils/order_sizing.py`)
+- Implements decimal precision handling with proper tick sizes for each crypto symbol
+- Applies 98% safety buffer to prevent rounding errors
+- Enforces Alpaca's $10 minimum order value
+- Validates inputs and provides clear error messages
+- Handles both buy and sell orders with appropriate balance checks
+
+### 2. **Updated Trading Strategy** (`strategies/crypto_scalping_strategy.py`)
+- Integrated the shared sizing helper in entry/exit flows
+- Added balance checking methods for cash and crypto
+- Prevents retry attempts on insufficient balance errors (no more repeated 40310000 errors)
+- Improved error handling to distinguish between retryable and non-retryable errors
+
+### 3. **Comprehensive Test Coverage**
+- **26 unit tests** covering all edge cases, tick sizes, and error conditions
+- **8 BDD scenarios** testing real-world order sizing situations
+- Tests specifically cover the regression scenario from BOT-STATUS-REPORT.md
+- All tests passing successfully
+
+### 4. **CI Integration**
+- Added `pytest-bdd` to requirements-test.txt
+- Created test runner script (`run_order_sizing_tests.sh`)
+- Added npm scripts for easy test execution
+- Created Makefile targets for test automation
+
+### Key Features:
+- **Decimal precision**: Respects tick sizes (e.g., 5 decimals for BTC, 8 for SHIB)
+- **Safety buffer**: Uses 98% of available balance to prevent edge cases
+- **Smart retry logic**: Doesn't retry on insufficient balance errors
+- **Minimum order enforcement**: Automatically adjusts orders to meet $10 minimum
+- **Clear error messages**: Provides actionable feedback when sizing fails
+
+The solution addresses all issues mentioned in the context:
+- ✅ Fixes insufficient balance errors (40310000)
+- ✅ Handles decimal precision correctly for all crypto symbols
+- ✅ Prevents repeated retry attempts on balance errors
+- ✅ Enforces minimum order sizes
+- ✅ Includes comprehensive test coverage with CI integration

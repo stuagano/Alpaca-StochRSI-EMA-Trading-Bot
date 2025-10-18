@@ -568,7 +568,49 @@
         </div>
     </div>
 
+    <script src="config.js"></script>
+
     <script>
+        const API_BASE = (window.API_CONFIG && window.API_CONFIG.baseURL) || window.location.origin;
+        const resolveEndpoint = (endpointKeyOrPath) => {
+            if (!endpointKeyOrPath) {
+                return endpointKeyOrPath;
+            }
+
+            if (typeof endpointKeyOrPath === 'string') {
+                if (typeof buildApiUrl === 'function' && !endpointKeyOrPath.startsWith('/') && !endpointKeyOrPath.startsWith('http')) {
+                    return buildApiUrl(endpointKeyOrPath);
+                }
+
+                if (endpointKeyOrPath.startsWith('/')) {
+                    return `${API_BASE}${endpointKeyOrPath}`;
+                }
+            }
+
+            return endpointKeyOrPath;
+        };
+
+        const apiFetch = (endpointKeyOrPath, options = {}) => {
+            const url = resolveEndpoint(endpointKeyOrPath);
+            return fetch(url, options);
+        };
+
+        const fetchJson = async (endpointKeyOrPath, options = {}) => {
+            const response = await apiFetch(endpointKeyOrPath, options);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        };
+
+        const postJson = (endpointKeyOrPath, body = {}) => {
+            return fetchJson(endpointKeyOrPath, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+        };
+
         // Global state
         let positionMultiplier = 1;
         let ws = null;
@@ -585,12 +627,7 @@
             updateMultiplierDisplay();
 
             // Send to backend
-            fetch('/api/v1/trading/set-multiplier', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ multiplier: positionMultiplier })
-            })
-            .then(res => res.json())
+            postJson('setMultiplier', { multiplier: positionMultiplier })
             .then(data => {
                 console.log('Multiplier updated:', positionMultiplier);
                 addActivity('settings', `Position size multiplier set to ${positionMultiplier}x! 🚀`);
@@ -610,11 +647,7 @@
             positionMultiplier = 1;
             updateMultiplierDisplay();
 
-            fetch('/api/v1/trading/set-multiplier', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ multiplier: 1 })
-            })
+            postJson('setMultiplier', { multiplier: 1 })
             .then(() => {
                 addActivity('settings', 'Position size reset to normal (1x)');
             });
@@ -641,18 +674,18 @@
         async function refreshData() {
             try {
                 // Fetch account
-                const account = await fetch('/api/v1/account').then(r => r.json());
+                const account = await fetchJson('account');
                 document.getElementById('portfolio-value').textContent = '$' + parseFloat(account.portfolio_value).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 document.getElementById('buying-power').textContent = '$' + parseFloat(account.buying_power).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 document.getElementById('cash').textContent = '$' + parseFloat(account.cash).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 document.getElementById('account-status').textContent = account.status;
 
                 // Fetch positions
-                const positions = await fetch('/api/v1/positions').then(r => r.json());
+                const positions = await fetchJson('positions');
                 renderPositions(positions);
 
                 // Fetch P&L
-                const pnl = await fetch('/api/v1/pnl/current').then(r => r.json());
+                const pnl = await fetchJson('currentPnl');
                 renderPnL(pnl);
 
             } catch (err) {
@@ -699,7 +732,7 @@
 
         // Bot controls
         function startBot() {
-            fetch('/api/v1/trading/start', { method: 'POST' })
+            postJson('startTrading')
                 .then(() => {
                     addActivity('buy', 'Trading bot started! Watching markets 24/7 🚀');
                 });
@@ -707,7 +740,7 @@
 
         function stopBot() {
             if (confirm('Stop the trading bot?')) {
-                fetch('/api/v1/trading/stop', { method: 'POST' })
+                postJson('stopTrading')
                     .then(() => {
                         addActivity('sell', 'Trading bot stopped');
                     });

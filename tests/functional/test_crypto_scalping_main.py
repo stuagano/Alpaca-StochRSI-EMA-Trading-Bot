@@ -32,6 +32,20 @@ indicator_stub.rsi = lambda *_args, **_kwargs: None
 indicator_stub.stochastic = lambda *_args, **_kwargs: None
 
 
+class _StubIndicator:
+    def __init__(self, *_args, **_kwargs):
+        pass
+
+    def calculate_rsi(self, *_args, **_kwargs):
+        return 50.0
+
+    def calculate_stochastic(self, *_args, **_kwargs):
+        return 50.0, 50.0
+
+
+indicator_stub.Indicator = _StubIndicator
+
+
 class _StubStrategy:
     def __init__(self, *_args, **_kwargs):
         pass

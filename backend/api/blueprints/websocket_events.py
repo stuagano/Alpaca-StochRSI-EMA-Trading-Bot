@@ -65,20 +65,20 @@ def register_socketio_handlers(socketio):
 
 def emit_position_update(position_data):
     """Emit position update to all connected clients"""
-    from backend.api import socketio
+    from .. import socketio
     socketio.emit('position_update', position_data, room='default')
 
 def emit_pnl_update(pnl_data):
     """Emit P&L update to all connected clients"""
-    from backend.api import socketio
+    from .. import socketio
     socketio.emit('pnl_update', pnl_data, room='default')
 
 def emit_trade_update(trade_data):
     """Emit trade update to all connected clients"""
-    from backend.api import socketio
+    from .. import socketio
     socketio.emit('trade_update', trade_data, room='default')
 
 def emit_signal_update(signal_data):
     """Emit signal update to all connected clients"""
-    from backend.api import socketio
+    from .. import socketio
     socketio.emit('signal_update', signal_data, room='default')

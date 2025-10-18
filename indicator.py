@@ -149,3 +149,17 @@ def calculate_indicators(df: pd.DataFrame, config: Optional[Dict] = None) -> pd.
         include_stoch_rsi=True,
         include_dynamic_bands=False
     )
+
+
+def rsi(df: pd.DataFrame, **kwargs) -> pd.DataFrame:
+    """Backward-compatible wrapper delegating to the optimized StochRSI calculation."""
+
+    return calculate_stoch_rsi_optimized(df, **kwargs)
+
+
+def stochastic(df: pd.DataFrame, TYPE: str | None = None, **kwargs) -> pd.DataFrame:
+    """Backward-compatible wrapper for stochastic / StochRSI calculations."""
+
+    if TYPE and TYPE.upper() == 'STOCHRSI':
+        return calculate_stoch_rsi_optimized(df, **kwargs)
+    return calculate_stochastic_optimized(df, **kwargs)

@@ -7,12 +7,8 @@ Integrates with existing trading_bot.py and trading_executor.py
 
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional
-import sys
-from pathlib import Path
-
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from dataclasses import asdict, is_dataclass
+from typing import Dict, List, Optional, Any
 
 from trading_bot import TradingBot
 from trading_executor import TradingExecutor
@@ -133,17 +129,21 @@ class TradingService:
         Args:
             symbols: List of symbols to analyze
         """
-        if not symbols:
-            symbols = self.config.trading.symbols
+        effective_symbols = self._resolve_symbols(symbols)
+
+        if not effective_symbols:
+            logger.warning("No symbols configured for signal calculation; returning empty list")
+            return []
 
         signals = []
+        timeframe = self._resolve_timeframe()
 
-        for symbol in symbols:
+        for symbol in effective_symbols:
             try:
                 # Get market data
                 bars = self.api.get_bars(
                     symbol,
-                    self.config.trading.timeframe,
+                    timeframe,
                     limit=100
                 ).df
 
@@ -234,7 +234,7 @@ class TradingService:
     def start_trading(self, config_overrides: Optional[Dict] = None) -> Dict:
         """Start automated trading"""
         if self.is_trading:
-            return {'status': 'already_running', 'config': self.config.trading.dict()}
+            return {'status': 'already_running', 'config': self._config_snapshot()}
 
         try:
             # Apply config overrides if provided
@@ -252,7 +252,7 @@ class TradingService:
             logger.info("Trading bot started")
             return {
                 'status': 'started',
-                'config': self.config.trading.dict()
+                'config': self._config_snapshot()
             }
 
         except Exception as e:
@@ -325,6 +325,48 @@ class TradingService:
         except Exception as e:
             logger.error(f"Error closing all positions: {e}")
             return []
+
+    def _resolve_symbols(self, override: Optional[List[str]] = None) -> List[str]:
+        if override:
+            return list(override)
+
+        symbols = getattr(self.config, 'symbols', None)
+        if symbols:
+            return list(symbols)
+
+        trading_cfg = getattr(self.config, 'trading', None)
+        if trading_cfg is not None:
+            cfg_symbols = getattr(trading_cfg, 'symbols', None)
+            if cfg_symbols:
+                return list(cfg_symbols)
+
+        return []
+
+    def _resolve_timeframe(self) -> str:
+        timeframe = getattr(self.config, 'timeframe', None)
+        if timeframe:
+            return timeframe
+
+        trading_cfg = getattr(self.config, 'trading', None)
+        if trading_cfg is not None:
+            cfg_timeframe = getattr(trading_cfg, 'timeframe', None)
+            if cfg_timeframe:
+                return cfg_timeframe
+
+        return '1Min'
+
+    def _config_snapshot(self) -> Dict[str, Any]:
+        cfg = self.config
+        if is_dataclass(cfg):
+            return asdict(cfg)
+        if hasattr(cfg, '__dict__'):
+            snapshot = {}
+            for key, value in cfg.__dict__.items():
+                if key.startswith('_'):
+                    continue
+                snapshot[key] = value
+            return snapshot
+        return {}
 
     def update_strategy(self, strategy_name: str, parameters: Optional[Dict] = None) -> Dict:
         """Update trading strategy"""

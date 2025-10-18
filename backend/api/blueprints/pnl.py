@@ -10,8 +10,8 @@ from datetime import datetime, timedelta
 import pandas as pd
 import io
 
-from backend.api.services.pnl_service import PnLService
-from backend.api.utils.decorators import handle_errors
+from ..services.pnl_service import PnLService
+from ..utils.decorators import handle_errors
 
 pnl_bp = Blueprint('pnl', __name__)
 

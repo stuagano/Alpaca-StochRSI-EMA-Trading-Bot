@@ -5,6 +5,7 @@ Centralized Flask app configuration and initialization
 """
 
 import logging
+import os
 from flask import Flask
 from flask_cors import CORS
 from flask_socketio import SocketIO
@@ -22,11 +23,19 @@ def create_app(config_name='development'):
     Returns:
         Flask application instance
     """
-    app = Flask(__name__)
+    # Load configuration first so we can use the configured static directory
+    from .flask_config import config
+    config_obj = config[config_name]
 
-    # Load configuration
-    from backend.api.config import config
-    app.config.from_object(config[config_name])
+    # Create the Flask application with the frontend directory as its static root
+    app = Flask(
+        __name__,
+        static_folder=config_obj.STATIC_FOLDER,
+        static_url_path='/'
+    )
+
+    # Apply configuration
+    app.config.from_object(config_obj)
 
     # Initialize extensions
     CORS(app)
@@ -39,7 +48,7 @@ def create_app(config_name='development'):
     )
 
     # Register blueprints
-    from backend.api.blueprints import (
+    from .blueprints import (
         dashboard_bp,
         trading_bp,
         api_bp,
@@ -53,17 +62,18 @@ def create_app(config_name='development'):
     app.register_blueprint(pnl_bp, url_prefix='/api/v1/pnl')
 
     # Register WebSocket handlers
-    from backend.api.blueprints.websocket_events import register_socketio_handlers
+    from .blueprints.websocket_events import register_socketio_handlers
     register_socketio_handlers(socketio)
 
     # Register error handlers
-    from backend.api.utils.error_handlers import register_error_handlers
+    from .utils.error_handlers import register_error_handlers
     register_error_handlers(app)
 
-    # Initialize services
-    with app.app_context():
-        from backend.api.services import init_services
-        init_services(app)
+    # Initialize services unless explicitly disabled (used for import smoke tests)
+    if os.environ.get('DISABLE_BACKEND_SERVICE_INIT') != '1':
+        with app.app_context():
+            from .services import init_services
+            init_services(app)
 
     @app.before_request
     def before_request():

@@ -4,33 +4,44 @@ Dashboard Blueprint
 Consolidated dashboard routes from multiple dashboard files
 """
 
-from flask import Blueprint, render_template, send_from_directory, current_app
-from pathlib import Path
+from flask import Blueprint, current_app, abort
 
 dashboard_bp = Blueprint('dashboard', __name__)
+
+_DASHBOARD_TEMPLATES = {
+    'root': 'dashboard.html',
+    'simple': 'index.html',
+    'advanced': 'crypto-dashboard.html',
+}
+
+
+def _serve_dashboard(template_key: str):
+    """Serve the requested dashboard file from the static folder."""
+    template_name = _DASHBOARD_TEMPLATES.get(template_key)
+    if not template_name:
+        abort(404)
+    return current_app.send_static_file(template_name)
+
 
 @dashboard_bp.route('/')
 def index():
     """Main dashboard view - consolidated version"""
-    return send_from_directory(current_app.config['STATIC_FOLDER'], 'dashboard.html')
+    return _serve_dashboard('root')
 
 
 @dashboard_bp.route('/dashboard.html')
 def dashboard_alias():
     """Alias for canonical dashboard."""
-    return send_from_directory(current_app.config['STATIC_FOLDER'], 'dashboard.html')
+    return _serve_dashboard('root')
+
 
 @dashboard_bp.route('/simple')
 def simple_dashboard():
-    """Simplified dashboard view (from simple_pnl_dashboard.py)"""
-    return send_from_directory(current_app.config['STATIC_FOLDER'], 'simple.html')
+    """Simplified dashboard view (served from index.html)."""
+    return _serve_dashboard('simple')
+
 
 @dashboard_bp.route('/advanced')
 def advanced_dashboard():
-    """Advanced dashboard view with all features"""
-    return send_from_directory(current_app.config['STATIC_FOLDER'], 'advanced.html')
-
-@dashboard_bp.route('/frontend/<path:filename>')
-def frontend_files(filename):
-    """Serve frontend static files"""
-    return send_from_directory(current_app.config['STATIC_FOLDER'], filename)
+    """Advanced dashboard view with all features."""
+    return _serve_dashboard('advanced')

@@ -1,0 +1,314 @@
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+11:52:06 system | bot.1 started (pid=72068)
+11:52:06 system | api.1 started (pid=72069)
+11:52:06 system | ui.1 started (pid=72067)
+11:52:07 api.1  | 2025-10-14 11:52:07,306 - config.unified_config - INFO - Configuration manager initialized with config_dir: config
+11:52:07 api.1  | 2025-10-14 11:52:07,313 - config.unified_config - INFO - Configuration loaded successfully
+11:52:08 bot.1  | INFO:config.unified_config:Configuration manager initialized with config_dir: config
+11:52:08 bot.1  | INFO:config.unified_config:Configuration loaded successfully
+11:52:08 bot.1  | INFO:__main__:🚀 Starting Crypto Scalping Bot - High Frequency Trading
+11:52:08 bot.1  | INFO:__main__:Alpaca trading client initialized successfully
+11:52:08 bot.1  | INFO:__main__:Crypto scalping bot created and configured
+11:52:08 bot.1  | INFO:strategies.crypto_scalping_strategy:Updated enabled trading symbols: 2 symbols
+11:52:08 bot.1  | INFO:strategies.crypto_scalping_strategy:Scanner now tracking 2 high volume pairs: ['BTC/USD', 'ETH/USD']
+11:52:08 bot.1  | INFO:__main__:Using configured symbols: ['BTC/USD', 'ETH/USD']
+11:52:08 bot.1  | INFO:__main__:🎯 Starting crypto scalping execution...
+11:52:08 bot.1  | INFO:strategies.crypto_scalping_strategy:🚀 Starting Crypto Day Trading Bot
+11:52:08 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Market data feed started
+11:52:08 api.1  | 2025-10-14 11:52:08,593 - backend.api.services.alpaca_client - INFO - Connected to Alpaca API. Account status: ACTIVE
+11:52:08 api.1  | 2025-10-14 11:52:08,597 - backend.api.services.pnl_service - INFO - Database initialized successfully
+11:52:08 api.1  | 2025-10-14 11:52:08,597 - core.service_registry - INFO - Service 'alpaca_client' registered.
+11:52:08 api.1  | 2025-10-14 11:52:08,597 - core.service_registry - INFO - Service 'trading_service' registered.
+11:52:08 api.1  | 2025-10-14 11:52:08,597 - core.service_registry - INFO - Service 'pnl_service' registered.
+11:52:08 api.1  | 2025-10-14 11:52:08,597 - backend.api.services - INFO - Services registered with service registry
+11:52:08 api.1  | 2025-10-14 11:52:08,597 - backend.api.services - INFO - Services initialized successfully
+11:52:08 api.1  | 2025-10-14 11:52:08,597 - __main__ - INFO - ============================================================
+11:52:08 api.1  | 2025-10-14 11:52:08,597 - __main__ - INFO - TRADING BOT DASHBOARD STARTING
+11:52:08 api.1  | 2025-10-14 11:52:08,597 - __main__ - INFO - ============================================================
+11:52:08 api.1  | 2025-10-14 11:52:08,597 - __main__ - INFO - Environment: development
+11:52:08 api.1  | 2025-10-14 11:52:08,597 - __main__ - INFO - URL: http://localhost:5001
+11:52:08 api.1  | 2025-10-14 11:52:08,597 - __main__ - INFO - Debug Mode: False
+11:52:08 api.1  | 2025-10-14 11:52:08,597 - __main__ - INFO - ============================================================
+11:52:08 api.1  | 2025-10-14 11:52:08,598 - __main__ - INFO - Available API Endpoints:
+11:52:08 api.1  | 2025-10-14 11:52:08,598 - __main__ - INFO -   Dashboard:
+11:52:08 api.1  | 2025-10-14 11:52:08,598 - __main__ - INFO -     GET  http://localhost:5001/
+11:52:08 api.1  | 2025-10-14 11:52:08,598 - __main__ - INFO -     GET  http://localhost:5001/simple
+11:52:08 api.1  | 2025-10-14 11:52:08,598 - __main__ - INFO -     GET  http://localhost:5001/advanced
+11:52:08 api.1  | 2025-10-14 11:52:08,598 - __main__ - INFO -   Core API:
+11:52:08 api.1  | 2025-10-14 11:52:08,598 - __main__ - INFO -     GET  http://localhost:5001/api/v1/status
+11:52:08 api.1  | 2025-10-14 11:52:08,598 - __main__ - INFO -     GET  http://localhost:5001/api/v1/account
+11:52:08 api.1  | 2025-10-14 11:52:08,598 - __main__ - INFO -     GET  http://localhost:5001/api/v1/positions
+11:52:08 api.1  | 2025-10-14 11:52:08,598 - __main__ - INFO -     GET  http://localhost:5001/api/v1/signals
+11:52:08 api.1  | 2025-10-14 11:52:08,598 - __main__ - INFO -     GET  http://localhost:5001/api/v1/orders
+11:52:08 api.1  | 2025-10-14 11:52:08,598 - __main__ - INFO -   Trading:
+11:52:08 api.1  | 2025-10-14 11:52:08,598 - __main__ - INFO -     POST http://localhost:5001/api/v1/trading/start
+11:52:08 api.1  | 2025-10-14 11:52:08,598 - __main__ - INFO -     POST http://localhost:5001/api/v1/trading/stop
+11:52:08 api.1  | 2025-10-14 11:52:08,598 - __main__ - INFO -     POST http://localhost:5001/api/v1/trading/buy
+11:52:08 api.1  | 2025-10-14 11:52:08,598 - __main__ - INFO -     POST http://localhost:5001/api/v1/trading/sell
+11:52:08 api.1  | 2025-10-14 11:52:08,598 - __main__ - INFO -   P&L:
+11:52:08 api.1  | 2025-10-14 11:52:08,598 - __main__ - INFO -     GET  http://localhost:5001/api/v1/pnl/current
+11:52:08 api.1  | 2025-10-14 11:52:08,598 - __main__ - INFO -     GET  http://localhost:5001/api/v1/pnl/history
+11:52:08 api.1  | 2025-10-14 11:52:08,598 - __main__ - INFO -     GET  http://localhost:5001/api/v1/pnl/chart-data
+11:52:08 api.1  | 2025-10-14 11:52:08,598 - __main__ - INFO -     GET  http://localhost:5001/api/v1/pnl/statistics
+11:52:08 api.1  | 2025-10-14 11:52:08,598 - __main__ - INFO -     GET  http://localhost:5001/api/v1/pnl/export
+11:52:08 api.1  | 2025-10-14 11:52:08,598 - __main__ - INFO - ============================================================
+11:52:08 api.1  |  * Serving Flask app 'backend.api'
+11:52:08 api.1  |  * Debug mode: off
+11:52:08 api.1  | 2025-10-14 11:52:08,611 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+11:52:08 api.1  |  * Running on http://localhost:5001
+11:52:08 api.1  | 2025-10-14 11:52:08,611 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+11:52:10 bot.1  | INFO:strategies.crypto_scalping_strategy:🔍 Scanning 2 symbols for opportunities...
+11:52:10 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Price data available for: ['BTC/USD', 'ETH/USD']
+11:52:10 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Expected symbols: ['BTC/USD', 'ETH/USD']
+11:52:10 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 BTC/USD: Price=$46938.8463, Vol=0.811532, Mom=0.439, Surge=False
+11:52:10 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: SELL BTC/USD conf=0.900 vol=0.811532
+11:52:10 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ BTC/USD: Generated SELL signal (confidence: 0.900)
+11:52:10 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 ETH/USD: Price=$3180.3349, Vol=0.649339, Mom=0.442, Surge=False
+11:52:10 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: SELL ETH/USD conf=0.900 vol=0.649339
+11:52:10 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ ETH/USD: Generated SELL signal (confidence: 0.900)
+11:52:10 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Total signals generated: 2
+11:52:10 bot.1  | INFO:strategies.crypto_scalping_strategy:⏭️  Skipping SELL signal for BTC/USD (no short selling)
+11:52:10 bot.1  | INFO:strategies.crypto_scalping_strategy:⏭️  Skipping SELL signal for ETH/USD (no short selling)
+11:52:15 bot.1  | INFO:strategies.crypto_scalping_strategy:🔍 Scanning 2 symbols for opportunities...
+11:52:15 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Price data available for: ['BTC/USD', 'ETH/USD']
+11:52:15 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Expected symbols: ['BTC/USD', 'ETH/USD']
+11:52:15 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 BTC/USD: Price=$48795.0944, Vol=0.766284, Mom=0.573, Surge=False
+11:52:15 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY BTC/USD conf=0.900 vol=0.766284
+11:52:15 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ BTC/USD: Generated BUY signal (confidence: 0.900)
+11:52:15 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 ETH/USD: Price=$3171.7671, Vol=0.444794, Mom=0.449, Surge=True
+11:52:15 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: SELL ETH/USD conf=0.900 vol=0.444794
+11:52:15 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ ETH/USD: Generated SELL signal (confidence: 0.900)
+11:52:15 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Total signals generated: 2
+11:52:15 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: BTC/USD @ 48795.0944
+11:52:15 bot.1  | INFO:strategies.crypto_scalping_strategy:⏭️  Skipping SELL signal for ETH/USD (no short selling)
+11:52:16 bot.1  | INFO:strategies.crypto_scalping_strategy:✅ Closed position: BTC/USD | Reason: PROFIT_TARGET | P&L: 1.34% | Profit: $0.30
+11:52:20 bot.1  | INFO:strategies.crypto_scalping_strategy:🔍 Scanning 2 symbols for opportunities...
+11:52:20 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Price data available for: ['BTC/USD', 'ETH/USD']
+11:52:20 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Expected symbols: ['BTC/USD', 'ETH/USD']
+11:52:20 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 BTC/USD: Price=$48942.5044, Vol=0.689270, Mom=0.662, Surge=False
+11:52:20 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY BTC/USD conf=0.900 vol=0.689270
+11:52:20 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ BTC/USD: Generated BUY signal (confidence: 0.900)
+11:52:20 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 ETH/USD: Price=$3193.3069, Vol=0.477430, Mom=0.497, Surge=False
+11:52:20 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: SELL ETH/USD conf=0.600 vol=0.477430
+11:52:20 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ ETH/USD: Generated SELL signal (confidence: 0.600)
+11:52:20 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Total signals generated: 2
+11:52:21 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: BTC/USD @ 48942.5044
+11:52:22 bot.1  | INFO:strategies.crypto_scalping_strategy:✅ Closed position: BTC/USD | Reason: PROFIT_TARGET | P&L: 0.84% | Profit: $0.19
+11:52:25 bot.1  | INFO:strategies.crypto_scalping_strategy:🔍 Scanning 2 symbols for opportunities...
+11:52:25 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Price data available for: ['BTC/USD', 'ETH/USD']
+11:52:25 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Expected symbols: ['BTC/USD', 'ETH/USD']
+11:52:25 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 BTC/USD: Price=$49701.3133, Vol=0.675686, Mom=0.625, Surge=False
+11:52:25 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY BTC/USD conf=0.900 vol=0.675686
+11:52:25 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ BTC/USD: Generated BUY signal (confidence: 0.900)
+11:52:25 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 ETH/USD: Price=$3226.8656, Vol=0.439906, Mom=0.588, Surge=False
+11:52:25 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY ETH/USD conf=0.900 vol=0.439906
+11:52:25 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ ETH/USD: Generated BUY signal (confidence: 0.900)
+11:52:25 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Total signals generated: 2
+11:52:25 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: BTC/USD @ 49701.3133
+11:52:25 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: ETH/USD @ 3226.8656
+11:52:26 bot.1  | INFO:strategies.crypto_scalping_strategy:✅ Closed position: BTC/USD | Reason: PROFIT_TARGET | P&L: 0.86% | Profit: $0.19
+11:52:26 bot.1  | INFO:strategies.crypto_scalping_strategy:✅ Closed position: ETH/USD | Reason: STOP_LOSS | P&L: -1.52% | Profit: $-0.34
+11:52:29 api.1  | 2025-10-14 11:52:29,719 - werkzeug - INFO - 127.0.0.1 - - [14/Oct/2025 11:52:29] "[33mGET /health HTTP/1.1[0m" 404 -
+11:52:29 api.1  | 2025-10-14 11:52:29,721 - werkzeug - INFO - 127.0.0.1 - - [14/Oct/2025 11:52:29] "[33mGET /api/metrics HTTP/1.1[0m" 404 -
+11:52:30 bot.1  | INFO:strategies.crypto_scalping_strategy:🔍 Scanning 2 symbols for opportunities...
+11:52:30 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Price data available for: ['BTC/USD', 'ETH/USD']
+11:52:30 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Expected symbols: ['BTC/USD', 'ETH/USD']
+11:52:30 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 BTC/USD: Price=$50547.8434, Vol=0.205043, Mom=0.645, Surge=False
+11:52:30 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY BTC/USD conf=0.900 vol=0.205043
+11:52:30 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ BTC/USD: Generated BUY signal (confidence: 0.900)
+11:52:30 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 ETH/USD: Price=$3034.2059, Vol=0.408830, Mom=0.292, Surge=True
+11:52:30 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: SELL ETH/USD conf=0.900 vol=0.408830
+11:52:30 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ ETH/USD: Generated SELL signal (confidence: 0.900)
+11:52:30 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Total signals generated: 2
+11:52:30 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: BTC/USD @ 50547.8434
+11:52:30 bot.1  | INFO:strategies.crypto_scalping_strategy:⏭️  Skipping SELL signal for ETH/USD (no short selling)
+11:52:31 bot.1  | INFO:strategies.crypto_scalping_strategy:✅ Closed position: BTC/USD | Reason: STOP_LOSS | P&L: -0.90% | Profit: $-0.20
+11:52:35 bot.1  | INFO:strategies.crypto_scalping_strategy:🔍 Scanning 2 symbols for opportunities...
+11:52:35 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Price data available for: ['BTC/USD', 'ETH/USD']
+11:52:35 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Expected symbols: ['BTC/USD', 'ETH/USD']
+11:52:35 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 BTC/USD: Price=$51183.5837, Vol=0.373399, Mom=0.673, Surge=False
+11:52:35 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY BTC/USD conf=0.900 vol=0.373399
+11:52:35 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ BTC/USD: Generated BUY signal (confidence: 0.900)
+11:52:35 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 ETH/USD: Price=$2996.7314, Vol=0.389834, Mom=0.184, Surge=False
+11:52:35 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: SELL ETH/USD conf=0.900 vol=0.389834
+11:52:35 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ ETH/USD: Generated SELL signal (confidence: 0.900)
+11:52:35 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Total signals generated: 2
+11:52:36 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: BTC/USD @ 51183.5837
+11:52:36 bot.1  | INFO:strategies.crypto_scalping_strategy:⏭️  Skipping SELL signal for ETH/USD (no short selling)
+11:52:38 bot.1  | INFO:strategies.crypto_scalping_strategy:✅ Closed position: BTC/USD | Reason: PROFIT_TARGET | P&L: 3.16% | Profit: $0.71
+11:52:40 bot.1  | INFO:strategies.crypto_scalping_strategy:🔍 Scanning 2 symbols for opportunities...
+11:52:40 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Price data available for: ['BTC/USD', 'ETH/USD']
+11:52:40 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Expected symbols: ['BTC/USD', 'ETH/USD']
+11:52:40 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 BTC/USD: Price=$53468.9531, Vol=0.422864, Mom=0.767, Surge=False
+11:52:40 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY BTC/USD conf=0.900 vol=0.422864
+11:52:40 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ BTC/USD: Generated BUY signal (confidence: 0.900)
+11:52:40 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 ETH/USD: Price=$3034.6181, Vol=0.353975, Mom=0.251, Surge=False
+11:52:40 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: SELL ETH/USD conf=0.900 vol=0.353975
+11:52:40 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ ETH/USD: Generated SELL signal (confidence: 0.900)
+11:52:40 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Total signals generated: 2
+11:52:40 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: BTC/USD @ 53468.9531
+11:52:40 bot.1  | INFO:strategies.crypto_scalping_strategy:⏭️  Skipping SELL signal for ETH/USD (no short selling)
+11:52:42 bot.1  | INFO:strategies.crypto_scalping_strategy:✅ Closed position: BTC/USD | Reason: PROFIT_TARGET | P&L: 1.02% | Profit: $0.23
+11:52:45 bot.1  | INFO:strategies.crypto_scalping_strategy:🔍 Scanning 2 symbols for opportunities...
+11:52:45 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Price data available for: ['BTC/USD', 'ETH/USD']
+11:52:45 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Expected symbols: ['BTC/USD', 'ETH/USD']
+11:52:45 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 BTC/USD: Price=$54297.9167, Vol=0.422494, Mom=0.781, Surge=False
+11:52:45 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY BTC/USD conf=0.900 vol=0.422494
+11:52:45 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ BTC/USD: Generated BUY signal (confidence: 0.900)
+11:52:45 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 ETH/USD: Price=$3035.3588, Vol=0.363095, Mom=0.503, Surge=False
+11:52:45 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: SELL ETH/USD conf=0.600 vol=0.363095
+11:52:45 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ ETH/USD: Generated SELL signal (confidence: 0.600)
+11:52:45 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Total signals generated: 2
+11:52:45 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: BTC/USD @ 54297.9167
+11:52:48 bot.1  | INFO:strategies.crypto_scalping_strategy:✅ Closed position: BTC/USD | Reason: PROFIT_TARGET | P&L: 1.30% | Profit: $0.29
+11:52:50 bot.1  | INFO:strategies.crypto_scalping_strategy:🔍 Scanning 2 symbols for opportunities...
+11:52:50 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Price data available for: ['BTC/USD', 'ETH/USD']
+11:52:50 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Expected symbols: ['BTC/USD', 'ETH/USD']
+11:52:50 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 BTC/USD: Price=$54924.5608, Vol=0.403796, Mom=0.888, Surge=True
+11:52:50 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY BTC/USD conf=0.900 vol=0.403796
+11:52:50 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ BTC/USD: Generated BUY signal (confidence: 0.900)
+11:52:50 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 ETH/USD: Price=$3030.9321, Vol=0.259812, Mom=0.579, Surge=True
+11:52:50 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY ETH/USD conf=0.900 vol=0.259812
+11:52:50 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ ETH/USD: Generated BUY signal (confidence: 0.900)
+11:52:50 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Total signals generated: 2
+11:52:50 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: BTC/USD @ 54924.5608
+11:52:50 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: ETH/USD @ 3030.9321
+11:52:52 bot.1  | INFO:strategies.crypto_scalping_strategy:✅ Closed position: ETH/USD | Reason: PROFIT_TARGET | P&L: 0.87% | Profit: $0.20
+11:52:54 bot.1  | INFO:strategies.crypto_scalping_strategy:✅ Closed position: BTC/USD | Reason: PROFIT_TARGET | P&L: 0.91% | Profit: $0.20
+11:52:55 bot.1  | INFO:strategies.crypto_scalping_strategy:🔍 Scanning 2 symbols for opportunities...
+11:52:55 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Price data available for: ['BTC/USD', 'ETH/USD']
+11:52:55 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Expected symbols: ['BTC/USD', 'ETH/USD']
+11:52:55 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 BTC/USD: Price=$55947.0435, Vol=0.286660, Mom=0.779, Surge=False
+11:52:55 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY BTC/USD conf=0.900 vol=0.286660
+11:52:55 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ BTC/USD: Generated BUY signal (confidence: 0.900)
+11:52:55 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 ETH/USD: Price=$3043.8223, Vol=0.258370, Mom=0.522, Surge=False
+11:52:55 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY ETH/USD conf=0.900 vol=0.258370
+11:52:55 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ ETH/USD: Generated BUY signal (confidence: 0.900)
+11:52:55 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Total signals generated: 2
+11:52:55 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: BTC/USD @ 55947.0435
+11:52:55 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: ETH/USD @ 3043.8223
+11:52:56 bot.1  | INFO:strategies.crypto_scalping_strategy:✅ Closed position: ETH/USD | Reason: STOP_LOSS | P&L: -0.41% | Profit: $-0.09
+11:52:57 bot.1  | INFO:strategies.crypto_scalping_strategy:✅ Closed position: BTC/USD | Reason: PROFIT_TARGET | P&L: 0.95% | Profit: $0.21
+11:53:00 bot.1  | INFO:strategies.crypto_scalping_strategy:🔍 Scanning 2 symbols for opportunities...
+11:53:00 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Price data available for: ['BTC/USD', 'ETH/USD']
+11:53:00 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Expected symbols: ['BTC/USD', 'ETH/USD']
+11:53:00 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 BTC/USD: Price=$55845.1629, Vol=0.197086, Mom=0.685, Surge=True
+11:53:00 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY BTC/USD conf=0.900 vol=0.197086
+11:53:00 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ BTC/USD: Generated BUY signal (confidence: 0.900)
+11:53:00 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 ETH/USD: Price=$3017.4008, Vol=0.228624, Mom=0.443, Surge=False
+11:53:00 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: SELL ETH/USD conf=0.900 vol=0.228624
+11:53:00 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ ETH/USD: Generated SELL signal (confidence: 0.900)
+11:53:00 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Total signals generated: 2
+11:53:00 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: BTC/USD @ 55845.1629
+11:53:00 bot.1  | INFO:strategies.crypto_scalping_strategy:⏭️  Skipping SELL signal for ETH/USD (no short selling)
+11:53:00 bot.1  | INFO:strategies.crypto_scalping_strategy:📈 Metrics: Active Positions: 1 | Daily P&L: $1.89 | Win Rate: 37.5% | Total Trades: 25
+11:53:01 bot.1  | INFO:strategies.crypto_scalping_strategy:✅ Closed position: BTC/USD | Reason: PROFIT_TARGET | P&L: 0.90% | Profit: $0.20
+11:53:05 bot.1  | INFO:strategies.crypto_scalping_strategy:🔍 Scanning 2 symbols for opportunities...
+11:53:05 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Price data available for: ['BTC/USD', 'ETH/USD']
+11:53:05 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Expected symbols: ['BTC/USD', 'ETH/USD']
+11:53:05 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 BTC/USD: Price=$55279.3248, Vol=0.370408, Mom=0.499, Surge=True
+11:53:05 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: SELL BTC/USD conf=0.600 vol=0.370408
+11:53:05 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ BTC/USD: Generated SELL signal (confidence: 0.600)
+11:53:05 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 ETH/USD: Price=$3010.4073, Vol=0.210387, Mom=0.367, Surge=False
+11:53:05 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: SELL ETH/USD conf=0.900 vol=0.210387
+11:53:05 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ ETH/USD: Generated SELL signal (confidence: 0.900)
+11:53:05 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Total signals generated: 2
+11:53:05 bot.1  | INFO:strategies.crypto_scalping_strategy:⏭️  Skipping SELL signal for ETH/USD (no short selling)
+11:53:10 bot.1  | INFO:strategies.crypto_scalping_strategy:🔍 Scanning 2 symbols for opportunities...
+11:53:10 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Price data available for: ['BTC/USD', 'ETH/USD']
+11:53:10 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Expected symbols: ['BTC/USD', 'ETH/USD']
+11:53:10 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 BTC/USD: Price=$55574.9492, Vol=0.381365, Mom=0.426, Surge=False
+11:53:10 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: SELL BTC/USD conf=0.900 vol=0.381365
+11:53:10 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ BTC/USD: Generated SELL signal (confidence: 0.900)
+11:53:10 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 ETH/USD: Price=$3020.6017, Vol=0.188675, Mom=0.384, Surge=True
+11:53:10 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: SELL ETH/USD conf=0.900 vol=0.188675
+11:53:10 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ ETH/USD: Generated SELL signal (confidence: 0.900)
+11:53:10 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Total signals generated: 2
+11:53:10 bot.1  | INFO:strategies.crypto_scalping_strategy:⏭️  Skipping SELL signal for BTC/USD (no short selling)
+11:53:10 bot.1  | INFO:strategies.crypto_scalping_strategy:⏭️  Skipping SELL signal for ETH/USD (no short selling)
+11:53:15 bot.1  | INFO:strategies.crypto_scalping_strategy:🔍 Scanning 2 symbols for opportunities...
+11:53:15 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Price data available for: ['BTC/USD', 'ETH/USD']
+11:53:15 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Expected symbols: ['BTC/USD', 'ETH/USD']
+11:53:15 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 BTC/USD: Price=$55777.7695, Vol=0.380097, Mom=0.457, Surge=True
+11:53:15 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: SELL BTC/USD conf=0.900 vol=0.380097
+11:53:15 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ BTC/USD: Generated SELL signal (confidence: 0.900)
+11:53:15 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 ETH/USD: Price=$3071.6985, Vol=0.178380, Mom=0.643, Surge=True
+11:53:15 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY ETH/USD conf=0.900 vol=0.178380
+11:53:15 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ ETH/USD: Generated BUY signal (confidence: 0.900)
+11:53:15 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Total signals generated: 2
+11:53:15 bot.1  | INFO:strategies.crypto_scalping_strategy:⏭️  Skipping SELL signal for BTC/USD (no short selling)
+11:53:16 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: ETH/USD @ 3071.6985
+11:53:17 bot.1  | INFO:strategies.crypto_scalping_strategy:✅ Closed position: ETH/USD | Reason: STOP_LOSS | P&L: -0.80% | Profit: $-0.18
+11:53:20 bot.1  | INFO:strategies.crypto_scalping_strategy:🔍 Scanning 2 symbols for opportunities...
+11:53:20 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Price data available for: ['BTC/USD', 'ETH/USD']
+11:53:20 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Expected symbols: ['BTC/USD', 'ETH/USD']
+11:53:20 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 BTC/USD: Price=$57099.8183, Vol=0.385906, Mom=0.686, Surge=False
+11:53:20 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY BTC/USD conf=0.900 vol=0.385906
+11:53:20 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ BTC/USD: Generated BUY signal (confidence: 0.900)
+11:53:20 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 ETH/USD: Price=$3101.6785, Vol=0.305535, Mom=0.672, Surge=False
+11:53:20 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY ETH/USD conf=0.900 vol=0.305535
+11:53:20 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ ETH/USD: Generated BUY signal (confidence: 0.900)
+11:53:20 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Total signals generated: 2
+11:53:20 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: BTC/USD @ 57099.8183
+11:53:20 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: ETH/USD @ 3101.6785
+11:53:21 bot.1  | INFO:strategies.crypto_scalping_strategy:✅ Closed position: BTC/USD | Reason: STOP_LOSS | P&L: -0.83% | Profit: $-0.19
+11:53:21 bot.1  | INFO:strategies.crypto_scalping_strategy:✅ Closed position: ETH/USD | Reason: PROFIT_TARGET | P&L: 0.95% | Profit: $0.21
+11:53:25 bot.1  | INFO:strategies.crypto_scalping_strategy:🔍 Scanning 2 symbols for opportunities...
+11:53:25 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Price data available for: ['BTC/USD', 'ETH/USD']
+11:53:25 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Expected symbols: ['BTC/USD', 'ETH/USD']
+11:53:25 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 BTC/USD: Price=$56405.8961, Vol=0.261509, Mom=0.585, Surge=False
+11:53:25 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY BTC/USD conf=0.900 vol=0.261509
+11:53:25 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ BTC/USD: Generated BUY signal (confidence: 0.900)
+11:53:25 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 ETH/USD: Price=$3120.0854, Vol=0.314793, Mom=0.668, Surge=True
+11:53:25 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY ETH/USD conf=0.900 vol=0.314793
+11:53:25 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ ETH/USD: Generated BUY signal (confidence: 0.900)
+11:53:25 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Total signals generated: 2
+11:53:25 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: BTC/USD @ 56405.8961
+11:53:26 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: ETH/USD @ 3120.0854
+11:53:27 bot.1  | INFO:strategies.crypto_scalping_strategy:✅ Closed position: BTC/USD | Reason: PROFIT_TARGET | P&L: 3.46% | Profit: $0.78
+11:53:27 bot.1  | INFO:strategies.crypto_scalping_strategy:✅ Closed position: ETH/USD | Reason: STOP_LOSS | P&L: -0.59% | Profit: $-0.13
+11:53:29 api.1  | 2025-10-14 11:53:29,814 - werkzeug - INFO - 127.0.0.1 - - [14/Oct/2025 11:53:29] "[33mGET /api/metrics HTTP/1.1[0m" 404 -
+11:53:29 api.1  | 2025-10-14 11:53:29,814 - werkzeug - INFO - 127.0.0.1 - - [14/Oct/2025 11:53:29] "[33mGET /health HTTP/1.1[0m" 404 -
+11:53:30 bot.1  | INFO:strategies.crypto_scalping_strategy:🔍 Scanning 2 symbols for opportunities...
+11:53:30 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Price data available for: ['BTC/USD', 'ETH/USD']
+11:53:30 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Expected symbols: ['BTC/USD', 'ETH/USD']
+11:53:30 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 BTC/USD: Price=$59755.3488, Vol=0.398675, Mom=0.773, Surge=False
+11:53:30 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY BTC/USD conf=0.900 vol=0.398675
+11:53:30 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ BTC/USD: Generated BUY signal (confidence: 0.900)
+11:53:30 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 ETH/USD: Price=$3149.7374, Vol=0.322665, Mom=0.621, Surge=False
+11:53:30 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY ETH/USD conf=0.900 vol=0.322665
+11:53:30 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ ETH/USD: Generated BUY signal (confidence: 0.900)
+11:53:30 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Total signals generated: 2
+11:53:30 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: BTC/USD @ 59755.3488
+11:53:30 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: ETH/USD @ 3149.7374
+11:53:31 bot.1  | INFO:strategies.crypto_scalping_strategy:✅ Closed position: BTC/USD | Reason: STOP_LOSS | P&L: -0.50% | Profit: $-0.11
+11:53:31 bot.1  | INFO:strategies.crypto_scalping_strategy:✅ Closed position: ETH/USD | Reason: PROFIT_TARGET | P&L: 0.94% | Profit: $0.21
+11:53:35 bot.1  | INFO:strategies.crypto_scalping_strategy:🔍 Scanning 2 symbols for opportunities...
+11:53:35 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Price data available for: ['BTC/USD', 'ETH/USD']
+11:53:35 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Expected symbols: ['BTC/USD', 'ETH/USD']
+11:53:35 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 BTC/USD: Price=$59853.7376, Vol=0.389278, Mom=0.737, Surge=True
+11:53:35 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY BTC/USD conf=0.900 vol=0.389278
+11:53:35 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ BTC/USD: Generated BUY signal (confidence: 0.900)
+11:53:35 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 ETH/USD: Price=$3211.1402, Vol=0.337593, Mom=0.654, Surge=False
+11:53:35 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY ETH/USD conf=0.900 vol=0.337593
+11:53:35 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ ETH/USD: Generated BUY signal (confidence: 0.900)
+11:53:35 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Total signals generated: 2
+11:53:35 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: BTC/USD @ 59853.7376
+11:53:35 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: ETH/USD @ 3211.1402
+11:53:37 bot.1  | INFO:strategies.crypto_scalping_strategy:✅ Closed position: ETH/USD | Reason: PROFIT_TARGET | P&L: 1.32% | Profit: $0.30
+11:53:38 bot.1  | INFO:strategies.crypto_scalping_strategy:✅ Closed position: BTC/USD | Reason: PROFIT_TARGET | P&L: 1.09% | Profit: $0.24
+11:53:40 bot.1  | INFO:strategies.crypto_scalping_strategy:🔍 Scanning 2 symbols for opportunities...
+11:53:40 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Price data available for: ['BTC/USD', 'ETH/USD']
+11:53:40 bot.1  | INFO:strategies.crypto_scalping_strategy:📊 Expected symbols: ['BTC/USD', 'ETH/USD']
+11:53:40 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 BTC/USD: Price=$60930.6651, Vol=0.395191, Mom=0.744, Surge=False
+11:53:40 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY BTC/USD conf=0.900 vol=0.395191
+11:53:40 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ BTC/USD: Generated BUY signal (confidence: 0.900)
+11:53:40 bot.1  | INFO:strategies.crypto_scalping_strategy:  📊 ETH/USD: Price=$3272.3219, Vol=0.221399, Mom=0.835, Surge=False
+11:53:40 bot.1  | INFO:strategies.crypto_scalping_strategy:    🎯 Creating signal: BUY ETH/USD conf=0.900 vol=0.221399
+11:53:40 bot.1  | INFO:strategies.crypto_scalping_strategy:  ✅ ETH/USD: Generated BUY signal (confidence: 0.900)
+11:53:40 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Total signals generated: 2
+11:53:40 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: BTC/USD @ 60930.6651
+11:53:40 bot.1  | INFO:strategies.crypto_scalping_strategy:🎯 Opened BUY position: ETH/USD @ 3272.3219
+11:53:41 bot.1  | INFO:strategies.crypto_scalping_strategy:✅ Closed position: ETH/USD | Reason: STOP_LOSS | P&L: -0.97% | Profit: $-0.22

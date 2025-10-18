@@ -288,10 +288,29 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Include Socket.IO -->
     <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+    <!-- Frontend config -->
+    <script src="config.js"></script>
 
     <script>
         // API Configuration
-        const API_BASE = window.location.origin;
+        const API_BASE = (window.API_CONFIG && window.API_CONFIG.baseURL) || window.location.origin;
+        const resolveEndpoint = (endpointKeyOrPath) => {
+            if (!endpointKeyOrPath) {
+                return endpointKeyOrPath;
+            }
+
+            if (typeof endpointKeyOrPath === 'string') {
+                if (typeof buildApiUrl === 'function' && !endpointKeyOrPath.startsWith('/') && !endpointKeyOrPath.startsWith('http')) {
+                    return buildApiUrl(endpointKeyOrPath);
+                }
+
+                if (endpointKeyOrPath.startsWith('/')) {
+                    return `${API_BASE}${endpointKeyOrPath}`;
+                }
+            }
+
+            return endpointKeyOrPath;
+        };
         let socket = null;
         let pnlChart = null;
         let updateIntervals = {};
@@ -367,9 +386,10 @@
         }
 
         // API Calls
-        async function fetchAPI(endpoint) {
+        async function fetchAPI(endpointKey) {
             try {
-                const response = await fetch(API_BASE + endpoint);
+                const url = resolveEndpoint(endpointKey);
+                const response = await fetch(url);
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 return await response.json();
             } catch (error) {
@@ -378,9 +398,10 @@
             }
         }
 
-        async function postAPI(endpoint, data = {}) {
+        async function postAPI(endpointKey, data = {}) {
             try {
-                const response = await fetch(API_BASE + endpoint, {
+                const url = resolveEndpoint(endpointKey);
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
@@ -395,27 +416,27 @@
 
         // Update functions
         async function updateAccount() {
-            const data = await fetchAPI('/api/v1/account');
+            const data = await fetchAPI('account');
             if (data) renderAccountData(data);
         }
 
         async function updatePositions() {
-            const data = await fetchAPI('/api/v1/positions');
+            const data = await fetchAPI('positions');
             if (data) renderPositions(data);
         }
 
         async function updateSignals() {
-            const data = await fetchAPI('/api/v1/signals');
+            const data = await fetchAPI('signals');
             if (data) renderSignals(data);
         }
 
         async function updatePnL() {
-            const data = await fetchAPI('/api/v1/pnl/current');
+            const data = await fetchAPI('currentPnl');
             if (data) renderPnL(data);
         }
 
         async function updateChart() {
-            const data = await fetchAPI('/api/v1/pnl/chart-data');
+            const data = await fetchAPI('pnlChart');
             if (data) updatePnLChart(data);
         }
 
@@ -572,7 +593,7 @@
 
         // Trading controls
         async function startTrading() {
-            const result = await postAPI('/api/v1/trading/start');
+            const result = await postAPI('startTrading');
             if (result) {
                 alert('Trading bot started successfully!');
                 refreshAll();
@@ -581,7 +602,7 @@
 
         async function stopTrading() {
             if (!confirm('Are you sure you want to stop trading?')) return;
-            const result = await postAPI('/api/v1/trading/stop');
+            const result = await postAPI('stopTrading');
             if (result) {
                 alert('Trading bot stopped.');
                 refreshAll();
@@ -589,7 +610,10 @@
         }
 
         async function exportData() {
-            window.open(API_BASE + '/api/v1/pnl/export?format=csv', '_blank');
+            const url = resolveEndpoint('pnlExport');
+            if (url) {
+                window.open(`${url}?format=csv`, '_blank');
+            }
         }
 
         // Utility functions

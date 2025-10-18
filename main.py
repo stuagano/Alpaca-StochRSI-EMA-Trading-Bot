@@ -26,15 +26,21 @@ from strategies.crypto_scalping_strategy import CryptoDayTradingBot, create_cryp
 from utils.logging_config import setup_logging
 from utils.alpaca import load_alpaca_credentials
 
+ALPACA_IMPORT_ERROR: Exception | None
+
 # Import Alpaca client
 try:
     from alpaca.trading.client import TradingClient
     from alpaca.trading.requests import GetAssetsRequest
     from alpaca.data.historical import CryptoHistoricalDataClient
+    ALPACA_IMPORT_ERROR = None
 except ImportError as e:
-    logging.error(f"Failed to import Alpaca modules: {e}")
-    logging.error("Please install alpaca-py: pip install alpaca-py")
-    sys.exit(1)
+    logging.error("Failed to import Alpaca modules: %s", e)
+    logging.error("Install alpaca-py with 'pip install alpaca-py' to enable live trading.")
+    TradingClient = None  # type: ignore[assignment]
+    GetAssetsRequest = None  # type: ignore[assignment]
+    CryptoHistoricalDataClient = None  # type: ignore[assignment]
+    ALPACA_IMPORT_ERROR = e
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +104,11 @@ def setup_signal_handlers(bot: Optional[Union[TradingBot, CryptoDayTradingBot]] 
 
 def create_alpaca_client(config):
     """Create Alpaca trading client from configuration."""
+    if TradingClient is None:  # pragma: no cover - optional dependency fallback
+        raise RuntimeError(
+            "alpaca-py is not installed; unable to create Alpaca client"
+        ) from ALPACA_IMPORT_ERROR
+
     try:
         creds = load_alpaca_credentials(config)
 

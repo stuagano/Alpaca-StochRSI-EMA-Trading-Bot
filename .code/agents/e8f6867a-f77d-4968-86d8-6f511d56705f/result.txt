@@ -1,0 +1,95 @@
+## Diagnosed Issues and Patch Recommendations
+
+### Issues Found:
+
+1. **Missing HTML Files (404 errors)**:
+   - `backend/api/blueprints/dashboard.py:26` tries to serve `simple.html` 
+   - `backend/api/blueprints/dashboard.py:30` tries to serve `advanced.html`
+   - These files don't exist in `frontend/` directory
+
+2. **Config Attribute Access Errors (500 errors)**:
+   - `backend/api/blueprints/api.py:97` uses `current_app.config.TRADING_CONFIG` (attribute access)
+   - `backend/api/blueprints/trading.py:124` uses `current_app.config.TRADING_CONFIG` (attribute access)
+   - Should use dict-style access: `current_app.config['TRADING_CONFIG']`
+
+3. **Inconsistent Config Access in API Blueprint**:
+   - Line 17 correctly uses dict-style: `current_app.config['TRADING_CONFIG']`
+   - Line 60 correctly uses dict-style: `current_app.config['TRADING_CONFIG']`
+   - Line 97 incorrectly uses attribute-style: `current_app.config.TRADING_CONFIG`
+
+### Patch Recommendations:
+
+#### 1. Fix `backend/api/blueprints/dashboard.py`:
+```python
+# Lines 23-31 should be updated to:
+@dashboard_bp.route('/simple')
+def simple_dashboard():
+    """Simplified dashboard view - redirect to index"""
+    return send_from_directory(current_app.config['STATIC_FOLDER'], 'index.html')
+
+@dashboard_bp.route('/advanced')
+def advanced_dashboard():
+    """Advanced dashboard view - redirect to crypto dashboard"""
+    return send_from_directory(current_app.config['STATIC_FOLDER'], 'crypto-dashboard.html')
+```
+
+#### 2. Fix `backend/api/blueprints/api.py`:
+```python
+# Line 97 should be:
+config = current_app.config['TRADING_CONFIG']
+```
+
+#### 3. Fix `backend/api/blueprints/trading.py`:
+```python
+# Line 124 should be:
+config = current_app.config['TRADING_CONFIG']
+
+# Lines 126-128 need adjustment for safe attribute access:
+return jsonify({
+    'active_strategy': getattr(config.trading, 'strategy', 'stoch_rsi'),
+    'available_strategies': ['stoch_rsi', 'ma_crossover', 'crypto_scalping'],
+    'parameters': config.indicators.__dict__ if hasattr(config, 'indicators') else {}
+})
+```
+
+### Alternative Frontend Alignment:
+
+If you prefer to create the missing HTML files instead:
+
+#### Create `frontend/simple.html`:
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple Dashboard</title>
+    <script>window.location.href = '/index.html';</script>
+</head>
+<body>Redirecting to simple dashboard...</body>
+</html>
+```
+
+#### Create `frontend/advanced.html`:
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Advanced Dashboard</title>
+    <script>window.location.href = '/crypto-dashboard.html';</script>
+</head>
+<body>Redirecting to advanced dashboard...</body>
+</html>
+```
+
+### Summary:
+
+The main issues are:
+1. Routes trying to serve non-existent HTML files (`simple.html`, `advanced.html`)
+2. Inconsistent config access (mixing dict-style with attribute-style)
+
+The fixes ensure:
+- All routes serve existing HTML files
+- Config is accessed consistently using dict-style notation
+- Frontend JavaScript in `script.js` will work correctly with the fixed API endpoints
+- No 404 or 500 errors when accessing dashboard routes or API endpoints

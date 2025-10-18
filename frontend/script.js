@@ -54,11 +54,11 @@ class CryptoDashboard {
 
             // Load all data concurrently
             const [statusData, accountData, positionsData, signalsData, tradesData] = await Promise.all([
-                this.fetchData('/api/status'),
-                this.fetchData('/api/account'),
-                this.fetchData('/api/positions'),
-                this.fetchData('/api/signals'),
-                this.fetchData('/api/trades')
+                this.fetchData('status'),
+                this.fetchData('account'),
+                this.fetchData('positions'),
+                this.fetchData('signals'),
+                this.fetchData('trades')
             ]);
 
             // Update all sections
@@ -77,10 +77,14 @@ class CryptoDashboard {
         }
     }
 
-    async fetchData(endpoint) {
-        const response = await fetch(endpoint);
+    async fetchData(endpointKey) {
+        const url = typeof buildApiUrl === 'function'
+            ? buildApiUrl(endpointKey)
+            : endpointKey;
+
+        const response = await fetch(url);
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error(`HTTP error! status: ${response.status} (${url})`);
         }
         return await response.json();
     }
@@ -204,15 +208,19 @@ class CryptoDashboard {
     }
 
     updateTrades(tradesData) {
+        const tradesArray = Array.isArray(tradesData)
+            ? tradesData
+            : (tradesData && Array.isArray(tradesData.trades) ? tradesData.trades : []);
+
         const tradesBody = document.getElementById('trades-body');
 
-        if (!tradesData || tradesData.length === 0) {
+        if (!tradesArray || tradesArray.length === 0) {
             tradesBody.innerHTML = '<tr><td colspan="6" class="no-data">No recent trades</td></tr>';
             return;
         }
 
         let html = '';
-        tradesData.slice(-10).reverse().forEach(trade => { // Show last 10 trades, newest first
+        tradesArray.slice(-10).reverse().forEach(trade => { // Show last 10 trades, newest first
             const sideClass = trade.side === 'buy' ? 'buy' : 'sell';
             const value = trade.qty * trade.price;
 

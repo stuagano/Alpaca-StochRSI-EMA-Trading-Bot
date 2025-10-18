@@ -177,16 +177,17 @@ class TradingExecutor:
                 logger.info("Market is closed, queuing order for next open")
                 return await self.queue_for_market_open(signal)
                 
-            # Validate pre-trade conditions
-            validation = await self.validate_pre_trade(signal)
+            # Calculate position size before running validations so buying power
+            # checks can align with the intended order quantity.
+            position_size = await self.calculate_position_size(signal)
+            if position_size <= 0:
+                logger.warning("Calculated position size is 0")
+                return None
+
+            # Validate pre-trade conditions using the planned quantity.
+            validation = await self.validate_pre_trade(signal, planned_qty=position_size)
             if not validation['valid']:
                 logger.warning(f"Pre-trade validation failed: {validation['reason']}")
-                return None
-                
-            # Calculate position size
-            position_size = await self.calculate_position_size(signal)
-            if position_size == 0:
-                logger.warning("Calculated position size is 0")
                 return None
                 
             # Place the order
@@ -223,7 +224,7 @@ class TradingExecutor:
             logger.error(f"Error executing signal: {e}")
             return None
             
-    async def validate_pre_trade(self, signal: TradingSignal) -> Dict:
+    async def validate_pre_trade(self, signal: TradingSignal, planned_qty: Optional[int] = None) -> Dict:
         """
         Validate pre-trade conditions
         
@@ -247,7 +248,8 @@ class TradingExecutor:
             # Check buying power
             if signal.action == 'BUY':
                 buying_power = float(account.buying_power)
-                estimated_cost = signal.price * 100  # Minimum 100 shares
+                qty_for_cost = planned_qty if planned_qty and planned_qty > 0 else 1
+                estimated_cost = signal.price * qty_for_cost
                 
                 if buying_power < estimated_cost:
                     return {'valid': False, 'reason': f'Insufficient buying power: ${buying_power:.2f}'}
@@ -292,15 +294,20 @@ class TradingExecutor:
             max_position_value = equity * self.max_position_size_pct
             
             # Calculate shares based on current price
-            shares = int(max_position_value / signal.price)
-            
+            baseline_shares = int(max_position_value / signal.price)
+
             # Apply minimum share requirement
-            shares = max(shares, 1)
-            
+            baseline_shares = max(baseline_shares, 1)
+
             # Apply signal strength scaling (stronger signal = larger position)
-            strength_multiplier = signal.strength / 100.0
-            shares = int(shares * strength_multiplier)
-            
+            strength_multiplier = max(signal.strength / 100.0, 0.0)
+            scaled_shares = int(baseline_shares * strength_multiplier)
+
+            if baseline_shares > 0 and strength_multiplier > 0.0 and scaled_shares == 0:
+                scaled_shares = 1
+
+            shares = scaled_shares
+
             logger.info(f"Calculated position size: {shares} shares for {signal.symbol}")
             return shares
             

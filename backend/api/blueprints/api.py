@@ -5,8 +5,8 @@ Core API endpoints for account, positions, and signals
 """
 
 from flask import Blueprint, jsonify, current_app, request
-from backend.api.services.trading_service import TradingService
-from backend.api.utils.decorators import handle_errors, require_auth
+from ..services.trading_service import TradingService
+from ..utils.decorators import handle_errors, require_auth
 
 api_bp = Blueprint('api', __name__)
 
@@ -57,11 +57,21 @@ def api_positions():
 def api_signals():
     """Get current trading signals"""
     service = current_app.trading_service
+    config = current_app.config['TRADING_CONFIG']
     symbols = request.args.getlist('symbols')
 
     if not symbols:
-        # Get default symbols from config
-        symbols = current_app.config.TRADING_CONFIG.trading.symbols
+        symbols_param = request.args.get('symbols')
+        if symbols_param:
+            symbols = [symbol.strip() for symbol in symbols_param.split(',') if symbol.strip()]
+
+    if not symbols:
+        default_symbols = list(getattr(config, 'symbols', []) or [])
+        symbols = default_symbols
+
+    if not symbols:
+        current_app.logger.warning("No symbols provided and none configured; returning empty signal list")
+        return jsonify([])
 
     signals = service.calculate_signals(symbols)
     return jsonify(signals)
@@ -81,9 +91,12 @@ def api_orders():
 @handle_errors
 def api_symbols():
     """Get tracked symbols"""
-    config = current_app.config.TRADING_CONFIG
+    config = current_app.config['TRADING_CONFIG']
+
+    symbols = list(getattr(config, 'symbols', []) or [])
+    mode = getattr(config, 'market_type', 'crypto')
 
     return jsonify({
-        'symbols': config.trading.symbols,
-        'mode': config.trading.mode
+        'symbols': symbols,
+        'mode': mode or 'crypto'
     })

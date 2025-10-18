@@ -4,16 +4,11 @@ Flask Application Runner
 Main entry point for the refactored Flask application
 """
 
-import os
-import sys
 import argparse
 import logging
-from pathlib import Path
+import os
 
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
-from backend.api import create_app, socketio
+from . import create_app, socketio
 
 # Configure logging
 logging.basicConfig(

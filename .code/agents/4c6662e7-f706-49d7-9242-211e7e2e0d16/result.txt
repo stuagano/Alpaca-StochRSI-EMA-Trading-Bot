@@ -1,0 +1,2533 @@
+[2025-10-15T21:18:46] OpenAI Codex v0.0.0 (research preview)
+--------
+workdir: /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api
+model: gpt-5-codex
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: medium
+reasoning summaries: auto
+--------
+[2025-10-15T21:18:46] User instructions:
+Restore dynamic API base URL handling for the frontend and add regression coverage so the dashboard works both locally and when hosted remotely. Investigate the recent reviewer comment flagging frontend/config.js for hard-coding 'http://localhost:5001'. Revert to a dynamic origin-based default while still allowing window.API_BASE_URL overrides. Audit frontend JS (script.js, dashboard pages) to ensure they consume the config properly and that fetched data renders without runtime errors (e.g., tradesData.slice issue). Augment tests to cover these scenarios: unit/integration coverage that /api/v1 endpoints return expected shapes used by the UI, and a frontend test (Playwright or Jest) that asserts dashboard loads data when API base URL is default origin and when overridden. Run pytest and npm test (or equivalent) to ensure all suites pass.
+[2025-10-15T21:18:52] OpenAI Codex v0.0.0 (research preview)
+--------
+workdir: /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api
+model: gpt-5-codex
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: medium
+reasoning summaries: auto
+--------
+[2025-10-15T21:18:52] User instructions:
+Restore dynamic API base URL handling for the frontend and add regression coverage so the dashboard works both locally and when hosted remotely. Investigate the recent reviewer comment flagging frontend/config.js for hard-coding 'http://localhost:5001'. Revert to a dynamic origin-based default while still allowing window.API_BASE_URL overrides. Audit frontend JS (script.js, dashboard pages) to ensure they consume the config properly and that fetched data renders without runtime errors (e.g., tradesData.slice issue). Augment tests to cover these scenarios: unit/integration coverage that /api/v1 endpoints return expected shapes used by the UI, and a frontend test (Playwright or Jest) that asserts dashboard loads data when API base URL is default origin and when overridden. Run pytest and npm test (or equivalent) to ensure all suites pass.
+
+[2025-10-15T21:19:12] thinking
+
+**Assessing read-only environment constraints**
+[2025-10-15T21:19:13] exec bash -lc 'ls frontend' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:19:14] bash -lc 'ls frontend' exited 124 in 1.01s:
+ERROR
+[2025-10-15T21:19:14] tokens used: 8,858
+
+[2025-10-15T21:19:17] thinking
+
+**Considering command timeout issue**
+[2025-10-15T21:19:18] exec bash -lc 'ls frontend' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:19:19] bash -lc 'ls frontend' succeeded in 1.87s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+config.js
+crypto-dashboard.html
+dashboard.html
+index.html
+script.js
+style.css
+[2025-10-15T21:19:19] tokens used: 9,144
+
+[2025-10-15T21:19:21] thinking
+
+**Preparing to open configuration file**
+[2025-10-15T21:19:22] exec bash -lc "sed -n '1,160p' frontend/config.js" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:19:23] bash -lc "sed -n '1,160p' frontend/config.js" succeeded in 1.18s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+// Frontend Configuration for New Flask API
+
+const API_CONFIG = {
+    // Base URL for API
+    baseURL: window.location.origin,
+
+    // API version
+    version: 'v1',
+
+    // Endpoints
+    endpoints: {
+        // Core API
+        status: '/api/v1/status',
+        account: '/api/v1/account',
+        positions: '/api/v1/positions',
+        signals: '/api/v1/signals',
+        orders: '/api/v1/orders',
+[2025-10-15T21:19:23] tokens used: 9,432
+
+[2025-10-15T21:19:28] thinking
+
+**Reviewing baseURL configuration**
+[2025-10-15T21:19:28] exec bash -lc "sed -n '1,200p' frontend/script.js" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:19:31] bash -lc "sed -n '1,200p' frontend/script.js" succeeded in 3.34s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+// Crypto Trading Dashboard JavaScript
+class CryptoDashboard {
+    constructor() {
+        this.autoRefresh = true;
+        this.refreshInterval = null;
+        this.lastUpdate = null;
+
+        this.init();
+    }
+
+    init() {
+        // Initialize dashboard on page load
+        this.updateConnectionStatus('connecting');
+        this.loadAllData();
+        this.startAutoRefresh();
+
+        // Set up event listeners
+[2025-10-15T21:19:31] tokens used: 19,226
+
+[2025-10-15T21:19:34] thinking
+
+**Continuing to examine fetch endpoints**
+[2025-10-15T21:19:35] exec bash -lc "sed -n '200,400p' frontend/script.js" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:19:36] bash -lc "sed -n '200,400p' frontend/script.js" succeeded in 1.57s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+        totalPnLElement.className = 'value pnl ' + (totalPnL >= 0 ? 'positive' : 'negative');
+
+        dailyPnLElement.textContent = this.formatCurrency(dailyPnL);
+        dailyPnLElement.className = 'value pnl ' + (dailyPnL >= 0 ? 'positive' : 'negative');
+    }
+
+    updateTrades(tradesData) {
+        const tradesBody = document.getElementById('trades-body');
+
+        if (!tradesData || tradesData.length === 0) {
+            tradesBody.innerHTML = '<tr><td colspan="6" class="no-data">No recent trades</td></tr>';
+            return;
+        }
+
+        let html = '';
+        tradesData.slice(-10).reverse().forEach(trade => { // Show last 10 trades, newest first
+            const sideClass = trade.side === 'buy' ? 'buy' : 'sell';
+[2025-10-15T21:19:36] tokens used: 21,092
+
+[2025-10-15T21:19:41] thinking
+
+**Aligning API endpoint configuration**
+[2025-10-15T21:19:42] exec bash -lc "sed -n '1,200p' frontend/index.html" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:19:43] bash -lc "sed -n '1,200p' frontend/index.html" succeeded in 1.86s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Scalping Bot Dashboard</title>
+    <link rel="stylesheet" href="/frontend/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 Crypto Scalping Bot Dashboard</h1>
+            <div class="status-indicator" id="connection-status">
+                <span class="status-dot"></span>
+                <span class="status-text">Connecting...</span>
+            </div>
+        </header>
+[2025-10-15T21:19:43] tokens used: 22,912
+
+[2025-10-15T21:19:46] thinking
+
+**Checking for configuration inclusion**
+[2025-10-15T21:19:47] exec bash -lc "sed -n '1,160p' frontend/dashboard.html" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:19:49] bash -lc "sed -n '1,160p' frontend/dashboard.html" succeeded in 2.71s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Bot Dashboard - New Architecture</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        .header {
+[2025-10-15T21:19:49] tokens used: 24,985
+
+[2025-10-15T21:19:54] thinking
+
+**Checking for scripts in file**
+[2025-10-15T21:19:54] exec bash -lc "sed -n '200,400p' frontend/dashboard.html" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:19:56] bash -lc "sed -n '200,400p' frontend/dashboard.html" succeeded in 1.35s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+            text-align: center;
+            padding: 20px;
+            color: #888;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            .chart-container {
+                grid-column: span 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+[2025-10-15T21:19:56] tokens used: 27,350
+
+[2025-10-15T21:19:59] thinking
+
+**Maintaining restful setup**
+[2025-10-15T21:20:00] exec bash -lc "sed -n '400,800p' frontend/dashboard.html" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:20:02] bash -lc "sed -n '400,800p' frontend/dashboard.html" succeeded in 2.17s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+        }
+
+        async function updatePositions() {
+            const data = await fetchAPI('/api/v1/positions');
+            if (data) renderPositions(data);
+        }
+
+        async function updateSignals() {
+            const data = await fetchAPI('/api/v1/signals');
+            if (data) renderSignals(data);
+        }
+
+        async function updatePnL() {
+            const data = await fetchAPI('/api/v1/pnl/current');
+            if (data) renderPnL(data);
+        }
+
+[2025-10-15T21:20:02] tokens used: 29,244
+
+[2025-10-15T21:20:08] thinking
+
+**Planning integration and testing strategy**
+
+I’m figuring out how to understand the existing API configs and backend endpoints, especially related to strategies, while considering the read-only environment limitations on testing and dependency installation. I want to create a clear plan to move forward thoughtfully despite potential filesystem restrictions.
+[2025-10-15T21:20:10] tool sequential-thinking.sequentialthinking({"thought":"Need to map out multi-step fix: update config to support window override, ensure script uses config endpoints, audit for direct hard-coded URLs, adjust backend tests and front-end tests, run pytest & npm test. Estimate around 6 thoughts.","nextThoughtNeeded":true,"thoughtNumber":1,"totalThoughts":6,"isRevision":false,"needsMoreThoughts":false,"branchFromThought":0,"branchId":""})
+[2025-10-15T21:20:10] sequential-thinking.sequentialthinking({"thought":"Need to map out multi-step fix: update config to support window override, ensure script uses config endpoints, audit for direct hard-coded URLs, adjust backend tests and front-end tests, run pytest & npm test. Estimate around 6 thoughts.","nextThoughtNeeded":true,"thoughtNumber":1,"totalThoughts":6,"isRevision":false,"needsMoreThoughts":false,"branchFromThought":0,"branchId":""}) success in 51ms:
+{
+  "content": [
+    {
+      "text": "{\n  \"thoughtNumber\": 1,\n  \"totalThoughts\": 6,\n  \"nextThoughtNeeded\": true,\n  \"branches\": [],\n  \"thoughtHistoryLength\": 1\n}",
+      "type": "text"
+    }
+  ]
+}
+[2025-10-15T21:20:10] tokens used: 31,733
+
+[2025-10-15T21:20:13] thinking
+
+**Preparing next steps plan**
+[2025-10-15T21:20:14] tool sequential-thinking.sequentialthinking({"thought":"Outline specific steps: (1) Confirm current config and dynamic requirements, (2) Update frontend config to use override fallback chain and export buildApiUrl helper, (3) Refactor scripts to rely on config across files, (4) Add tests for backend endpoints (unit/integration) verifying JSON shape, (5) Add front-end automated test for API base URL behavior, (6) Run pytest and npm test. Validate, adjust as needed.","nextThoughtNeeded":false,"thoughtNumber":2,"totalThoughts":6,"isRevision":false,"needsMoreThoughts":false,"branchFromThought":0,"branchId":""})
+[2025-10-15T21:20:14] sequential-thinking.sequentialthinking({"thought":"Outline specific steps: (1) Confirm current config and dynamic requirements, (2) Update frontend config to use override fallback chain and export buildApiUrl helper, (3) Refactor scripts to rely on config across files, (4) Add tests for backend endpoints (unit/integration) verifying JSON shape, (5) Add front-end automated test for API base URL behavior, (6) Run pytest and npm test. Validate, adjust as needed.","nextThoughtNeeded":false,"thoughtNumber":2,"totalThoughts":6,"isRevision":false,"needsMoreThoughts":false,"branchFromThought":0,"branchId":""}) success in 3ms:
+{
+  "content": [
+    {
+      "text": "{\n  \"thoughtNumber\": 2,\n  \"totalThoughts\": 6,\n  \"nextThoughtNeeded\": false,\n  \"branches\": [],\n  \"thoughtHistoryLength\": 2\n}",
+      "type": "text"
+    }
+  ]
+}
+[2025-10-15T21:20:14] tokens used: 42,530
+
+[2025-10-15T21:20:28] thinking
+
+**Designing dynamic API config and integration**
+
+I’m working out how to modify frontend/config.js to support a flexible base URL that works in both browser and Node environments, adding centralized endpoint functions like buildApiUrl and getEndpoint. I need to ensure compatibility with existing module exports, consider exposing these functions globally for script tags, and update HTML to include the config.js script so the frontend scripts can access the API_CONFIG properly. It feels like a neat move toward configurable, environment-aware API calls!
+[2025-10-15T21:20:30] exec bash -lc "sed -n '1,200p' frontend/crypto-dashboard.html" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:20:32] bash -lc "sed -n '1,200p' frontend/crypto-dashboard.html" succeeded in 1.90s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>24/7 Crypto Trading Bot 🚀</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-dark: #0a0e27;
+            --bg-card: #131936;
+            --accent-green: #00ff88;
+            --accent-red: #ff4444;
+            --accent-blue: #4488ff;
+            --accent-gold: #ffd700;
+            --text-primary: #ffffff;
+[2025-10-15T21:20:32] tokens used: 43,921
+
+[2025-10-15T21:20:35] thinking
+
+**Reviewing script content at file end**
+[2025-10-15T21:20:36] exec bash -lc 'rg "API_BASE" -n frontend/crypto-dashboard.html' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:20:40] bash -lc 'rg "API_BASE" -n frontend/crypto-dashboard.html' exited 127 in 3.54s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+
+ERROR
+bash: rg: command not found
+[2025-10-15T21:20:40] tokens used: 45,747
+
+[2025-10-15T21:20:43] thinking
+
+**Switching to grep for search**
+[2025-10-15T21:20:44] exec bash -lc 'grep -n "API_BASE" frontend/crypto-dashboard.html' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:20:49] bash -lc 'grep -n "API_BASE" frontend/crypto-dashboard.html' exited 124 in 5.12s:
+ERROR
+[2025-10-15T21:20:49] tokens used: 46,101
+
+[2025-10-15T21:20:53] thinking
+
+**Requesting more file content**
+[2025-10-15T21:20:53] exec bash -lc 'grep -n "API_BASE" frontend/crypto-dashboard.html' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:20:56] bash -lc 'grep -n "API_BASE" frontend/crypto-dashboard.html' exited 1 in 2.50s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+
+ERROR
+[2025-10-15T21:20:56] tokens used: 46,275
+
+[2025-10-15T21:20:58] thinking
+
+**Searching for API base URL in fetch calls**
+[2025-10-15T21:20:59] exec bash -lc 'grep -n "fetch(" frontend/crypto-dashboard.html' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:21:01] bash -lc 'grep -n "fetch(" frontend/crypto-dashboard.html' succeeded in 1.90s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+588:            fetch('/api/v1/trading/set-multiplier', {
+613:            fetch('/api/v1/trading/set-multiplier', {
+644:                const account = await fetch('/api/v1/account').then(r => r.json());
+651:                const positions = await fetch('/api/v1/positions').then(r => r.json());
+655:                const pnl = await fetch('/api/v1/pnl/current').then(r => r.json());
+702:            fetch('/api/v1/trading/start', { method: 'POST' })
+710:                fetch('/api/v1/trading/stop', { method: 'POST' })
+[2025-10-15T21:21:01] tokens used: 49,638
+
+[2025-10-15T21:21:10] thinking
+
+**Planning dynamic API config integration**
+[2025-10-15T21:21:10] exec bash -lc 'grep -R "fetchData" -n' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/frontend
+[2025-10-15T21:21:12] bash -lc 'grep -R "fetchData" -n' succeeded in 2.01s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+./script.js:57:                this.fetchData('/api/status'),
+./script.js:58:                this.fetchData('/api/account'),
+./script.js:59:                this.fetchData('/api/positions'),
+./script.js:60:                this.fetchData('/api/signals'),
+./script.js:61:                this.fetchData('/api/trades')
+./script.js:80:    async fetchData(endpoint) {
+[2025-10-15T21:21:12] tokens used: 50,205
+
+[2025-10-15T21:21:32] thinking
+
+**Redesigning API endpoint configuration**
+
+I'm updating the frontend to use a centralized config for API base URLs and endpoints, allowing dynamic overrides via `window.API_BASE_URL` while defaulting to the current origin. I'll refactor fetching to use keys resolved through this config and ensure the config script loads before others. I also plan to verify the backend routes to sync endpoint definitions and adjust the frontend for consistent API paths, making cross-origin and versioning support more robust.
+[2025-10-15T21:21:35] exec bash -lc "grep -R \"@app.route('/api\" -n" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:21:37] bash -lc "grep -R \"@app.route('/api\" -n" succeeded in 2.24s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+./archive/legacy_2025Q4/backend_api_app.py:163:@app.route('/api/v1/status')
+./archive/legacy_2025Q4/backend_api_app.py:177:@app.route('/api/v1/account')
+./archive/legacy_2025Q4/backend_api_app.py:201:@app.route('/api/v1/positions')
+./archive/legacy_2025Q4/backend_api_app.py:228:@app.route('/api/v1/signals')
+./archive/legacy_2025Q4/backend_api_app.py:262:@app.route('/api/v1/orders')
+./archive/legacy_2025Q4/backend_api_app.py:288:@app.route('/api/v1/trading/start', methods=['POST'])
+./archive/legacy_2025Q4/backend_api_app.py:297:@app.route('/api/v1/trading/stop', methods=['POST'])
+./archive/legacy_2025Q4/backend_api_app.py:307:@app.route('/api/v1/pnl/current')
+./archive/legacy_2025Q4/backend_api_app.py:329:@app.route('/api/v1/pnl/chart-data')
+./historical_pnl_tracker.py:460:@app.route('/api/historical-pnl')
+./historical_pnl_tracker.py:567:@app.route('/api/get-alpaca-history')
+./FLASK_INTEGRATION_GUIDE.md:157:@app.route('/api/v2/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE'])
+[2025-10-15T21:21:37] tokens used: 51,464
+
+[2025-10-15T21:21:41] thinking
+
+**Investigating backend location**
+[2025-10-15T21:21:42] exec bash -lc 'ls backend' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:21:43] bash -lc 'ls backend' succeeded in 1.36s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+api
+[2025-10-15T21:21:43] tokens used: 52,020
+
+[2025-10-15T21:21:46] thinking
+
+**Listing items**
+[2025-10-15T21:21:47] exec bash -lc 'ls backend/api' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:21:48] bash -lc 'ls backend/api' succeeded in 1.39s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+__init__.py
+blueprints
+config.py
+README.md
+run.py
+services
+utils
+[2025-10-15T21:21:48] tokens used: 52,182
+
+[2025-10-15T21:21:52] thinking
+
+**Checking configuration and blueprints**
+[2025-10-15T21:21:52] exec bash -lc 'ls backend/api/blueprints' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:21:55] bash -lc 'ls backend/api/blueprints' succeeded in 2.95s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+__init__.py
+api.py
+dashboard.py
+pnl.py
+trading.py
+websocket_events.py
+[2025-10-15T21:21:55] tokens used: 52,471
+
+[2025-10-15T21:21:58] thinking
+
+**Opening api.py**
+[2025-10-15T21:21:58] exec bash -lc "sed -n '1,200p' backend/api/blueprints/api.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:22:01] bash -lc "sed -n '1,200p' backend/api/blueprints/api.py" succeeded in 2.37s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+#!/usr/bin/env python3
+"""
+API Blueprint
+Core API endpoints for account, positions, and signals
+"""
+
+from flask import Blueprint, jsonify, current_app, request
+from backend.api.services.trading_service import TradingService
+from backend.api.utils.decorators import handle_errors, require_auth
+
+api_bp = Blueprint('api', __name__)
+
+@api_bp.route('/status')
+@handle_errors
+def api_status():
+    """Get system status"""
+    cfg = current_app.config['TRADING_CONFIG']
+[2025-10-15T21:22:01] tokens used: 52,654
+
+[2025-10-15T21:22:05] thinking
+
+**Checking blueprint mounting point**
+[2025-10-15T21:22:06] exec bash -lc "sed -n '1,200p' backend/api/__init__.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:22:08] bash -lc "sed -n '1,200p' backend/api/__init__.py" succeeded in 2.13s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+#!/usr/bin/env python3
+"""
+Flask Application Factory Pattern
+Centralized Flask app configuration and initialization
+"""
+
+import logging
+from flask import Flask
+from flask_cors import CORS
+from flask_socketio import SocketIO
+
+# Initialize extensions
+socketio = SocketIO(cors_allowed_origins="*")
+
+def create_app(config_name='development'):
+    """
+    Application factory pattern for Flask
+[2025-10-15T21:22:08] tokens used: 54,404
+
+[2025-10-15T21:22:14] thinking
+
+**Verifying API endpoint consistency**
+[2025-10-15T21:22:15] exec bash -lc 'grep -R "trades" backend/api -n' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:22:16] bash -lc 'grep -R "trades" backend/api -n' succeeded in 1.63s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+backend/api/blueprints/pnl.py:95:        'total_trades': stats.get('total_trades', 0),
+backend/api/blueprints/pnl.py:96:        'winning_trades': stats.get('winning_trades', 0),
+backend/api/blueprints/pnl.py:97:        'losing_trades': stats.get('losing_trades', 0),
+backend/api/blueprints/pnl.py:119:    include_trades = request.args.get('include_trades', 'true').lower() == 'true'
+backend/api/blueprints/pnl.py:122:    data = service.get_export_data(days=days, include_trades=include_trades)
+backend/api/blueprints/pnl.py:146:@pnl_bp.route('/trades')
+backend/api/blueprints/pnl.py:148:def recent_trades():
+backend/api/blueprints/pnl.py:149:    """Get recent trades with P&L"""
+backend/api/blueprints/pnl.py:153:    trades = service.get_recent_trades(limit=limit)
+backend/api/blueprints/pnl.py:156:        'trades': trades,
+backend/api/blueprints/pnl.py:157:        'count': len(trades),
+backend/api/blueprints/pnl.py:158:        'total_pnl': sum(t.get('pnl', 0) for t in trades)
+backend/api/README.md:79:- `GET /api/v1/pnl/trades` - Recent trades
+backend/api/services/pnl_service.py:61:            # Create trades history table
+backend/api/services/pnl_service.py:84:                    total_trades INTEGER,
+backend/api/services/pnl_service.py:85:                    winning_trades INTEGER,
+backend/api/services/pnl_service.py:86:                    losing_trades INTEGER
+[2025-10-15T21:22:16] tokens used: 55,300
+
+[2025-10-15T21:22:23] thinking
+
+**Verifying API endpoints and script updates**
+[2025-10-15T21:22:24] exec bash -lc "sed -n '130,220p' backend/api/blueprints/pnl.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:22:25] bash -lc "sed -n '130,220p' backend/api/blueprints/pnl.py" succeeded in 1.33s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+
+        # Create response
+        response = send_file(
+            io.BytesIO(output.getvalue().encode()),
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name=f'pnl_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+        )
+        return response
+
+    elif format == 'json':
+        return jsonify(data)
+
+    else:
+        return jsonify({'error': 'Unsupported format'}), 400
+
+@pnl_bp.route('/trades')
+[2025-10-15T21:22:25] tokens used: 57,165
+
+[2025-10-15T21:22:31] thinking
+
+**Identifying data shape mismatches**
+[2025-10-15T21:22:31] exec bash -lc 'ls tests' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:22:33] bash -lc 'ls tests' succeeded in 1.87s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+conftest.py
+e2e
+functional
+helpers
+unit
+[2025-10-15T21:22:33] tokens used: 57,954
+
+[2025-10-15T21:22:35] thinking
+
+**Searching tests for API references**
+[2025-10-15T21:22:36] exec bash -lc 'ls tests/functional' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:22:40] bash -lc 'ls tests/functional' succeeded in 3.95s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+test_crypto_config.py
+test_crypto_scalping_main.py
+test_paper_trade_crypto.py
+[2025-10-15T21:22:40] tokens used: 58,221
+
+[2025-10-15T21:22:44] thinking
+
+**Checking for integration tests**
+[2025-10-15T21:22:45] exec bash -lc 'ls tests/integration' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:22:48] bash -lc 'ls tests/integration' exited 1 in 2.29s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+
+ERROR
+ls: tests/integration: No such file or directory
+[2025-10-15T21:22:48] tokens used: 58,498
+
+[2025-10-15T21:22:51] thinking
+
+**Checking for integration directory**
+[2025-10-15T21:22:57] exec bash -lc 'ls tests/unit' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:22:59] bash -lc 'ls tests/unit' succeeded in 1.99s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+config
+services
+test_refresh_scanner_symbols.py
+test_strategy_dependency_manifest.py
+[2025-10-15T21:22:59] tokens used: 58,773
+
+[2025-10-15T21:23:03] thinking
+
+**Planning test additions**
+[2025-10-15T21:23:04] exec bash -lc 'cat package.json' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:23:05] bash -lc 'cat package.json' succeeded in 994ms:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+{
+  "name": "alpaca-stochrsi-ema-trading-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "test:report": "playwright show-report"
+  },
+  "repository": {
+    "type": "git",
+[2025-10-15T21:23:05] tokens used: 59,118
+
+[2025-10-15T21:23:07] thinking
+
+**Exploring Playwright tests directory**
+[2025-10-15T21:23:08] exec bash -lc 'ls tests/e2e' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:23:09] bash -lc 'ls tests/e2e' succeeded in 1.21s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+dashboard.spec.js
+dashboard.spec.js-snapshots
+[2025-10-15T21:23:09] tokens used: 59,660
+
+[2025-10-15T21:23:12] thinking
+
+**Opening test file**
+[2025-10-15T21:23:12] exec bash -lc "sed -n '1,200p' tests/e2e/dashboard.spec.js" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:23:13] bash -lc "sed -n '1,200p' tests/e2e/dashboard.spec.js" succeeded in 1.13s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+// @ts-check
+const { test, expect } = require('@playwright/test');
+
+/**
+ * Trading Bot Dashboard E2E Tests
+ * Tests the main dashboard functionality
+ */
+
+test.describe('Trading Dashboard', () => {
+
+  test.beforeEach(async ({ page }) => {
+    // Navigate to dashboard before each test
+    await page.goto('/');
+  });
+
+  test('should load dashboard with correct title', async ({ page }) => {
+    // Check page title
+[2025-10-15T21:23:13] tokens used: 59,855
+
+[2025-10-15T21:23:20] thinking
+
+**Planning API base override tests**
+
+I’m considering how to add Playwright tests that confirm the frontend uses the correct API base URL, both default and overridden versions. I want to intercept network requests to verify URLs without needing actual API responses, and I’m thinking of checking the Playwright config to understand the test server’s baseURL.
+[2025-10-15T21:23:21] exec bash -lc 'ls tests/e2e' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:23:22] bash -lc 'ls tests/e2e' succeeded in 1.16s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+dashboard.spec.js
+dashboard.spec.js-snapshots
+[2025-10-15T21:23:22] tokens used: 62,023
+
+[2025-10-15T21:23:26] thinking
+
+**Checking Playwright configuration**
+[2025-10-15T21:23:28] exec bash -lc ls in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:23:28] bash -lc ls succeeded in 887ms:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+AGENTS.md
+ARCHITECTURE-DIAGRAM.md
+archive
+AUTH
+backend
+backup
+BOT-STATUS-REPORT.md
+check_real_account.py
+claude.json
+CLAUDE.md
+COMPLETE-TESTING-SUMMARY.md
+config
+core
+CRYPTO-247-TRADING-GUIDE.md
+DASHBOARD-QUICKSTART.md
+database
+deploy
+[2025-10-15T21:23:28] tokens used: 62,279
+
+[2025-10-15T21:23:32] thinking
+
+**Inspecting playwright.config.js**
+[2025-10-15T21:23:33] exec bash -lc "sed -n '1,200p' playwright.config.js" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:23:34] bash -lc "sed -n '1,200p' playwright.config.js" succeeded in 1.23s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+// @ts-check
+const { defineConfig, devices } = require('@playwright/test');
+
+/**
+ * Playwright configuration for Trading Bot Dashboard
+ * @see https://playwright.dev/docs/test-configuration
+ */
+module.exports = defineConfig({
+  testDir: './tests/e2e',
+
+  /* Maximum time one test can run for */
+  timeout: 30 * 1000,
+
+  /* Test execution settings */
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+[2025-10-15T21:23:34] tokens used: 62,826
+
+[2025-10-15T21:23:58] thinking
+
+**Designing Playwright tests for API base URL**
+
+I'm planning detailed Playwright tests to verify the API base URL behavior—both defaulting to localhost and respecting an override via `window.API_BASE_URL`. I'll intercept fetch calls to confirm requests go to the expected origins without making real network requests. Alongside, I’m outlining frontend script updates to flexibly build URLs from config or fallback values, and to handle updated API response shapes for smoother data handling. This will keep the front and backend nicely aligned and ensure robust testing of the base URL logic.
+[2025-10-15T21:23:59] exec bash -lc "sed -n '1,200p' backend/api/services/trading_service.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:24:00] bash -lc "sed -n '1,200p' backend/api/services/trading_service.py" succeeded in 932ms:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+#!/usr/bin/env python3
+"""
+Trading Service
+Core business logic for trading operations
+Integrates with existing trading_bot.py and trading_executor.py
+"""
+
+import logging
+from datetime import datetime
+from typing import Dict, List, Optional
+import sys
+from pathlib import Path
+
+# Add parent directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+
+from trading_bot import TradingBot
+[2025-10-15T21:24:00] tokens used: 65,223
+
+[2025-10-15T21:24:12] thinking
+
+**Adjusting price and percent handling**
+[2025-10-15T21:24:13] exec bash -lc "sed -n '320,420p' backend/api/services/pnl_service.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:24:14] bash -lc "sed -n '320,420p' backend/api/services/pnl_service.py" succeeded in 972ms:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+        """Get recent trades with P&L"""
+        return self._get_recent_trades(limit=limit)
+
+    def get_performance_by_symbol(self) -> Dict:
+        """Get performance metrics grouped by symbol"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            query = '''
+                SELECT symbol,
+                       COUNT(*) as trade_count,
+                       SUM(pnl) as total_pnl,
+                       AVG(pnl) as avg_pnl,
+                       SUM(CASE WHEN pnl > 0 THEN 1 ELSE 0 END) as wins,
+                       SUM(CASE WHEN pnl < 0 THEN 1 ELSE 0 END) as losses
+                FROM trade_history
+[2025-10-15T21:24:14] tokens used: 67,512
+
+[2025-10-15T21:25:13] thinking
+
+**Planning API config and frontend refactor**
+
+I’m mapping out updates to unify API endpoint handling via a new `frontend/config.js` module that exports base URLs and endpoints, with helpers to resolve nested keys like `'pnl.trades'`. I want to refactor inline scripts and main frontend code (`script.js`, `dashboard.html`, `crypto-dashboard.html`) to use this config, improve fetch wrappers to use keys instead of paths, and adjust WebSocket connection logic based on config. This approach should reduce hardcoded URLs and enable flexible environment overrides while preserving UX. Since edits might be large and testing is read-only, careful patch planning is crucial before applying changes.
+[2025-10-15T21:25:15] exec bash -lc 'grep -R "location.origin" frontend -n' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:25:17] bash -lc 'grep -R "location.origin" frontend -n' succeeded in 1.75s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+frontend/config.js:5:    baseURL: window.location.origin,
+frontend/dashboard.html:294:        const API_BASE = window.location.origin;
+[2025-10-15T21:25:17] tokens used: 72,162
+
+[2025-10-15T21:25:20] thinking
+
+**Checking for local URL references**
+[2025-10-15T21:25:21] exec bash -lc 'grep -R "localhost:5001" -n' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:25:24] bash -lc 'grep -R "localhost:5001" -n' succeeded in 3.10s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+./migrate_to_new_flask.py:325:- Dashboard: http://localhost:5001/
+./migrate_to_new_flask.py:326:- API Status: http://localhost:5001/api/v1/status
+./migrate_to_new_flask.py:327:- Account: http://localhost:5001/api/v1/account
+./migrate_to_new_flask.py:328:- Positions: http://localhost:5001/api/v1/positions
+./migrate_to_new_flask.py:329:- Signals: http://localhost:5001/api/v1/signals
+./migrate_to_new_flask.py:330:- P&L: http://localhost:5001/api/v1/pnl/current
+./migrate_to_new_flask.py:334:   curl http://localhost:5001/api/v1/status
+./migrate_to_new_flask.py:337:   curl http://localhost:5001/api/v1/account
+./migrate_to_new_flask.py:340:   Open http://localhost:5001/ in browser
+./.code/agents/8484/exec-call_nqGyDO2nQ7XeukkDXxIu28Gi.txt:93:    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5001/dashboard.html
+./.code/agents/8484/exec-call_nqGyDO2nQ7XeukkDXxIu28Gi.txt:95:    [2m  - navigating to "http://localhost:5001/dashboard.html", waiting until "load"[22m
+./.code/agents/8484/exec-call_nqGyDO2nQ7XeukkDXxIu28Gi.txt:117:    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5001/dashboard.html
+./.code/agents/8484/exec-call_nqGyDO2nQ7XeukkDXxIu28Gi.txt:119:    [2m  - navigating to "http://localhost:5001/dashboard.html", waiting until "load"[22m
+./.code/agents/8484/exec-call_nqGyDO2nQ7XeukkDXxIu28Gi.txt:141:    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5001/dashboard.html
+./.code/agents/8484/exec-call_nqGyDO2nQ7XeukkDXxIu28Gi.txt:143:    [2m  - navigating to "http://localhost:5001/dashboard.html", waiting until "load"[22m
+./.code/agents/8484/exec-call_nqGyDO2nQ7XeukkDXxIu28Gi.txt:165:    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5001/dashboard.html
+./.code/agents/8484/exec-call_nqGyDO2nQ7XeukkDXxIu28Gi.txt:167:    [2m  - navigating to "http://localhost:5001/dashboard.html", waiting until "load"[22m
+[2025-10-15T21:25:24] tokens used: 72,881
+
+[2025-10-15T21:25:30] thinking
+
+**Planning backend test additions**
+[2025-10-15T21:25:31] exec bash -lc "sed -n '1,200p' tests/conftest.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:25:34] bash -lc "sed -n '1,200p' tests/conftest.py" succeeded in 3.50s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+"""Pytest configuration shared across the test suite."""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+import pytest
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from tests.helpers import ensure_strategy_runtime_dependencies
+
+
+@pytest.hookimpl(tryfirst=True)
+[2025-10-15T21:25:34] tokens used: 80,655
+
+[2025-10-15T21:25:37] thinking
+
+**Checking for existing Flask tests**
+[2025-10-15T21:25:38] exec bash -lc 'grep -R "create_app" tests -n' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:25:41] bash -lc 'grep -R "create_app" tests -n' exited 1 in 3.45s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+
+ERROR
+[2025-10-15T21:25:41] tokens used: 81,076
+
+[2025-10-15T21:25:45] thinking
+
+**Checking for root test_flask_api.py**
+[2025-10-15T21:25:46] exec bash -lc "sed -n '1,200p' test_flask_api.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:25:48] bash -lc "sed -n '1,200p' test_flask_api.py" succeeded in 2.01s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+#!/usr/bin/env python3
+"""
+Flask API Testing Script
+Validates all endpoints in the new Flask architecture
+"""
+
+import requests
+import json
+import time
+from datetime import datetime
+from typing import Dict, List, Tuple
+import sys
+
+class APITester:
+    """Test all Flask API endpoints"""
+
+    def __init__(self, base_url: str = "http://localhost:5001"):
+[2025-10-15T21:25:48] tokens used: 81,635
+
+[2025-10-15T21:25:51] thinking
+
+**Planning test strategy**
+[2025-10-15T21:25:52] exec bash -lc "sed -n '1,200p' backend/api/run.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:25:57] bash -lc "sed -n '1,200p' backend/api/run.py" exited 124 in 5.08s:
+ERROR
+[2025-10-15T21:25:57] tokens used: 84,148
+
+[2025-10-15T21:26:02] thinking
+
+**Requesting more context**
+[2025-10-15T21:26:02] exec bash -lc "sed -n '1,200p' backend/api/run.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:26:06] bash -lc "sed -n '1,200p' backend/api/run.py" succeeded in 3.35s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+#!/usr/bin/env python3
+"""
+Flask Application Runner
+Main entry point for the refactored Flask application
+"""
+
+import os
+import sys
+import argparse
+import logging
+from pathlib import Path
+
+# Add parent directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from backend.api import create_app, socketio
+
+[2025-10-15T21:26:06] tokens used: 84,697
+
+[2025-10-15T21:26:11] thinking
+
+**Checking test configuration setup**
+[2025-10-15T21:26:12] exec bash -lc "sed -n '1,200p' backend/api/config.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:26:14] bash -lc "sed -n '1,200p' backend/api/config.py" succeeded in 1.90s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+#!/usr/bin/env python3
+"""
+Flask Configuration Management
+Integrates with the unified configuration system
+"""
+
+import os
+from pathlib import Path
+import sys
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from config.unified_config import get_config
+
+class Config:
+    """Base configuration"""
+[2025-10-15T21:26:14] tokens used: 85,943
+
+[2025-10-15T21:26:17] thinking
+
+**Identifying configuration usage**
+[2025-10-15T21:26:19] exec bash -lc "sed -n '1,200p' backend/api/services/__init__.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:26:20] bash -lc "sed -n '1,200p' backend/api/services/__init__.py" succeeded in 1.89s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+#!/usr/bin/env python3
+"""
+Services Module
+Business logic layer for Flask application
+"""
+
+import logging
+from pathlib import Path
+import sys
+
+# Add parent directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+
+from backend.api.services.trading_service import TradingService
+from backend.api.services.pnl_service import PnLService
+from backend.api.services.alpaca_client import AlpacaClient
+from utils.alpaca import load_alpaca_credentials
+[2025-10-15T21:26:20] tokens used: 86,844
+
+[2025-10-15T21:26:29] thinking
+
+**Planning service stubbing for tests**
+[2025-10-15T21:26:30] exec bash -lc "sed -n '60,140p' backend/api/__init__.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:26:31] bash -lc "sed -n '60,140p' backend/api/__init__.py" succeeded in 1.74s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+    from backend.api.utils.error_handlers import register_error_handlers
+    register_error_handlers(app)
+
+    # Initialize services
+    with app.app_context():
+        from backend.api.services import init_services
+        init_services(app)
+
+    @app.before_request
+    def before_request():
+        """Pre-request processing"""
+        pass
+
+    @app.after_request
+    def after_request(response):
+        """Post-request processing"""
+        response.headers.add('X-Content-Type-Options', 'nosniff')
+[2025-10-15T21:26:31] tokens used: 88,164
+
+[2025-10-15T21:26:40] thinking
+
+**Creating dummy trading and pnl services**
+[2025-10-15T21:26:41] exec bash -lc "sed -n '1,120p' backend/api/blueprints/pnl.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:26:42] bash -lc "sed -n '1,120p' backend/api/blueprints/pnl.py" succeeded in 1.42s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+#!/usr/bin/env python3
+"""
+P&L Blueprint
+Profit and Loss tracking, history, and analytics
+Consolidated from realtime_pnl_dashboard.py and other P&L features
+"""
+
+from flask import Blueprint, jsonify, request, send_file, current_app
+from datetime import datetime, timedelta
+import pandas as pd
+import io
+
+from backend.api.services.pnl_service import PnLService
+from backend.api.utils.decorators import handle_errors
+
+pnl_bp = Blueprint('pnl', __name__)
+
+[2025-10-15T21:26:42] tokens used: 89,042
+
+[2025-10-15T21:27:08] thinking
+
+**Preparing API and UI test setup**
+
+I’m setting up stub implementations and writing API shape tests to verify key UI-related endpoints return the expected data structure, ensuring stubs align with what's called in tests. I’m also preparing to patch the frontend config.js file to properly centralize API endpoint URLs with flexible base URL detection, which helps keep the frontend aligned with the backend API during testing and development.
+[2025-10-15T21:27:18] tokens used: 94,434
+
+[2025-10-15T21:28:27] thinking
+
+**Preparing detailed modification and test plan**
+
+I'm gathering a thorough plan describing the recommended changes and tests for the frontend and backend despite the read-only environment. Since no files can be modified directly, I'll produce patch-style instructions and test definitions so the user can apply them manually. This approach respects constraints while aiming to deliver a complete solution.
+**Designing end-to-end tests for API URL behavior**
+
+I’m crafting Playwright test scripts that stub API responses to verify the frontend correctly uses the default origin or an overridden API base URL. The tests intercept requests, supply stub data, and confirm UI elements update accordingly. I’m also planning safeguards to catch unexpected calls to wrong origins, ensuring the front properly respects configuration. This should give robust coverage of the new URL resolution logic in a test environment.
+[2025-10-15T21:28:49] codex
+**Designing end-to-end tests for API URL behavior**
+
+I’m crafting Playwright test scripts that stub API responses to verify the frontend correctly uses the default origin or an overridden API base URL. The tests intercept requests, supply stub data, and confirm UI elements update accordingly. I’m also planning safeguards to catch unexpected calls to wrong origins, ensuring the front properly respects configuration. This should give robust coverage of the new URL resolution logic in a test environment.
+[2025-10-15T21:28:50] exec bash -lc "sed -n '1,200p' backend/api/blueprints/dashboard.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:28:55] bash -lc "sed -n '1,200p' backend/api/blueprints/dashboard.py" exited 124 in 5.27s:
+ERROR
+[2025-10-15T21:28:55] tokens used: 103,328
+
+[2025-10-15T21:29:01] thinking
+
+**Pausing for more input**
+[2025-10-15T21:29:02] exec bash -lc "sed -n '1,200p' backend/api/blueprints/dashboard.py" in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:29:12] tokens used: 103,526
+[2025-10-15T21:29:12] bash -lc "sed -n '1,200p' backend/api/blueprints/dashboard.py" exited 124 in 10.05s:
+ERROR
+[2025-10-15T21:29:12] sed -n '1,200p' backend/api/blueprints/dashboard.py completed in background
+
+[2025-10-15T21:29:16] thinking
+
+**Using head command to preview file**
+[2025-10-15T21:29:17] exec bash -lc 'head -n 200 backend/api/blueprints/dashboard.py' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:29:25] bash -lc 'head -n 200 backend/api/blueprints/dashboard.py' succeeded in 8.51s:
+🎯 ADK auto-sync aliases loaded!
+💡 Use 'sync' to sync with upstream anytime
+💡 Use 'synccheck' to check sync status
+#!/usr/bin/env python3
+"""
+Dashboard Blueprint
+Consolidated dashboard routes from multiple dashboard files
+"""
+
+from flask import Blueprint, render_template, send_from_directory, current_app
+from pathlib import Path
+
+dashboard_bp = Blueprint('dashboard', __name__)
+
+@dashboard_bp.route('/')
+def index():
+    """Main dashboard view - consolidated version"""
+    return send_from_directory(current_app.config['STATIC_FOLDER'], 'dashboard.html')
+
+
+[2025-10-15T21:29:25] tokens used: 104,576
+
+[2025-10-15T21:29:30] thinking
+
+**Checking frontend dashboard structure**
+[2025-10-15T21:29:30] exec bash -lc 'grep -n "portfolio-value" -n frontend/dashboard.html' in /Users/stuartgano/.code/working/Alpaca-StochRSI-EMA-Trading-Bot/branches/code-code-restore-dynamic-api/.
+[2025-10-15T21:29:35] bash -lc 'grep -n "portfolio-value" -n frontend/dashboard.html' exited 124 in 5.05s:
+ERROR
+[2025-10-15T21:29:35] tokens used: 105,180
+
+[2025-10-15T21:30:39] thinking
+
+**Preparing final patch and instructions**
+
+I’m putting together a detailed patch and step-by-step instructions to restore dynamic API base handling and add some test coverage, but because the workspace is read-only, I can’t apply these changes directly. I’ll provide code snippets and file paths for the user to apply manually, along with recommendations on which tests to run to verify the updates.
+**Drafting complete new frontend script with API config helpers**
+
+I’m creating a full replacement of `frontend/script.js` that uses the new config helpers for dynamic API URLs and normalizes data safely. This redesign includes helper functions for numeric conversion, date parsing, and robust UI updates while guarding DOM elements. It coordinates all dashboard data fetching and rendering via consistent API keys.
+**Providing full patch content with usage instructions**
+
+Workspace is read-only, so I couldn’t apply the changes directly. Here are the updates needed to restore dynamic API base URL handling and add regression test coverage:
+
+- Replace static base URL logic with a config-aware helper in `frontend/config.js` (around line 5)  
+- Insert the new config script into `frontend/index.html` before existing scripts (near line 110)  
+- Fully rewrite `frontend/script.js` (from line 1) to use the config helpers, normalize data safely, and update UI elements guarded for missing nodes  
+- Update `frontend/dashboard.html` (around line 290) to load the config and adapt its inline script: add helpers for API URL resolution, replace hardcoded fetch calls with key-based requests, and adjust WebSocket initialization accordingly  
+- Add new API shape validation tests in `tests/functional/test_dashboard_api_shapes.py`  
+- Add end-to-end Playwright test for API base URL behavior in `tests/e2e/api-base-url.spec.js`  
+
+---
+
+```diff
+--- a/frontend/config.js
++++ b/frontend/config.js
+@@ -1,10 +1,36 @@
+-// Static base URL
+-const API_CONFIG = {
+-  baseURL: window.location.origin,
+-};
+-
+-export default API_CONFIG;
++window.API_CONFIG = {
++  baseURL: window.location.origin,
++};
++
++window.buildApiUrl = function buildApiUrl(endpoint) {
++  if (typeof endpoint === 'string' && endpoint.startsWith('http')) {
++    return endpoint;
++  }
++  const path = (typeof endpoint === 'string' && endpoint.startsWith('/')) ? endpoint : `/${endpoint}`;
++  return `${window.API_CONFIG.baseURL}${path}`;
++};
++
++window.resolveApiEndpoint = function resolveApiEndpoint(keyOrPath) {
++  if (!keyOrPath) {
++    return '';
++  }
++  if (typeof keyOrPath !== 'string') {
++    return keyOrPath;
++  }
++  const routeMap = {
++    status: '/api/v1/status',
++    account: '/api/v1/account',
++    positions: '/api/v1/positions',
++    signals: '/api/v1/signals',
++    'pnl.current': '/api/v1/pnl/current',
++    'pnl.chart': '/api/v1/pnl/chart-data',
++    'pnl.trades': '/api/v1/pnl/trades',
++    'pnl.export': '/api/v1/pnl/export',
++    'trading.start': '/api/v1/trading/start',
++    'trading.stop': '/api/v1/trading/stop',
++    'trading.set-multiplier': '/api/v1/trading/set-multiplier',
++  };
++  return routeMap[keyOrPath] || keyOrPath;
++};
+```
+
+---
+
+```javascript
+// File: frontend/script.js
+const apiHelpers = (() => {
+  const config = window.API_CONFIG || { baseURL: window.location.origin };
+
+  const buildApiUrl = typeof window.buildApiUrl === 'function'
+    ? window.buildApiUrl
+    : (keyOrPath) => {
+        if (typeof keyOrPath === 'string' && keyOrPath.startsWith('http')) {
+          return keyOrPath;
+        }
+        const path = (typeof keyOrPath === 'string' && keyOrPath.startsWith('/')) ? keyOrPath : `/${keyOrPath}`;
+        return `${config.baseURL}${path}`;
+      };
+
+  const resolveApiEndpoint = typeof window.resolveApiEndpoint === 'function'
+    ? window.resolveApiEndpoint
+    : (keyOrPath) => keyOrPath;
+
+  const toUrl = (keyOrPath) => {
+    if (typeof keyOrPath === 'string' && keyOrPath.startsWith('http')) {
+      return keyOrPath;
+    }
+    const resolved = resolveApiEndpoint(keyOrPath);
+    return buildApiUrl(resolved);
+  };
+
+  return {
+    config,
+    toUrl,
+    baseUrl: config.baseURL,
+  };
+})();
+
+const toNumeric = (value, fallback = 0) => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+};
+
+const toPercentRatio = (value) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric === 0) {
+    return 0;
+  }
+  return Math.abs(numeric) > 1 ? numeric / 100 : numeric;
+};
+
+const toDate = (value) => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? new Date() : date;
+};
+
+class CryptoDashboard {
+  constructor() {
+    this.autoRefresh = true;
+    this.refreshInterval = null;
+    this.api = apiHelpers;
+
+    this.init();
+  }
+
+  init() {
+    this.updateConnectionStatus('connecting');
+    this.loadAllData();
+    this.startAutoRefresh();
+    this.setupEventListeners();
+  }
+
+  setupEventListeners() {
+    const toggleBtn = document.getElementById('refresh-toggle-btn');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => this.toggleAutoRefresh());
+    }
+  }
+
+  updateConnectionStatus(status) {
+    const statusEl = document.querySelector('.connection-status');
+    if (!statusEl) return;
+    statusEl.textContent = status;
+    statusEl.className = `connection-status ${status}`;
+  }
+
+  updateMarketStatus(marketStatus) {
+    const marketEl = document.querySelector('.crypto-status');
+    if (!marketEl) return;
+    marketEl.textContent = marketStatus || '';
+  }
+
+  async loadAllData() {
+    try {
+      this.updateConnectionStatus('connecting');
+
+      const [
+        statusData,
+        accountData,
+        positionsData,
+        signalsData,
+        tradesPayload
+      ] = await Promise.all([
+        this.fetchData('status'),
+        this.fetchData('account'),
+        this.fetchData('positions'),
+        this.fetchData('signals'),
+        this.fetchData('pnl.trades')
+      ]);
+
+      const positions = Array.isArray(positionsData) ? positionsData : [];
+      const signals = Array.isArray(signalsData) ? signalsData : [];
+      const trades = Array.isArray(tradesPayload?.trades)
+        ? tradesPayload.trades
+        : Array.isArray(tradesPayload)
+          ? tradesPayload
+          : [];
+
+      this.updateAccountInfo(accountData || {});
+      this.updatePositions(positions);
+      this.updateSignals(signals);
+      this.updatePerformance(positions);
+      this.updateTrades(trades);
+
+      if (statusData?.market_status) {
+        this.updateMarketStatus(statusData.market_status);
+      }
+
+      this.updateConnectionStatus('connected');
+      this.updateLastRefreshTime();
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      this.updateConnectionStatus('error');
+    }
+  }
+
+  async fetchData(endpointKeyOrPath, options) {
+    const url = this.api.toUrl(endpointKeyOrPath);
+    const response = await fetch(url, options);
+    if (!response.ok) {
+      throw new Error(`HTTP error ${response.status} for ${url}`);
+    }
+    return response.json();
+  }
+
+  updateAccountInfo(accountData = {}) {
+    const el = document.getElementById('portfolio-value');
+    if (!el) return;
+    const portfolioValue = toNumeric(accountData.portfolio_value);
+    el.textContent = this.formatCurrency(portfolioValue);
+  }
+
+  updatePositions(positions = []) {
+    const list = document.getElementById('positions-list');
+    if (!list) return;
+
+    list.innerHTML = '';
+    positions.forEach((position) => {
+      const avgEntry = toNumeric(position.avg_entry_price ?? position.avg_price);
+      const currentPrice = toNumeric(position.current_price ?? 0);
+      const pnlValue = toNumeric(position.unrealized_pl);
+      const pnlPercent = toPercentRatio(position.unrealized_plpc);
+      const pnlClass = pnlValue >= 0 ? 'positive' : 'negative';
+
+      const li = document.createElement('li');
+      li.className = `position-item ${pnlClass}`;
+      li.textContent = `${position.symbol}: Avg Entry ${this.formatCurrency(avgEntry)}, Current ${this.formatCurrency(currentPrice)}, PnL: ${this.formatCurrency(pnlValue)} (${this.formatPercent(pnlPercent)})`;
+      list.appendChild(li);
+    });
+  }
+
+  updateSignals(signals = []) {
+    const list = document.getElementById('signals-list');
+    if (!list) return;
+
+    list.innerHTML = '';
+    signals.forEach((signal) => {
+      const li = document.createElement('li');
+      li.textContent = `${signal.symbol} - ${signal.action} at ${this.formatTime(signal.timestamp)}`;
+      list.appendChild(li);
+    });
+  }
+
+  updateTrades(trades = []) {
+    const tbody = document.getElementById('trades-body');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    const recentTrades = trades.slice(-10).reverse();
+    recentTrades.forEach((trade) => {
+      const tr = document.createElement('tr');
+
+      const qty = toNumeric(trade.qty);
+      const price = toNumeric(trade.price);
+      const value = qty * price;
+
+      const sideClass = (trade.side || '').toLowerCase() === 'buy' ? 'positive' : 'negative';
+
+      tr.innerHTML = `
+        <td>${trade.symbol || ''}</td>
+        <td class="${sideClass}">${trade.side || ''}</td>
+        <td>${qty}</td>
+        <td>${this.formatCurrency(price)}</td>
+        <td>${this.formatCurrency(value)}</td
+[2025-10-15T21:32:21] codex
+**Drafting complete new frontend script with API config helpers**
+
+I’m creating a full replacement of `frontend/script.js` that uses the new config helpers for dynamic API URLs and normalizes data safely. This redesign includes helper functions for numeric conversion, date parsing, and robust UI updates while guarding DOM elements. It coordinates all dashboard data fetching and rendering via consistent API keys.
+[2025-10-15T21:32:21] codex
+**Providing full patch content with usage instructions**
+
+Workspace is read-only, so I couldn’t apply the changes directly. Here are the updates needed to restore dynamic API base URL handling and add regression test coverage:
+
+- Replace static base URL logic with a config-aware helper in `frontend/config.js` (around line 5)  
+- Insert the new config script into `frontend/index.html` before existing scripts (near line 110)  
+- Fully rewrite `frontend/script.js` (from line 1) to use the config helpers, normalize data safely, and update UI elements guarded for missing nodes  
+- Update `frontend/dashboard.html` (around line 290) to load the config and adapt its inline script: add helpers for API URL resolution, replace hardcoded fetch calls with key-based requests, and adjust WebSocket initialization accordingly  
+- Add new API shape validation tests in `tests/functional/test_dashboard_api_shapes.py`  
+- Add end-to-end Playwright test for API base URL behavior in `tests/e2e/api-base-url.spec.js`  
+
+---
+
+```diff
+--- a/frontend/config.js
++++ b/frontend/config.js
+@@ -1,10 +1,36 @@
+-// Static base URL
+-const API_CONFIG = {
+-  baseURL: window.location.origin,
+-};
+-
+-export default API_CONFIG;
++window.API_CONFIG = {
++  baseURL: window.location.origin,
++};
++
++window.buildApiUrl = function buildApiUrl(endpoint) {
++  if (typeof endpoint === 'string' && endpoint.startsWith('http')) {
++    return endpoint;
++  }
++  const path = (typeof endpoint === 'string' && endpoint.startsWith('/')) ? endpoint : `/${endpoint}`;
++  return `${window.API_CONFIG.baseURL}${path}`;
++};
++
++window.resolveApiEndpoint = function resolveApiEndpoint(keyOrPath) {
++  if (!keyOrPath) {
++    return '';
++  }
++  if (typeof keyOrPath !== 'string') {
++    return keyOrPath;
++  }
++  const routeMap = {
++    status: '/api/v1/status',
++    account: '/api/v1/account',
++    positions: '/api/v1/positions',
++    signals: '/api/v1/signals',
++    'pnl.current': '/api/v1/pnl/current',
++    'pnl.chart': '/api/v1/pnl/chart-data',
++    'pnl.trades': '/api/v1/pnl/trades',
++    'pnl.export': '/api/v1/pnl/export',
++    'trading.start': '/api/v1/trading/start',
++    'trading.stop': '/api/v1/trading/stop',
++    'trading.set-multiplier': '/api/v1/trading/set-multiplier',
++  };
++  return routeMap[keyOrPath] || keyOrPath;
++};
+```
+
+---
+
+```javascript
+// File: frontend/script.js
+const apiHelpers = (() => {
+  const config = window.API_CONFIG || { baseURL: window.location.origin };
+
+  const buildApiUrl = typeof window.buildApiUrl === 'function'
+    ? window.buildApiUrl
+    : (keyOrPath) => {
+        if (typeof keyOrPath === 'string' && keyOrPath.startsWith('http')) {
+          return keyOrPath;
+        }
+        const path = (typeof keyOrPath === 'string' && keyOrPath.startsWith('/')) ? keyOrPath : `/${keyOrPath}`;
+        return `${config.baseURL}${path}`;
+      };
+
+  const resolveApiEndpoint = typeof window.resolveApiEndpoint === 'function'
+    ? window.resolveApiEndpoint
+    : (keyOrPath) => keyOrPath;
+
+  const toUrl = (keyOrPath) => {
+    if (typeof keyOrPath === 'string' && keyOrPath.startsWith('http')) {
+      return keyOrPath;
+    }
+    const resolved = resolveApiEndpoint(keyOrPath);
+    return buildApiUrl(resolved);
+  };
+
+  return {
+    config,
+    toUrl,
+    baseUrl: config.baseURL,
+  };
+})();
+
+const toNumeric = (value, fallback = 0) => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+};
+
+const toPercentRatio = (value) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric === 0) {
+    return 0;
+  }
+  return Math.abs(numeric) > 1 ? numeric / 100 : numeric;
+};
+
+const toDate = (value) => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? new Date() : date;
+};
+
+class CryptoDashboard {
+  constructor() {
+    this.autoRefresh = true;
+    this.refreshInterval = null;
+    this.api = apiHelpers;
+
+    this.init();
+  }
+
+  init() {
+    this.updateConnectionStatus('connecting');
+    this.loadAllData();
+    this.startAutoRefresh();
+    this.setupEventListeners();
+  }
+
+  setupEventListeners() {
+    const toggleBtn = document.getElementById('refresh-toggle-btn');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => this.toggleAutoRefresh());
+    }
+  }
+
+  updateConnectionStatus(status) {
+    const statusEl = document.querySelector('.connection-status');
+    if (!statusEl) return;
+    statusEl.textContent = status;
+    statusEl.className = `connection-status ${status}`;
+  }
+
+  updateMarketStatus(marketStatus) {
+    const marketEl = document.querySelector('.crypto-status');
+    if (!marketEl) return;
+    marketEl.textContent = marketStatus || '';
+  }
+
+  async loadAllData() {
+    try {
+      this.updateConnectionStatus('connecting');
+
+      const [
+        statusData,
+        accountData,
+        positionsData,
+        signalsData,
+        tradesPayload
+      ] = await Promise.all([
+        this.fetchData('status'),
+        this.fetchData('account'),
+        this.fetchData('positions'),
+        this.fetchData('signals'),
+        this.fetchData('pnl.trades')
+      ]);
+
+      const positions = Array.isArray(positionsData) ? positionsData : [];
+      const signals = Array.isArray(signalsData) ? signalsData : [];
+      const trades = Array.isArray(tradesPayload?.trades)
+        ? tradesPayload.trades
+        : Array.isArray(tradesPayload)
+          ? tradesPayload
+          : [];
+
+      this.updateAccountInfo(accountData || {});
+      this.updatePositions(positions);
+      this.updateSignals(signals);
+      this.updatePerformance(positions);
+      this.updateTrades(trades);
+
+      if (statusData?.market_status) {
+        this.updateMarketStatus(statusData.market_status);
+      }
+
+      this.updateConnectionStatus('connected');
+      this.updateLastRefreshTime();
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      this.updateConnectionStatus('error');
+    }
+  }
+
+  async fetchData(endpointKeyOrPath, options) {
+    const url = this.api.toUrl(endpointKeyOrPath);
+    const response = await fetch(url, options);
+    if (!response.ok) {
+      throw new Error(`HTTP error ${response.status} for ${url}`);
+    }
+    return response.json();
+  }
+
+  updateAccountInfo(accountData = {}) {
+    const el = document.getElementById('portfolio-value');
+    if (!el) return;
+    const portfolioValue = toNumeric(accountData.portfolio_value);
+    el.textContent = this.formatCurrency(portfolioValue);
+  }
+
+  updatePositions(positions = []) {
+    const list = document.getElementById('positions-list');
+    if (!list) return;
+
+    list.innerHTML = '';
+    positions.forEach((position) => {
+      const avgEntry = toNumeric(position.avg_entry_price ?? position.avg_price);
+      const currentPrice = toNumeric(position.current_price ?? 0);
+      const pnlValue = toNumeric(position.unrealized_pl);
+      const pnlPercent = toPercentRatio(position.unrealized_plpc);
+      const pnlClass = pnlValue >= 0 ? 'positive' : 'negative';
+
+      const li = document.createElement('li');
+      li.className = `position-item ${pnlClass}`;
+      li.textContent = `${position.symbol}: Avg Entry ${this.formatCurrency(avgEntry)}, Current ${this.formatCurrency(currentPrice)}, PnL: ${this.formatCurrency(pnlValue)} (${this.formatPercent(pnlPercent)})`;
+      list.appendChild(li);
+    });
+  }
+
+  updateSignals(signals = []) {
+    const list = document.getElementById('signals-list');
+    if (!list) return;
+
+    list.innerHTML = '';
+    signals.forEach((signal) => {
+      const li = document.createElement('li');
+      li.textContent = `${signal.symbol} - ${signal.action} at ${this.formatTime(signal.timestamp)}`;
+      list.appendChild(li);
+    });
+  }
+
+  updateTrades(trades = []) {
+    const tbody = document.getElementById('trades-body');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    const recentTrades = trades.slice(-10).reverse();
+    recentTrades.forEach((trade) => {
+      const tr = document.createElement('tr');
+
+      const qty = toNumeric(trade.qty);
+      const price = toNumeric(trade.price);
+      const value = qty * price;
+
+      const sideClass = (trade.side || '').toLowerCase() === 'buy' ? 'positive' : 'negative';
+
+      tr.innerHTML = `
+        <td>${trade.symbol || ''}</td>
+        <td class="${sideClass}">${trade.side || ''}</td>
+        <td>${qty}</td>
+        <td>${this.formatCurrency(price)}</td>
+        <td>${this.formatCurrency(value)}</td
+[2025-10-15T21:32:21] codex
+
+Workspace is read-only, so I couldn’t land the fix; please apply the updates below to restore dynamic API base handling and add regression coverage.
+
+- `frontend/config.js:5` replace the hard-coded `window.location.origin` with an override-aware helper that exposes `API_CONFIG`, `buildApiUrl`, and `resolveApiEndpoint`.
+- `frontend/index.html:118` load `/frontend/config.js` ahead of `/frontend/script.js` so the dashboard script can see the helpers.
+- `frontend/script.js:1` refactor all fetches to call `buildApiUrl`, normalise numeric fields, guard against missing DOM nodes, and treat `/api/v1/pnl/trades` responses as `{ trades: [...] }` to fix the `tradesData.slice` crash.
+- `frontend/dashboard.html:291` (and `frontend/crypto-dashboard.html` wherever `fetch('/api/v1/...')` appears) load the shared config script, build URLs through `buildApiUrl`, and reuse it for Socket.IO so overrides and remote hosting work.
+- `tests/functional/test_dashboard_api_shapes.py` add a fixture-backed suite that stubs services and asserts the `/api/v1` responses expose every field consumed by the UI.
+- `tests/e2e/api-base-url.spec.js` add Playwright coverage that confirms the dashboard hydrates with the default origin and when `window.API_BASE_URL` is set.
+
+Below are the concrete code drops to apply:
+
+```javascript
+// frontend/config.js
+// Frontend Configuration for Flask API endpoints.
+// Provides a single source of truth for the dashboard to discover API URLs,
+// supporting both same-origin deployments and cross-origin overrides.
+
+(function initApiConfig(globalScope) {
+    const globalObject = globalScope || {};
+    const FALLBACK_BASE = 'http://localhost:5001';
+
+    const sanitizeBaseUrl = (value) => {
+        if (typeof value !== 'string' || value.trim() === '') {
+            return null;
+        }
+        return value.replace(/\/+$/, '');
+    };
+
+    const detectBaseUrl = () => {
+        const override = sanitizeBaseUrl(globalObject.API_BASE_URL);
+        if (override) {
+            return override;
+        }
+
+        if (typeof process !== 'undefined' && process.env?.FRONTEND_API_BASE_URL) {
+            const envOverride = sanitizeBaseUrl(process.env.FRONTEND_API_BASE_URL);
+            if (envOverride) {
+                return envOverride;
+            }
+        }
+
+        if (globalObject.location?.origin) {
+            return sanitizeBaseUrl(globalObject.location.origin);
+        }
+
+        return FALLBACK_BASE;
+    };
+
+    const ensureLeadingSlash = (path) => {
+        if (typeof path !== 'string') {
+            return '';
+        }
+        return path.startsWith('/') ? path : `/${path}`;
+    };
+
+    const endpoints = {
+        status: '/api/v1/status',
+        account: '/api/v1/account',
+        positions: '/api/v1/positions',
+        signals: '/api/v1/signals',
+        orders: '/api/v1/orders',
+        symbols: '/api/v1/symbols',
+        'trading.start': '/api/v1/trading/start',
+        'trading.stop': '/api/v1/trading/stop',
+        'trading.buy': '/api/v1/trading/buy',
+        'trading.sell': '/api/v1/trading/sell',
+        'trading.closePosition': '/api/v1/trading/close',
+        'trading.closeAll': '/api/v1/trading/close-all',
+        'pnl.current': '/api/v1/pnl/current',
+        'pnl.history': '/api/v1/pnl/history',
+        'pnl.chart': '/api/v1/pnl/chart-data',
+        'pnl.statistics': '/api/v1/pnl/statistics',
+        'pnl.export': '/api/v1/pnl/export',
+        'pnl.trades': '/api/v1/pnl/trades'
+    };
+
+    const API_CONFIG = {
+        baseURL: detectBaseUrl(),
+        version: 'v1',
+        endpoints,
+        websocket: {
+            enabled: true,
+            reconnect: true,
+            reconnectDelay: 5000
+        },
+        updateIntervals: {
+            account: 30000,
+            positions: 5000,
+            signals: 10000,
+            pnl: 5000
+        }
+    };
+
+    const resolveApiEndpoint = (keyOrPath) => {
+        if (!keyOrPath) {
+            throw new Error('Endpoint key or path is required');
+        }
+
+        if (typeof keyOrPath === 'string' && keyOrPath.startsWith('/')) {
+            return ensureLeadingSlash(keyOrPath);
+        }
+
+        if (typeof keyOrPath === 'string' && endpoints[keyOrPath]) {
+            return ensureLeadingSlash(endpoints[keyOrPath]);
+        }
+
+        return ensureLeadingSlash(String(keyOrPath));
+    };
+
+    const buildApiUrl = (keyOrPath) => {
+        const endpointPath = resolveApiEndpoint(keyOrPath);
+        return `${API_CONFIG.baseURL}${endpointPath}`;
+    };
+
+    if (typeof globalScope !== 'undefined') {
+        globalScope.API_CONFIG = API_CONFIG;
+        globalScope.buildApiUrl = buildApiUrl;
+        globalScope.resolveApiEndpoint = resolveApiEndpoint;
+    }
+
+    if (typeof module !== 'undefined' && module.exports) {
+        module.exports = {
+            API_CONFIG,
+            buildApiUrl,
+            resolveApiEndpoint
+        };
+    }
+})(typeof window !== 'undefined' ? window : globalThis);
+```
+
+```html
+<!-- frontend/index.html (footer) -->
+    <script src="/frontend/config.js"></script>
+    <script src="/frontend/script.js"></script>
+```
+
+```javascript
+// frontend/script.js
+const apiHelpers = (() => {
+    const config = window.API_CONFIG || { baseURL: window.location.origin };
+
+    const builder = typeof window.buildApiUrl === 'function'
+        ? window.buildApiUrl
+        : (keyOrPath) => {
+            if (typeof keyOrPath === 'string' && keyOrPath.startsWith('http')) {
+                return keyOrPath;
+            }
+            const path = typeof keyOrPath === 'string' && keyOrPath.startsWith('/')
+                ? keyOrPath
+                : `/${keyOrPath}`;
+            return `${config.baseURL}${path}`;
+        };
+
+    const resolver = typeof window.resolveApiEndpoint === 'function'
+        ? window.resolveApiEndpoint
+        : (keyOrPath) => keyOrPath;
+
+    const toUrl = (keyOrPath) => {
+        if (typeof keyOrPath === 'string' && keyOrPath.startsWith('http')) {
+            return keyOrPath;
+        }
+        const resolved = resolver(keyOrPath);
+        return builder(resolved);
+    };
+
+    return {
+        config,
+        toUrl,
+        baseUrl: config.baseURL
+    };
+})();
+
+const toNumeric = (value, fallback = 0) => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : fallback;
+};
+
+const toPercentRatio = (value) => {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric === 0) {
+        return 0;
+    }
+    return Math.abs(numeric) > 1 ? numeric / 100 : numeric;
+};
+
+const toDate = (value) => {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? new Date() : date;
+};
+
+class CryptoDashboard {
+    constructor() {
+        this.autoRefresh = true;
+        this.refreshInterval = null;
+        this.lastUpdate = null;
+        this.api = apiHelpers;
+
+        this.init();
+    }
+
+    init() {
+        this.updateConnectionStatus('connecting');
+        this.loadAllData();
+        this.startAutoRefresh();
+        this.setupEventListeners();
+    }
+
+    setupEventListeners() {
+        window.addEventListener('focus', () => {
+            this.loadAllData();
+        });
+    }
+
+    updateConnectionStatus(status) {
+        const statusIndicator = document.getElementById('connection-status');
+        if (!statusIndicator) {
+            return;
+        }
+
+        const statusDot = statusIndicator.querySelector('.status-dot');
+        const statusText = statusIndicator.querySelector('.status-text');
+
+        if (!statusDot || !statusText) {
+            return;
+        }
+
+        statusDot.className = 'status-dot';
+
+        switch (status) {
+            case 'connected':
+                statusDot.classList.add('connected');
+                statusText.textContent = 'Connected';
+                break;
+            case 'connecting':
+                statusDot.classList.add('connecting');
+                statusText.textContent = 'Connecting...';
+                break;
+            case 'error':
+                statusDot.classList.add('error');
+                statusText.textContent = 'Connection Error';
+                break;
+        }
+    }
+
+    async loadAllData() {
+        try {
+            this.updateConnectionStatus('connecting');
+
+            const [
+                statusData,
+                accountData,
+                positionsData,
+                signalsData,
+                tradesPayload
+            ] = await Promise.all([
+                this.fetchData('status'),
+                this.fetchData('account'),
+                this.fetchData('positions'),
+                this.fetchData('signals'),
+                this.fetchData('pnl.trades')
+            ]);
+
+            const positions = Array.isArray(positionsData) ? positionsData : [];
+            const signals = Array.isArray(signalsData) ? signalsData : [];
+            const trades = Array.isArray(tradesPayload?.trades)
+                ? tradesPayload.trades
+                : Array.isArray(tradesPayload)
+                    ? tradesPayload
+                    : [];
+
+            this.updateAccountInfo(accountData || {});
+            this.updatePositions(positions);
+            this.updateSignals(signals);
+            this.updatePerformance(positions);
+            this.updateTrades(trades);
+
+            if (statusData?.market_status) {
+                this.updateMarketStatus(statusData.market_status);
+            }
+
+            this.updateConnectionStatus('connected');
+            this.updateLastRefreshTime();
+        } catch (error) {
+            console.error('Error loading dashboard data:', error);
+            this.updateConnectionStatus('error');
+        }
+    }
+
+    async fetchData(endpointKeyOrPath, options) {
+        const url = this.api.toUrl(endpointKeyOrPath);
+        const response = await fetch(url, options);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status} url: ${url}`);
+        }
+        return response.json();
+    }
+
+    updateAccountInfo(accountData = {}) {
+        const portfolioValueEl = document.getElementById('portfolio-value');
+        const buyingPowerEl = document.getElementById('buying-power');
+        const cashEl = document.getElementById('cash');
+        const statusEl = document.getElementById('account-status');
+
+        if (!portfolioValueEl || !buyingPowerEl || !cashEl || !statusEl) {
+            return;
+        }
+
+        portfolioValueEl.textContent = this.formatCurrency(toNumeric(accountData.portfolio_value));
+        buyingPowerEl.textContent = this.formatCurrency(toNumeric(accountData.buying_power));
+        cashEl.textContent = this.formatCurrency(toNumeric(accountData.cash));
+        statusEl.textContent = accountData.status || 'Unknown';
+    }
+
+    updatePositions(positionsData) {
+        const positionsContainer = document.getElementById('positions-list');
+        const positionsCount = document.getElementById('positions-count');
+
+        if (!positionsContainer || !positionsCount) {
+            return;
+        }
+
+        const positions = Array.isArray(positionsData) ? positionsData : [];
+
+        if (positions.length === 0) {
+            positionsContainer.innerHTML = '<div class="no-data">No open crypto positions</div>';
+            positionsCount.textContent = '0';
+            return;
+        }
+
+        positionsCount.textContent = String(positions.length);
+
+        let html = '<div class="positions-grid">';
+        positions.forEach(position => {
+            const unrealized = toNumeric(position.unrealized_pl);
+            const pnlClass = unrealized >= 0 ? 'positive' : 'negative';
+            const pnlSymbol = unrealized >= 0 ? '+' : '';
+
+            const avgPrice = this.formatCurrency(
+                toNumeric(position.avg_entry_price ?? position.avg_price)
+            );
+            const currentPrice = this.formatCurrency(
+                toNumeric(position.current_price ?? position.avg_entry_price)
+            );
+            const pnlPercent = this.formatPercent(
+                toPercentRatio(position.unrealized_plpc)
+            );
+
+            html += `
+                <div class="position-item">
+                    <div class="position-header">
+                        <span class="symbol">${position.symbol}</span>
+                        <span class="pnl ${pnlClass}">
+                            ${pnlSymbol}${this.formatCurrency(unrealized)}
+                        </span>
+                    </div>
+                    <div class="position-details">
+                        <div class="detail">
+                            <span>Qty:</span>
+                            <span>${position.qty}</span>
+                        </div>
+                        <div class="detail">
+                            <span>Avg Price:</span>
+                            <span>${avgPrice}</span>
+                        </div>
+                        <div class="detail">
+                            <span>Current:</span>
+                            <span>${currentPrice}</span>
+                        </div>
+                        <div class="detail">
+                            <span>P&L %:</span>
+                            <span class="${pnlClass}">${pnlPercent}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        positionsContainer.innerHTML = html;
+    }
+
+    updateSignals(signalsData) {
+        const signalsContainer = document.getElementById('signals-list');
+        if (!signalsContainer) {
+            return;
+        }
+
+        const signals = Array.isArray(signalsData) ? signalsData : [];
+
+        if (signals.length === 0) {
+            signalsContainer.innerHTML = '<div class="no-data">No signals available</div>';
+            return;
+        }
+
+        let html = '<div class="signals-grid">';
+        signals.forEach(signal => {
+            const actionClass = (signal.action || '').toLowerCase();
+            const strengthClass = (signal.strength || '').toLowerCase();
+
+            html += `
+                <div class="signal-item">
+                    <div class="signal-header">
+                        <span class="symbol">${signal.symbol}</span>
+                        <span class="action ${actionClass}">${signal.action}</span>
+                    </div>
+                    <div class="signal-details">
+                        <div class="detail">
+                            <span>RSI:</span>
+                            <span>${signal.rsi}</span>
+                        </div>
+                        <div class="detail">
+                            <span>Price:</span>
+                            <span>${this.formatCurrency(signal.price)}</span>
+                        </div>
+                        <div class="detail">
+                            <span>Strength:</span>
+                            <span class="${strengthClass}">${signal.strength}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        signalsContainer.innerHTML = html;
+    }
+
+    updatePerformance(positionsData) {
+        const totalPnLElement = document.getElementById('total-pnl');
+        const dailyPnLElement = document.getElementById('daily-pnl');
+
+        if (!totalPnLElement || !dailyPnLElement) {
+            return;
+        }
+
+        const positions = Array.isArray(positionsData) ? positionsData : [];
+        const totalPnL = positions.reduce(
+            (sum, pos) => sum + toNumeric(pos.unrealized_pl),
+            0
+        );
+
+        totalPnLElement.textContent = this.formatCurrency(totalPnL);
+        totalPnLElement.className = 'value pnl ' + (totalPnL >= 0 ? 'positive' : 'negative');
+
+        dailyPnLElement.textContent = this.formatCurrency(totalPnL);
+        dailyPnLElement.className = 'value pnl ' + (totalPnL >= 0 ? 'positive' : 'negative');
+    }
+
+    updateTrades(tradesData) {
+        const tradesBody = document.getElementById('trades-body');
+        if (!tradesBody) {
+            return;
+        }
+
+        const trades = Array.isArray(tradesData) ? tradesData : [];
+
+        if (trades.length === 0) {
+            tradesBody.innerHTML = '<tr><td colspan="6" class="no-data">No recent trades</td></tr>';
+            return;
+        }
+
+        const rows = trades.slice(-10).reverse().map(trade => {
+            const sideClass = (trade.side || '').toLowerCase() === 'buy' ? 'buy' : 'sell';
+            const qty = toNumeric(trade.qty);
+            const price = toNumeric(trade.price);
+            const value = qty * price;
+
+            return `
+                <tr>
+                    <td>${this.formatTime(trade.time || trade.timestamp)}</td>
+                    <td class="symbol">${trade.symbol}</td>
+                    <td class="side ${sideClass}">${(trade.side || '').toUpperCase()}</td>
+                    <td>${qty}</td>
+                    <td>${this.formatCurrency(price)}</td>
+                    <td>${this.formatCurrency(value)}</td>
+                </tr>
+            `;
+        });
+
+        tradesBody.innerHTML = rows.join('\n');
+    }
+
+    updateMarketStatus(status) {
+        const statusElement = document.querySelector('.crypto-status');
+        if (statusElement) {
+            statusElement.textContent = status;
+        }
+    }
+
+    formatCurrency(amount) {
+        const numeric = toNumeric(amount);
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 4
+        }).format(numeric);
+    }
+
+    formatPercent(value) {
+        const ratio = toPercentRatio(value);
+        return new Intl.NumberFormat('en-US', {
+            style: 'percent',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(ratio);
+    }
+
+    formatTime(timestamp) {
+        const date = toDate(timestamp);
+        return date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    }
+
+    updateLastRefreshTime() {
+        const now = new Date();
+        const lastUpdateElement = document.getElementById('last-update');
+        if (lastUpdateElement) {
+            lastUpdateElement.textContent = now.toLocaleTimeString();
+        }
+        this.lastUpdate = now;
+    }
+
+    startAutoRefresh() {
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+        }
+
+        if (this.autoRefresh) {
+            this.refreshInterval = setInterval(() => {
+                this.loadAllData();
+            }, 10000);
+        }
+    }
+
+    stopAutoRefresh() {
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+            this.refreshInterval = null;
+        }
+    }
+}
+
+function refreshDashboard() {
+    if (window.dashboard) {
+        window.dashboard.loadAllData();
+    }
+}
+
+function toggleAutoRefresh() {
+    if (!window.dashboard) {
+        return;
+    }
+
+    window.dashboard.autoRefresh = !window.dashboard.autoRefresh;
+    const autoRefreshText = document.getElementById('auto-refresh-text');
+
+    if (window.dashboard.autoRefresh) {
+        if (autoRefreshText) {
+            autoRefreshText.textContent = 'Auto Refresh: ON';
+        }
+        window.dashboard.startAutoRefresh();
+    } else {
+        if (autoRefreshText) {
+            autoRefreshText.textContent = 'Auto Refresh: OFF';
+        }
+        window.dashboard.stopAutoRefresh();
+    }
+}
+
+let dashboard;
+document.addEventListener('DOMContentLoaded', function () {
+    dashboard = new CryptoDashboard();
+    window.dashboard = dashboard;
+});
+```
+
+```python
+# tests/functional/test_dashboard_api_shapes.py
+import pytest
+
+from backend.api import create_app
+
+
+class FakeTradingService:
+    def get_system_status(self):
+        return {
+            "last_update": "2025-01-01T00:00:00Z",
+            "market_status": "OPEN",
+            "is_trading": True,
+            "services": {"alpaca": "connected", "trading_bot": "running"}
+        }
+
+    def get_account_data(self):
+        return {
+            "status": "ACTIVE",
+            "buying_power": 5000.0,
+            "portfolio_value": 12500.0,
+            "cash": 2500.0,
+            "equity": 12500.0,
+            "pattern_day_trader": False,
+            "trading_blocked": False,
+            "account_blocked": False
+        }
+
+    def get_positions(self):
+        return [
+            {
+                "symbol": "BTCUSD",
+                "qty": 0.5,
+                "avg_entry_price": 42000.0,
+                "current_price": 43000.0,
+                "market_value": 21500.0,
+                "unrealized_pl": 500.0,
+                "unrealized_plpc": 5.0,
+                "side": "long",
+                "asset_class": "crypto"
+            }
+        ]
+
+    def calculate_signals(self, _symbols=None):
+        return [
+            {
+                "symbol": "BTCUSD",
+                "action": "BUY",
+                "rsi": 55.2,
+                "stoch_k": 60.1,
+                "stoch_d": 57.3,
+                "price": 43000.0,
+                "volume": 1200,
+                "strength": "Strong",
+                "timestamp": "2025-01-01T00:00:00Z"
+            }
+        ]
+
+    def get_orders(self, status="all", limit=50):
+        return [
+            {
+                "id": "order-1",
+                "symbol": "BTCUSD",
+                "side": "buy",
+                "qty": 0.5,
+                "type": "market",
+                "status": "filled",
+                "submitted_at": "2025-01-01T00:00:00Z"
+            }
+        ]
+
+
+class FakePnLService:
+    def get_current_pnl(self):
+        return {
+            "daily_pnl": 150.0,
+            "total_pnl": 4200.0,
+            "realized_pnl": 3800.0,
+            "unrealized_pnl": 400.0,
+            "win_rate": 62.5,
+            "best_trade": {"symbol": "BTCUSD", "pnl": 320.0},
+            "worst_trade": {"symbol": "ETHUSD", "pnl": -120.0},
+            "positions": 1
+        }
+
+    def get_recent_trades(self, limit=50):
+        return [
+            {
+                "id": 1,
+                "timestamp": "2025-01-01T00:00:00Z",
+                "symbol": "BTCUSD",
+                "side": "buy",
+                "qty": 0.1,
+                "price": 42000.0,
+                "pnl": 100.0,
+                "order_id": "abc-123"
+            }
+        ]
+
+
+@pytest.fixture()
+def api_client(monkeypatch):
+    def fake_init_services(app):
+        app.trading_service = FakeTradingService()
+        app.pnl_service = FakePnLService()
+        app.alpaca_client = object()
+
+    monkeypatch.setattr('backend.api.services.init_services', fake_init_services)
+
+    app = create_app(config_name='testing')
+    app.config['TESTING'] = True
+
+    with app.test_client() as client:
+        yield client
+
+
+def test_status_shape(api_client):
+    response = api_client.get('/api/v1/status')
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload['status'] == 'running'
+    assert isinstance(payload['services'], dict)
+    assert 'trading_mode' in payload
+
+
+def test_account_shape(api_client):
+    response = api_client.get('/api/v1/account')
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert {'portfolio_value', 'buying_power', 'cash', 'status'} <= payload.keys()
+
+
+def test_positions_shape(api_client):
+    response = api_client.get('/api/v1/positions')
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert isinstance(payload, list)
+    position = payload[0]
+    assert {'symbol', 'qty', 'avg_entry_price', 'current_price', 'unrealized_pl', 'unrealized_plpc'} <= position.keys()
+
+
+def test_signals_shape(api_client):
+    response = api_client.get('/api/v1/signals')
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert isinstance(payload, list)
+    signal = payload[0]
+    assert {'symbol', 'action', 'price', 'strength', 'timestamp'} <= signal.keys()
+
+
+def test_orders_shape(api_client):
+    response = api_client.get('/api/v1/orders')
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert isinstance(payload, list)
+    order = payload[0]
+    assert {'id', 'symbol', 'side', 'status'} <= order.keys()
+
+
+def test_pnl_current_shape(api_client):
+    response = api_client.get('/api/v1/pnl/current')
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert {'daily_pnl', 'total_pnl', 'unrealized_pnl', 'timestamp'} <= payload.keys()
+
+
+def test_recent_trades_shape(api_client):
+    response = api_client.get('/api/v1/pnl/trades')
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert 'trades' in payload
+    trade = payload['trades'][0]
+    assert {'symbol', 'side', 'qty', 'price', 'timestamp'} <= trade.keys()
+```
+
+```javascript
+// tests/e2e/api-base-url.spec.js
+// @ts-check
+const { test, expect } = require('@playwright/test');
+
+const fulfillJson = (route, body) =>
+  route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify(body),
+  });
+
+const stubPayloads = {
+  status: {
+    status: 'running',
+    last_update: '2025-01-01T00:00:00Z',
+    market_status: 'OPEN',
+    services: {},
+    trading_mode: 'crypto',
+  },
+  account: {
+    status: 'ACTIVE',
+    portfolio_value: 12500,
+    buying_power: 5000,
+    cash: 2500,
+  },
+  positions: [],
+  signals: [],
+  trades: { trades: [] },
+};
+
+test.describe('API base URL configuration', () => {
+  test('uses window origin by default', async ({ page }, testInfo) => {
+    const captured = [];
+
+    await page.route('**/api/v1/**', async (route) => {
+      const url = route.request().url();
+      if (url.endsWith('/status')) {
+        captured.push(url);
+        await fulfillJson(route, stubPayloads.status);
+        return;
+      }
+      if (url.endsWith('/account')) {
+        await fulfillJson(route, stubPayloads.account);
+        return;
+      }
+      if (url.endsWith('/positions')) {
+        await fulfillJson(route, stubPayloads.positions);
+        return;
+      }
+      if (url.endsWith('/signals')) {
+        await fulfillJson(route, stubPayloads.signals);
+        return;
+      }
+      if (url.endsWith('/pnl/trades')) {
+        await fulfillJson(route, stubPayloads.trades);
+        return;
+      }
+
+      await fulfillJson(route, {});
+    });
+
+    await page.goto('/');
+
+    await expect(page.locator('.card:has-text("Account")')).toBeVisible();
+
+    expect(captured.length).toBeGreaterThan(0);
+    const origin = new URL(captured[0]).origin;
+    const expected = (testInfo.project.use.baseURL || '').replace(/\/$/, '');
+    expect(origin).toBe(expected);
+  });
+
+  test('honours window.API_BASE_URL override', async ({ page }) => {
+    const overrideOrigin = 'https://api.testhost.dev';
+    const requests = [];
+    let fallbackRequest = false;
+
+    await page.route('**/api/v1/**', async (route) => {
+      const url = route.request().url();
+      if (!url.startsWith(`${overrideOrigin}/`)) {
+        fallbackRequest = true;
+      } else {
+        requests.push(url);
+      }
+
+      if (url.endsWith('/status')) {
+        await fulfillJson(route, stubPayloads.status);
+        return;
+      }
+      if (url.endsWith('/account')) {
+        await fulfillJson(route, stubPayloads.account);
+        return;
+      }
+      if (url.endsWith('/positions')) {
+        await fulfillJson(route, stubPayloads.positions);
+        return;
+      }
+      if (url.endsWith('/signals')) {
+        await fulfillJson(route, stubPayloads.signals);
+        return;
+      }
+      if (url.endsWith('/pnl/trades')) {
+        await fulfillJson(route, stubPayloads.trades);
+        return;
+      }
+
+      await fulfillJson(route, {});
+    });
+
+    await page.addInitScript((origin) => {
+      window.API_BASE_URL = origin;
+    }, overrideOrigin);
+
+    await page.goto('/');
+    await expect(page.locator('.card:has-text("Account")')).toBeVisible();
+
+    expect(fallbackRequest).toBe(false);
+    expect(requests.length).toBeGreaterThan(0);
+    requests.forEach((url) => {
+      expect(url.startsWith(`${overrideOrigin}/`)).toBeTruthy();
+    });
+  });
+});
+```
+
+(Apply the same `buildApiUrl` helper strategy in the inline scripts of `frontend/dashboard.html` and `frontend/crypto-dashboard.html`, replacing direct `/api/v1/...` fetches, trading posts, multiplier updates, and `io(window.location.origin)` calls with the helper-driven equivalents.)
+
+Next steps I recommend once the files are updated:
+
+1. `pytest tests/functional/test_dashboard_api_shapes.py`
+2. `pytest tests/functional -m "not paper_trading"`
+3. `npm test`
+
+I couldn’t run the suites here because the sandbox blocks writes, so please execute the commands above after applying the patches to confirm everything passes.
+[2025-10-15T21:32:57] tokens used: 121,217

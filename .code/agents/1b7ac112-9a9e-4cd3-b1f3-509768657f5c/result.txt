@@ -1,0 +1,120 @@
+Now I see the issue clearly. The `/frontend/<path:filename>` route exists but `config.js` is being referenced directly as `src="config.js"` in the HTML, not as `/frontend/config.js`. 
+
+Let me create a comprehensive patch plan:
+
+## **Flask Dashboard 404 Fix - Patch Plan**
+
+### **Problem Analysis**
+1. `dashboard.html` loads with `<script src="config.js">` which tries to fetch `/config.js`
+2. Flask doesn't serve `/config.js` - only `/frontend/<filename>` is mapped
+3. This causes the API config to fail, making the dashboard fall back to unversioned endpoints
+
+### **Solution: Three-Part Fix**
+
+#### **Part 1: Add Static File Route to Flask**
+In `backend/api/blueprints/dashboard.py`, add a catch-all route for static assets at the root level:
+
+```python
+@dashboard_bp.route('/<path:filename>')
+def serve_static_files(filename):
+    """Serve static files from frontend directory"""
+    # Only serve known static file extensions to avoid conflicts
+    allowed_extensions = {'.js', '.css', '.json', '.png', '.jpg', '.ico'}
+    if any(filename.endswith(ext) for ext in allowed_extensions):
+        return send_from_directory(current_app.config['STATIC_FOLDER'], filename)
+    abort(404)
+```
+
+**Alternative (Cleaner) Approach:** Register Flask app with static folder properly:
+
+In `backend/api/__init__.py`, modify the Flask initialization:
+```python
+app = Flask(__name__, static_folder='../../frontend', static_url_path='')
+```
+
+This makes Flask automatically serve all files from `frontend/` at the root path.
+
+#### **Part 2: Fix API Base URL Detection**
+The `config.js` is correctly detecting the base URL, but when running on port 5010, it needs to use that port. Update `frontend/config.js`:
+
+```javascript
+// Line 38-43: Fix port detection logic
+if (!port || port === '') {
+    // Use the specified default port
+    return `${protocol}//${hostname}:${defaultPort}`;
+}
+// Use the current port if it's set
+return `${protocol}//${hostname}:${port}`;
+```
+
+#### **Part 3: Ensure Dashboard Uses buildApiUrl**
+The dashboard already uses `buildApiUrl` correctly through the `resolveEndpoint` function.
+
+### **Recommended Implementation**
+
+Since you're running in read-only mode, here's the exact patch to apply:
+
+**File: `backend/api/__init__.py`**
+```python
+# Line 25 - Replace:
+app = Flask(__name__)
+
+# With:
+app = Flask(__name__, 
+            static_folder='../../frontend',
+            static_url_path='')
+```
+
+**File: `backend/api/blueprints/dashboard.py`**
+Remove the `/frontend/<path:filename>` route (lines 51-54) since Flask will handle static files automatically.
+
+**File: `frontend/config.js`** (optional improvement)
+```javascript
+// Line 38-43 - Simplify port logic:
+const actualPort = location?.port || defaultPort;
+return `${protocol}//${hostname}:${actualPort}`;
+```
+
+### **Verification Checklist**
+
+1. **Start the server:**
+   ```bash
+   python backend/api/run.py --host 127.0.0.1 --port 5010 --debug
+   ```
+
+2. **Verify static files load:**
+   - Open browser to `http://127.0.0.1:5010/config.js`
+   - Should return the JavaScript config file (not 404)
+
+3. **Check dashboard loads:**
+   - Navigate to `http://127.0.0.1:5010/`
+   - Open browser DevTools Console
+   - Verify no 404 errors for static files
+   - Check that `window.API_CONFIG` is defined
+   - Confirm `window.API_CONFIG.baseURL` shows `http://127.0.0.1:5010`
+
+4. **Verify API calls work:**
+   - In DevTools Network tab, watch for API calls
+   - Should see requests to `/api/v1/account`, `/api/v1/positions`, etc.
+   - All should return 200 status (assuming backend services are running)
+
+5. **Check data population:**
+   - Account info should display (balance, buying power)
+   - Positions should show if any exist
+   - P&L chart should render
+
+### **Quick Test Commands**
+After starting the server, test API endpoints directly:
+```bash
+# Test account endpoint
+curl http://127.0.0.1:5010/api/v1/account
+
+# Test positions
+curl http://127.0.0.1:5010/api/v1/positions  
+
+# Test that config.js loads
+curl http://127.0.0.1:5010/config.js | head -5
+```
+
+### **Summary**
+The core issue is Flask not serving static files at the root path. The cleanest fix is to configure Flask with `static_folder` and `static_url_path=''` so it automatically serves all frontend files. This eliminates the 404s and allows the dashboard to load its configuration and make proper API calls.

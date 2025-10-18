@@ -4,9 +4,12 @@ Trading Blueprint
 Trading operations and control endpoints
 """
 
+from dataclasses import asdict, is_dataclass
+
 from flask import Blueprint, jsonify, request, current_app
-from backend.api.utils.decorators import handle_errors, require_auth
-from backend.api.utils.validators import validate_order
+
+from ..utils.decorators import handle_errors, require_auth
+from ..utils.validators import validate_order
 
 trading_bp = Blueprint('trading', __name__)
 
@@ -16,7 +19,7 @@ trading_bp = Blueprint('trading', __name__)
 def start_trading():
     """Start automated trading"""
     service = current_app.trading_service
-    config = request.get_json() or {}
+    config = request.get_json(silent=True) or {}
 
     # Start trading with optional config overrides
     result = service.start_trading(config)
@@ -35,7 +38,8 @@ def stop_trading():
     service = current_app.trading_service
 
     # Optional: close all positions
-    close_positions = request.get_json().get('close_positions', False)
+    data = request.get_json(silent=True) or {}
+    close_positions = data.get('close_positions', False)
     result = service.stop_trading(close_positions=close_positions)
 
     return jsonify({
@@ -121,17 +125,20 @@ def close_all_positions():
 def strategy_config():
     """Get or update strategy configuration"""
     if request.method == 'GET':
-        config = current_app.config.TRADING_CONFIG
+        config = current_app.config['TRADING_CONFIG']
+        indicators = getattr(config, 'indicators', None)
+        indicator_payload = asdict(indicators) if is_dataclass(indicators) else (indicators or {})
+
         return jsonify({
-            'active_strategy': config.trading.strategy,
+            'active_strategy': getattr(config, 'strategy', None),
             'available_strategies': ['stoch_rsi', 'ma_crossover', 'crypto_scalping'],
-            'parameters': config.indicators.dict()
+            'parameters': indicator_payload
         })
 
     # POST - Update strategy
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     service = current_app.trading_service
-    result = service.update_strategy(data.get('strategy'), data.get('parameters'))
+    result = service.update_strategy(data.get('strategy'), data.get('parameters')) or {}
 
     return jsonify({
         'status': 'updated',

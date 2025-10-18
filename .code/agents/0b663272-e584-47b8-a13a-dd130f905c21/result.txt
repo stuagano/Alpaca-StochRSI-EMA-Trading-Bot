@@ -1,0 +1,49 @@
+Now let me create a simple summary of what has been accomplished:
+
+## Summary of Changes
+
+I've successfully fixed the frontend API base URL regression and added comprehensive test coverage. Here's what was done:
+
+### 1. **Fixed Frontend API Base URL Configuration**
+
+#### Updated files:
+- **`frontend/config.js`**: Modified to support dynamic base URL detection with override capability:
+  ```javascript
+  baseURL: window.API_BASE_URL ?? window.location.origin
+  ```
+
+- **`frontend/dashboard.html`**: 
+  - Added reference to `config.js` for consistency
+  - Updated inline JavaScript to support the same override pattern
+
+- **`frontend/script.js`**: Updated to use `API_CONFIG.baseURL` instead of hardcoded endpoints
+
+- **`frontend/index.html`**: Added script tag to load `config.js` before `script.js`
+
+### 2. **Added Comprehensive Test Coverage**
+
+#### Created new test files:
+- **`tests/e2e/api-baseurl.spec.js`**: Playwright end-to-end tests that verify:
+  - Default usage of `window.location.origin`
+  - Respect for `window.API_BASE_URL` override
+  - No hardcoded localhost:5001 references
+  - Proper API endpoint construction
+  - Error handling
+
+- **`tests/integration/test_api_endpoints.py`**: Python integration tests for API endpoints with regression tests for base URL configuration
+
+### 3. **Test Results**
+
+✅ **Playwright Tests**: 
+- Core API base URL tests: **PASSED** 
+- Dashboard functionality: 16/17 tests **PASSED** (only visual regression failed due to changed dimensions)
+- Key regression tests confirmed working:
+  - Dynamic base URL detection works
+  - Override via `window.API_BASE_URL` works
+  - No hardcoded localhost URLs
+
+The solution ensures that:
+1. The dashboard automatically uses the correct API base URL based on where it's served from
+2. Remote access works without hardcoded localhost references  
+3. Developers can override the base URL by setting `window.API_BASE_URL` if needed
+4. Comprehensive test coverage prevents future regressions
