@@ -21,6 +21,41 @@ import threading
 logger = logging.getLogger(__name__)
 
 
+def _default_crypto_scanner_universe() -> List[str]:
+    """Provide the default crypto scanner universe."""
+
+    return [
+        # Major pairs - confirmed working
+        "BTCUSD",
+        "ETHUSD",
+        "LTCUSD",
+        "BCHUSD",
+        # DeFi tokens - verified
+        "UNIUSD",
+        "LINKUSD",
+        "AAVEUSD",
+        "MKRUSD",
+        # Layer 1 blockchains - verified
+        "SOLUSD",
+        "AVAXUSD",
+        "ADAUSD",
+        "DOTUSD",
+        "MATICUSD",
+        # Meme coins & popular - verified
+        "DOGEUSD",
+        "SHIBUSD",
+        # Additional liquid pairs
+        "XRPUSD",
+        "XLMUSD",
+        "ALGOUSD",
+        # Stablecoins trading pairs
+        "BTCUSDT",
+        "ETHUSDT",
+        "BTCUSDC",
+        "ETHUSDC",
+    ]
+
+
 @dataclass
 class StochRSIConfig:
     """StochRSI indicator configuration."""
@@ -96,6 +131,16 @@ class LoggingConfig:
     file_path: str = "logs/trading_bot.log"
     max_bytes: int = 10 * 1024 * 1024  # 10MB
     backup_count: int = 5
+
+
+@dataclass
+class CryptoScannerConfig:
+    """Configuration for the crypto volatility scanner."""
+
+    universe: List[str] = field(default_factory=_default_crypto_scanner_universe)
+    min_24h_volume: int = 100000
+    min_volatility: float = 0.0001
+    max_spread: float = 0.01
 
 
 @dataclass
@@ -254,6 +299,7 @@ class TradingConfig:
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     api: APIConfig = field(default_factory=APIConfig)
     signal_filters: VolumeConfirmationConfig = field(default_factory=VolumeConfirmationConfig)
+    crypto_scanner: CryptoScannerConfig = field(default_factory=CryptoScannerConfig)
 
 
 class UnifiedConfigManager:
@@ -354,7 +400,7 @@ class UnifiedConfigManager:
         
         if 'api' in config_dict:
             config_dict['api'] = APIConfig(**config_dict['api'])
-        
+
         # Map volume confirmation settings into signal filters container
         if 'signal_filters' in config_dict and isinstance(config_dict['signal_filters'], dict):
             config_dict['signal_filters'] = VolumeConfirmationConfig(**config_dict['signal_filters'])
@@ -362,9 +408,12 @@ class UnifiedConfigManager:
             # Backward compatibility with older config layout
             config_dict['signal_filters'] = VolumeConfirmationConfig(**config_dict.pop('volume_confirmation'))
 
+        if 'crypto_scanner' in config_dict:
+            config_dict['crypto_scanner'] = CryptoScannerConfig(**config_dict['crypto_scanner'])
+
         # Remove any Epic1 configuration sections for simplified crypto scalping
         config_dict.pop('epic1', None)
-        
+
         return config_dict
     
     def _convert_legacy_indicators(self, indicators_data: Dict[str, Any]) -> IndicatorsConfig:
@@ -536,6 +585,9 @@ class UnifiedConfigManager:
 
         if 'signal_filters' in config_dict and isinstance(config_dict['signal_filters'], dict):
             config_dict['signal_filters'] = VolumeConfirmationConfig(**config_dict['signal_filters'])
+
+        if 'crypto_scanner' in config_dict and isinstance(config_dict['crypto_scanner'], dict):
+            config_dict['crypto_scanner'] = CryptoScannerConfig(**config_dict['crypto_scanner'])
 
         # Remove Epic1 configuration for simplified crypto scalping
         config_dict.pop('epic1', None)

@@ -146,25 +146,16 @@ async def main():
             alpaca_client = create_alpaca_client(config)
 
             # Create crypto day trading bot
-            bot = create_crypto_day_trader(alpaca_client, {
-                'crypto_capital': config.investment_amount,
-                'max_position_size': config.investment_amount * (config.risk_management.max_position_size or 0.05),
-                'max_positions': config.max_trades_active,
-                'min_profit': 0.003,  # 0.3% minimum profit
-                'max_daily_loss': config.investment_amount * (config.risk_management.max_daily_loss or 0.02)
-            })
+            bot = create_crypto_day_trader(alpaca_client, config)
 
             logger.info("Crypto scalping bot created and configured")
 
             # Setup signal handlers for graceful shutdown
             setup_signal_handlers(bot)
 
-            # Initialize enabled symbols from config
-            if hasattr(config, 'symbols') and config.symbols:
-                bot.scanner.update_enabled_symbols(config.symbols)
-                logger.info(f"Using configured symbols: {config.symbols}")
+            if config.symbols:
+                logger.info("Using configured symbols: %s", config.symbols)
             else:
-                # Fallback to dynamic symbol selection
                 logger.info("No symbols configured, will use dynamic selection")
 
             # Start the crypto scalping bot

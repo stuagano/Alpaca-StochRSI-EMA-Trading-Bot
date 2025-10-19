@@ -15,7 +15,7 @@ import os
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 from decimal import Decimal, ROUND_DOWN
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 from concurrent.futures import ThreadPoolExecutor
 import logging
 from threading import Lock
@@ -23,6 +23,7 @@ from enum import Enum
 from alpaca.common.exceptions import APIError
 
 from utils.trade_store import TradeStore
+from config.unified_config import CryptoScannerConfig, TradingConfig
 
 try:
     from prometheus_client import Counter, Gauge  # type: ignore
@@ -146,53 +147,99 @@ class CryptoSignal:
 
 class CryptoVolatilityScanner:
     """Scans for high volatility crypto pairs suitable for day trading"""
-    
-    def __init__(self, enabled_symbols=None):
-        # Default verified crypto pairs if no dynamic list provided
-        self.default_pairs = [
-            # Major pairs - confirmed working
-            'BTCUSD', 'ETHUSD', 'LTCUSD', 'BCHUSD',
-            # DeFi tokens - verified  
-            'UNIUSD', 'LINKUSD', 'AAVEUSD', 'MKRUSD',
-            # Layer 1 blockchains - verified
-            'SOLUSD', 'AVAXUSD', 'ADAUSD', 'DOTUSD', 'MATICUSD',
-            # Meme coins & popular - verified
-            'DOGEUSD', 'SHIBUSD', 
-            # Additional liquid pairs - removing ATOMUSD as it caused errors
-            'XRPUSD', 'XLMUSD', 'ALGOUSD',
-            # Stablecoins trading pairs
-            'BTCUSDT', 'ETHUSDT', 'BTCUSDC', 'ETHUSDC'
-        ]
-        
-        # Use provided enabled symbols or fall back to defaults
-        self.high_volume_pairs = enabled_symbols or self.default_pairs
-        self.enabled_trading_symbols = set(enabled_symbols) if enabled_symbols else set(self.default_pairs)
-        _metric_set(SCANNER_TRACKED_SYMBOLS_GAUGE, float(len(self.high_volume_pairs)))
-        
-        # EXTREMELY AGGRESSIVE criteria for crypto scalping
-        self.min_24h_volume = 100000    # $100K daily volume (ultra low for more opportunities)
-        self.min_volatility = 0.0001    # 0.01% price movement (ULTRA AGGRESSIVE for scalping)
-        self.max_spread = 0.01          # 1% bid-ask spread (very high tolerance)
-        
-        self.price_data = {}
-        self.volatility_data = {}
-        self.volume_data = {}
+
+    def __init__(
+        self,
+        config: Optional[CryptoScannerConfig] = None,
+        enabled_symbols: Optional[List[str]] = None,
+    ):
+        self.config = config or CryptoScannerConfig()
         self.lock = Lock()
+
+        self.configured_universe = self._merge_symbol_lists([], self.config.universe)
+        self.default_pairs = list(self.configured_universe)
+
+        initial_overrides = enabled_symbols or []
+        merged_symbols = self._merge_symbol_lists(self.configured_universe, initial_overrides)
+
+        self.high_volume_pairs = merged_symbols
+        self.enabled_trading_symbols: Set[str] = set(merged_symbols)
+        _metric_set(SCANNER_TRACKED_SYMBOLS_GAUGE, float(len(self.high_volume_pairs)))
+
+        # Scanner thresholds sourced from configuration
+        self.min_24h_volume = self.config.min_24h_volume
+        self.min_volatility = self.config.min_volatility
+        self.max_spread = self.config.max_spread
+
+        self.price_data: Dict[str, List[float]] = {}
+        self.volatility_data: Dict[str, float] = {}
+        self.volume_data: Dict[str, List[float]] = {}
+
+        logger.info(
+            "Initialized crypto scanner with %d configured symbols (%d defaults, %d overrides)",
+            len(self.high_volume_pairs),
+            len(self.configured_universe),
+            max(0, len(self.high_volume_pairs) - len(self.configured_universe)),
+        )
+
+    @staticmethod
+    def _normalize_symbol(symbol: str) -> str:
+        """Normalise symbols to scanner format."""
+
+        return symbol.replace("/", "").upper()
+
+    @classmethod
+    def _merge_symbol_lists(
+        cls,
+        defaults: Iterable[str],
+        overrides: Iterable[str],
+    ) -> List[str]:
+        """Combine default and override symbols while preserving order."""
+
+        merged: List[str] = []
+        seen: Set[str] = set()
+
+        for raw_symbol in list(defaults) + list(overrides):
+            if not raw_symbol:
+                continue
+
+            normalized = cls._normalize_symbol(raw_symbol)
+            if normalized not in seen:
+                merged.append(normalized)
+                seen.add(normalized)
+
+        return merged
     
-    def update_enabled_symbols(self, enabled_symbols: List[str]):
-        """Update the list of symbols enabled for trading"""
+    def update_enabled_symbols(
+        self,
+        enabled_symbols: List[str],
+        *,
+        merge_with_defaults: bool = True,
+    ) -> None:
+        """Update the list of symbols enabled for trading."""
+
         with self.lock:
-            self.enabled_trading_symbols = set(enabled_symbols)
-            # Set high_volume_pairs to the new enabled symbols
-            self.high_volume_pairs = enabled_symbols.copy()
-            logger.info(f"Updated enabled trading symbols: {len(self.enabled_trading_symbols)} symbols")
-            logger.info(f"Scanner now tracking {len(self.high_volume_pairs)} high volume pairs: {self.high_volume_pairs}")
+            base = self.configured_universe if merge_with_defaults else []
+            merged = self._merge_symbol_lists(base, enabled_symbols)
+
+            self.enabled_trading_symbols = set(merged)
+            self.high_volume_pairs = merged
+
+            logger.info(
+                "Updated enabled trading symbols: %d total (defaults merged: %s)",
+                len(self.enabled_trading_symbols),
+                merge_with_defaults,
+            )
+            logger.info(
+                "Scanner now tracking high volume pairs: %s",
+                ", ".join(self.high_volume_pairs),
+            )
             _metric_set(SCANNER_TRACKED_SYMBOLS_GAUGE, float(len(self.high_volume_pairs)))
-    
+
     def get_enabled_symbols(self) -> List[str]:
         """Get list of currently enabled trading symbols"""
         with self.lock:
-            return list(self.enabled_trading_symbols)
+            return list(self.high_volume_pairs)
     
     def fetch_all_crypto_assets(self, api) -> List[str]:
         """Fetch all available crypto assets from Alpaca"""
@@ -545,9 +592,15 @@ class CryptoDayTradingBot:
     }
     """High-frequency crypto day trading bot with comprehensive error handling"""
     
-    def __init__(self, alpaca_client, initial_capital: float = 10000):
+    def __init__(
+        self,
+        alpaca_client,
+        initial_capital: float = 10000,
+        scanner_config: Optional[CryptoScannerConfig] = None,
+        enabled_symbols: Optional[List[str]] = None,
+    ):
         self.alpaca = alpaca_client
-        self.scanner = CryptoVolatilityScanner()
+        self.scanner = CryptoVolatilityScanner(scanner_config, enabled_symbols=enabled_symbols)
         self.initial_capital = initial_capital
         self.max_position_size = min(100, initial_capital * 0.01)  # 1% per trade, max $100
         self.max_concurrent_positions = 10
@@ -1168,16 +1221,26 @@ class CryptoDayTradingBot:
         self.print_trade_timeline(last_n=50)
 
 # Integration function for the main bot
-def create_crypto_day_trader(alpaca_client, config: Dict) -> CryptoDayTradingBot:
-    """Create and configure crypto day trading bot"""
-    
-    initial_capital = config.get('crypto_capital', 10000)
-    bot = CryptoDayTradingBot(alpaca_client, initial_capital)
-    
-    # Configure from settings
-    bot.max_position_size = config.get('max_position_size', initial_capital * 0.05)
-    bot.max_concurrent_positions = config.get('max_positions', 10)
-    bot.min_profit_target = config.get('min_profit', 0.003)
-    bot.max_daily_loss = config.get('max_daily_loss', initial_capital * 0.02)
-    
+def create_crypto_day_trader(alpaca_client, config: TradingConfig) -> CryptoDayTradingBot:
+    """Create and configure crypto day trading bot."""
+
+    bot = CryptoDayTradingBot(
+        alpaca_client,
+        config.investment_amount,
+        scanner_config=config.crypto_scanner,
+        enabled_symbols=config.symbols,
+    )
+
+    risk_settings = config.risk_management
+    position_ratio = risk_settings.max_position_size or 0.05
+    bot.max_position_size = config.investment_amount * position_ratio
+    bot.max_concurrent_positions = config.max_trades_active
+    bot.min_profit_target = 0.003
+    bot.max_daily_loss = config.investment_amount * (risk_settings.max_daily_loss or 0.02)
+
+    logger.info(
+        "Crypto day trader configured with %d scanner symbols (defaults merged with overrides)",
+        len(bot.scanner.get_enabled_symbols()),
+    )
+
     return bot
