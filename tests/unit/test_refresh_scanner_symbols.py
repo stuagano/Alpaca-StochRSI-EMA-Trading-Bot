@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from config.unified_config import CryptoScannerConfig
+
 pytestmark = pytest.mark.requires_strategy_runtime
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -56,12 +58,15 @@ def test_refresh_scanner_symbols_projects_strategy_output_to_display_list(
 ):
     """The derived list should mirror the enabled strategy symbols in display format."""
 
-    uts_module.trading_state.crypto_scanner = crypto_scanner_cls(enabled_symbols=[
-        "ethusd",
-        "BTCUSD",
-        "DOGEUSD",
-        "ETHUSD",
-    ])
+    uts_module.trading_state.crypto_scanner = crypto_scanner_cls(
+        config=CryptoScannerConfig(universe=[]),
+        enabled_symbols=[
+            "ethusd",
+            "BTCUSD",
+            "DOGEUSD",
+            "ETHUSD",
+        ],
+    )
 
     derived = uts_module.refresh_scanner_symbols()
 
@@ -75,8 +80,11 @@ def test_refresh_scanner_symbols_clears_cache_when_strategy_returns_empty(
 ):
     """An empty strategy response should clear the cached list."""
 
-    scanner = crypto_scanner_cls(enabled_symbols=["BTCUSD"])
-    scanner.update_enabled_symbols([])
+    scanner = crypto_scanner_cls(
+        config=CryptoScannerConfig(universe=[]),
+        enabled_symbols=["BTCUSD"],
+    )
+    scanner.update_enabled_symbols([], merge_with_defaults=False)
     uts_module.trading_state.crypto_scanner = scanner
     uts_module.trading_state.crypto_scanner_symbols = ["BTC/USD"]
 

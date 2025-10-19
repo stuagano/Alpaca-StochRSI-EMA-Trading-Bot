@@ -8,6 +8,17 @@ api:
   retry_delay: 0.5
 candle_lookback_period: 50
 crypto_only: true
+crypto_scanner:
+  universe:
+  - BTCUSD
+  - ETHUSD
+  - SOLUSD
+  - AVAXUSD
+  - DOGEUSD
+  - BTCUSDT
+  min_24h_volume: 100000
+  min_volatility: 0.0001
+  max_spread: 0.01
 database:
   max_overflow: 10
   pool_recycle: 1800
