@@ -4,6 +4,7 @@ class CryptoDashboard {
         this.autoRefresh = true;
         this.refreshInterval = null;
         this.lastUpdate = null;
+        this.pnlChart = null;
 
         this.init();
     }
@@ -11,7 +12,9 @@ class CryptoDashboard {
     init() {
         // Initialize dashboard on page load
         this.updateConnectionStatus('connecting');
+        this.initializeChart();
         this.loadAllData();
+        this.updateChart();
         this.startAutoRefresh();
 
         // Set up event listeners
@@ -248,6 +251,140 @@ class CryptoDashboard {
         }).format(amount);
     }
 
+    initializeChart() {
+        const canvas = document.getElementById('pnlChart');
+        if (!canvas) {
+            console.warn('Chart canvas not found');
+            return;
+        }
+
+        const ctx = canvas.getContext('2d');
+        this.pnlChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'Daily P&L',
+                        data: [],
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        tension: 0.4,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Cumulative P&L',
+                        data: [],
+                        borderColor: 'rgb(255, 99, 132)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        tension: 0.4,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            color: '#888',
+                            usePointStyle: true,
+                            padding: 15
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += '$' + context.parsed.y.toFixed(2);
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        grid: { color: 'rgba(75, 192, 192, 0.1)' },
+                        ticks: {
+                            color: 'rgb(75, 192, 192)',
+                            callback: function(value) {
+                                return '$' + value.toFixed(2);
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Daily P&L',
+                            color: 'rgb(75, 192, 192)'
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        grid: { drawOnChartArea: false },
+                        ticks: {
+                            color: 'rgb(255, 99, 132)',
+                            callback: function(value) {
+                                return '$' + value.toFixed(2);
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Cumulative P&L',
+                            color: 'rgb(255, 99, 132)'
+                        }
+                    },
+                    x: {
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                        ticks: { color: '#888' }
+                    }
+                }
+            }
+        });
+    }
+
+    async updateChart() {
+        if (!this.pnlChart) {
+            return;
+        }
+
+        try {
+            const chartData = await this.fetchData('pnlChart');
+            if (!chartData) return;
+
+            this.pnlChart.data.labels = chartData.labels || [];
+
+            // Update both datasets
+            if (chartData.datasets && chartData.datasets.length > 0) {
+                this.pnlChart.data.datasets[0].data = chartData.datasets[0]?.data || [];
+
+                // Update second dataset if available
+                if (chartData.datasets.length > 1 && this.pnlChart.data.datasets.length > 1) {
+                    this.pnlChart.data.datasets[1].data = chartData.datasets[1]?.data || [];
+                }
+            }
+
+            this.pnlChart.update('none'); // Use 'none' mode for faster updates
+        } catch (error) {
+            console.error('Error updating P&L chart:', error);
+        }
+    }
+
     formatPercent(value) {
         return new Intl.NumberFormat('en-US', {
             style: 'percent',
@@ -279,6 +416,7 @@ class CryptoDashboard {
         if (this.autoRefresh) {
             this.refreshInterval = setInterval(() => {
                 this.loadAllData();
+                this.updateChart();
             }, 10000); // Refresh every 10 seconds
         }
     }

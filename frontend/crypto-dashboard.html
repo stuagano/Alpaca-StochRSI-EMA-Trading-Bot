@@ -511,6 +511,17 @@
                 </div>
             </div>
 
+            <!-- P&L Chart -->
+            <div class="card" style="grid-column: span 2;">
+                <div class="card-header">
+                    <span class="card-title">📊 P&L Performance</span>
+                    <span class="card-icon">📈</span>
+                </div>
+                <div style="height: 400px; position: relative; padding: 20px;">
+                    <canvas id="pnlChart"></canvas>
+                </div>
+            </div>
+
             <!-- Trading Activity -->
             <div class="card" style="grid-column: span 2;">
                 <div class="card-header">
@@ -568,10 +579,12 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="config.js"></script>
 
     <script>
         const API_BASE = (window.API_CONFIG && window.API_CONFIG.baseURL) || window.location.origin;
+        let pnlChart = null;
         const resolveEndpoint = (endpointKeyOrPath) => {
             if (!endpointKeyOrPath) {
                 return endpointKeyOrPath;
@@ -730,6 +743,141 @@
             document.getElementById('unrealized-pnl').className = 'metric-value ' + unrealizedClass;
         }
 
+        // Chart initialization
+        function initializeChart() {
+            const ctx = document.getElementById('pnlChart').getContext('2d');
+            pnlChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Daily P&L',
+                            data: [],
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            tension: 0.4,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Cumulative P&L',
+                            data: [],
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            tension: 0.4,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#888',
+                                usePointStyle: true,
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += '$' + context.parsed.y.toFixed(2);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            grid: { color: 'rgba(75, 192, 192, 0.1)' },
+                            ticks: {
+                                color: 'rgb(75, 192, 192)',
+                                callback: function(value) {
+                                    return '$' + value.toFixed(2);
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Daily P&L',
+                                color: 'rgb(75, 192, 192)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: { drawOnChartArea: false },
+                            ticks: {
+                                color: 'rgb(255, 99, 132)',
+                                callback: function(value) {
+                                    return '$' + value.toFixed(2);
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Cumulative P&L',
+                                color: 'rgb(255, 99, 132)'
+                            }
+                        },
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#888' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updatePnLChart(data) {
+            if (!pnlChart || !data) return;
+
+            try {
+                pnlChart.data.labels = data.labels || [];
+
+                // Update both datasets
+                if (data.datasets && data.datasets.length > 0) {
+                    pnlChart.data.datasets[0].data = data.datasets[0]?.data || [];
+
+                    // Update second dataset if available
+                    if (data.datasets.length > 1 && pnlChart.data.datasets.length > 1) {
+                        pnlChart.data.datasets[1].data = data.datasets[1]?.data || [];
+                    }
+                }
+
+                pnlChart.update('none'); // Use 'none' mode for faster updates
+            } catch (error) {
+                console.error('Error updating P&L chart:', error);
+            }
+        }
+
+        async function updateChart() {
+            try {
+                const chartData = await fetchJson('pnlChart');
+                if (chartData) {
+                    updatePnLChart(chartData);
+                }
+            } catch (err) {
+                console.error('Error updating chart:', err);
+            }
+        }
+
         // Bot controls
         function startBot() {
             postJson('startTrading')
@@ -749,8 +897,13 @@
 
         // Initialize on load
         window.onload = function() {
+            initializeChart();
             refreshData();
-            setInterval(refreshData, 5000); // Update every 5 seconds
+            updateChart();
+            setInterval(() => {
+                refreshData();
+                updateChart();
+            }, 5000); // Update every 5 seconds
         };
     </script>
 </body>
