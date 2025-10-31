@@ -555,24 +555,91 @@
                 type: 'line',
                 data: {
                     labels: [],
-                    datasets: [{
-                        label: 'P&L',
-                        data: [],
-                        borderColor: '#00ff88',
-                        backgroundColor: 'rgba(0, 255, 136, 0.1)',
-                        tension: 0.4
-                    }]
+                    datasets: [
+                        {
+                            label: 'Daily P&L',
+                            data: [],
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            tension: 0.4,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Cumulative P&L',
+                            data: [],
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            tension: 0.4,
+                            yAxisID: 'y1'
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
                     plugins: {
-                        legend: { display: false }
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#888',
+                                usePointStyle: true,
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += '$' + context.parsed.y.toFixed(2);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
                     },
                     scales: {
                         y: {
-                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                            ticks: { color: '#888' }
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            grid: { color: 'rgba(75, 192, 192, 0.1)' },
+                            ticks: {
+                                color: 'rgb(75, 192, 192)',
+                                callback: function(value) {
+                                    return '$' + value.toFixed(2);
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Daily P&L',
+                                color: 'rgb(75, 192, 192)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: { drawOnChartArea: false },
+                            ticks: {
+                                color: 'rgb(255, 99, 132)',
+                                callback: function(value) {
+                                    return '$' + value.toFixed(2);
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Cumulative P&L',
+                                color: 'rgb(255, 99, 132)'
+                            }
                         },
                         x: {
                             grid: { color: 'rgba(255, 255, 255, 0.1)' },
@@ -586,9 +653,23 @@
         function updatePnLChart(data) {
             if (!pnlChart || !data) return;
 
-            pnlChart.data.labels = data.labels || [];
-            pnlChart.data.datasets[0].data = data.datasets?.[0]?.data || [];
-            pnlChart.update();
+            try {
+                pnlChart.data.labels = data.labels || [];
+
+                // Update both datasets
+                if (data.datasets && data.datasets.length > 0) {
+                    pnlChart.data.datasets[0].data = data.datasets[0]?.data || [];
+
+                    // Update second dataset if available
+                    if (data.datasets.length > 1 && pnlChart.data.datasets.length > 1) {
+                        pnlChart.data.datasets[1].data = data.datasets[1]?.data || [];
+                    }
+                }
+
+                pnlChart.update('none'); // Use 'none' mode for faster updates
+            } catch (error) {
+                console.error('Error updating P&L chart:', error);
+            }
         }
 
         // Trading controls

@@ -474,3 +474,18 @@ header h1 {
         font-size: 1rem;
     }
 }
+
+/* Chart Styles */
+.chart-card {
+    min-height: 500px;
+}
+
+.chart-container {
+    height: 400px;
+    position: relative;
+    padding: 20px;
+}
+
+.chart-container canvas {
+    max-height: 400px;
+}
