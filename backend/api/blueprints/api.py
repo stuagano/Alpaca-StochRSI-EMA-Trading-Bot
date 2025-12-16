@@ -96,3 +96,100 @@ def api_symbols():
         'symbols': symbols,
         'mode': mode or 'crypto'
     })
+
+@api_bp.route('/bot/status')
+@handle_errors
+def api_bot_status():
+    """Get detailed trading bot status including active positions with P&L"""
+    service = current_app.trading_service
+
+    if service.trading_bot and hasattr(service.trading_bot, 'get_status'):
+        bot_status = service.trading_bot.get_status()
+        return jsonify({
+            'status': 'running' if bot_status.get('is_running') else 'stopped',
+            'bot': bot_status
+        })
+    else:
+        return jsonify({
+            'status': 'not_started',
+            'message': 'Trading bot has not been started yet',
+            'bot': None
+        })
+
+@api_bp.route('/bot/thresholds', methods=['GET', 'POST'])
+@handle_errors
+def api_bot_thresholds():
+    """Get or update bot trading thresholds"""
+    service = current_app.trading_service
+
+    if not service.trading_bot:
+        return jsonify({'error': 'Bot not started'}), 400
+
+    if request.method == 'GET':
+        return jsonify({
+            'stop_loss_pct': getattr(service.trading_bot, 'stop_loss_pct', 0.015),
+            'take_profit_pct': getattr(service.trading_bot, 'take_profit_pct', 0.02),
+            'trailing_stop_pct': getattr(service.trading_bot, 'trailing_stop_pct', 0.01),
+            'max_hold_time_seconds': getattr(service.trading_bot, 'max_hold_time_seconds', 3600)
+        })
+    else:
+        data = request.get_json() or {}
+        if 'stop_loss_pct' in data:
+            service.trading_bot.stop_loss_pct = float(data['stop_loss_pct'])
+        if 'take_profit_pct' in data:
+            service.trading_bot.take_profit_pct = float(data['take_profit_pct'])
+        if 'trailing_stop_pct' in data:
+            service.trading_bot.trailing_stop_pct = float(data['trailing_stop_pct'])
+        if 'max_hold_time_seconds' in data:
+            service.trading_bot.max_hold_time_seconds = int(data['max_hold_time_seconds'])
+
+        # Also update position thresholds for existing positions
+        if hasattr(service.trading_bot, 'active_positions'):
+            for symbol, pos in service.trading_bot.active_positions.items():
+                entry = pos['entry_price']
+                side = pos['side']
+                if 'stop_loss_pct' in data:
+                    pos['stop_price'] = entry * (1 - service.trading_bot.stop_loss_pct) if side == 'buy' else entry * (1 + service.trading_bot.stop_loss_pct)
+                if 'take_profit_pct' in data:
+                    pos['target_price'] = entry * (1 + service.trading_bot.take_profit_pct) if side == 'buy' else entry * (1 - service.trading_bot.take_profit_pct)
+
+        return jsonify({
+            'message': 'Thresholds updated',
+            'stop_loss_pct': service.trading_bot.stop_loss_pct,
+            'take_profit_pct': service.trading_bot.take_profit_pct,
+            'trailing_stop_pct': service.trading_bot.trailing_stop_pct,
+            'max_hold_time_seconds': service.trading_bot.max_hold_time_seconds
+        })
+
+@api_bp.route('/bot/liquidate/<symbol>', methods=['POST'])
+@handle_errors
+def api_liquidate_position(symbol):
+    """Force liquidate a specific position"""
+    service = current_app.trading_service
+
+    result = service.close_position(symbol)
+    if result:
+        # Also remove from bot's active_positions if present
+        if service.trading_bot and hasattr(service.trading_bot, 'active_positions'):
+            if symbol in service.trading_bot.active_positions:
+                del service.trading_bot.active_positions[symbol]
+        return jsonify({'message': f'Position {symbol} closed', 'order': result})
+    else:
+        return jsonify({'error': f'Failed to close position {symbol}'}), 400
+
+@api_bp.route('/bot/liquidate-all', methods=['POST'])
+@handle_errors
+def api_liquidate_all():
+    """Force liquidate all positions"""
+    service = current_app.trading_service
+
+    results = service.close_all_positions()
+
+    # Clear bot's active_positions
+    if service.trading_bot and hasattr(service.trading_bot, 'active_positions'):
+        service.trading_bot.active_positions.clear()
+
+    return jsonify({
+        'message': f'Closed {len(results)} positions',
+        'orders': results
+    })

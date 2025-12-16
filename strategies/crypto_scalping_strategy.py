@@ -646,7 +646,13 @@ class CryptoDayTradingBot:
         
         self.is_running = False
         self.executor = ThreadPoolExecutor(max_workers=5)
-        
+
+        # Configurable thresholds (can be overridden)
+        self.stop_loss_pct = 0.015  # 1.5% stop loss
+        self.take_profit_pct = 0.02  # 2% take profit
+        self.trailing_stop_pct = 0.01  # 1% trailing stop
+        self.max_hold_time_seconds = 3600  # 1 hour max hold
+
     @property
     def _api(self):
         """Get the raw Alpaca REST API object, handling both wrapper and direct types."""
@@ -659,14 +665,66 @@ class CryptoDayTradingBot:
         # Otherwise assume it's already the raw API
         return self.alpaca
         
+    async def _sync_positions_from_alpaca(self):
+        """Sync active_positions with actual Alpaca positions"""
+        try:
+            positions = self._api.list_positions()
+            synced_count = 0
+
+            for pos in positions:
+                symbol = pos.symbol
+                # Only track crypto positions
+                if not symbol.endswith('USD') and not symbol.endswith('USDT'):
+                    continue
+
+                if symbol not in self.active_positions:
+                    entry_price = float(pos.avg_entry_price)
+                    qty = float(pos.qty)
+                    side = 'buy' if float(pos.qty) > 0 else 'sell'
+
+                    # Create position entry with default thresholds
+                    self.active_positions[symbol] = {
+                        'signal': None,  # External position, no signal
+                        'entry_price': entry_price,
+                        'entry_price_dec': Decimal(str(entry_price)),
+                        'quantity': abs(qty),
+                        'quantity_dec': Decimal(str(abs(qty))),
+                        'side': side,
+                        'entry_time': datetime.now(),  # Approximate
+                        'target_price': entry_price * (1 + self.take_profit_pct) if side == 'buy' else entry_price * (1 - self.take_profit_pct),
+                        'stop_price': entry_price * (1 - self.stop_loss_pct) if side == 'buy' else entry_price * (1 + self.stop_loss_pct),
+                        'order_id': None,
+                        'synced_from_alpaca': True,
+                        'unrealized_pnl': float(pos.unrealized_pl) if hasattr(pos, 'unrealized_pl') else 0,
+                        'current_price': float(pos.current_price) if hasattr(pos, 'current_price') else entry_price
+                    }
+                    synced_count += 1
+                    logger.info(f"📥 Synced existing position: {symbol} | Entry: ${entry_price:.4f} | Qty: {qty}")
+
+            # Remove positions that no longer exist on Alpaca
+            alpaca_symbols = {pos.symbol for pos in positions}
+            to_remove = [s for s in self.active_positions if s not in alpaca_symbols]
+            for symbol in to_remove:
+                del self.active_positions[symbol]
+                logger.info(f"📤 Removed closed position from tracking: {symbol}")
+
+            if synced_count > 0:
+                logger.info(f"✅ Synced {synced_count} positions from Alpaca. Total tracked: {len(self.active_positions)}")
+
+        except Exception as e:
+            logger.error(f"Failed to sync positions from Alpaca: {e}")
+
     async def start_trading(self):
         """Start the day trading bot"""
         logger.info("🚀 Starting Crypto Day Trading Bot")
         self.is_running = True
-        
+
+        # Sync existing positions from Alpaca first
+        await self._sync_positions_from_alpaca()
+
         # Start market data feed
         self.executor.submit(self._start_market_data_feed)
-        
+
         # Main trading loop
         while self.is_running:
             try:
@@ -679,14 +737,18 @@ class CryptoDayTradingBot:
     
     async def _trading_cycle(self):
         """Main trading cycle - runs every second"""
-        
+
         # Check for exit signals on existing positions
         await self._check_exit_conditions()
-        
+
+        # Sync positions from Alpaca every 30 seconds to catch external changes
+        if int(time.time()) % 30 == 0:
+            await self._sync_positions_from_alpaca()
+
         # Look for new entry opportunities every 10 seconds (aligned with data polling)
         if int(time.time()) % 10 == 0:
             await self._find_entry_opportunities()
-        
+
         # Update metrics every minute
         if int(time.time()) % 60 == 0:
             self._update_metrics()
@@ -872,63 +934,78 @@ class CryptoDayTradingBot:
     async def _check_exit_conditions(self):
         """Check exit conditions for all active positions"""
         positions_to_close = []
-        
-        for symbol, position in self.active_positions.items():
+
+        # Make a copy of items to iterate (avoid dict modification during iteration)
+        for symbol, position in list(self.active_positions.items()):
             try:
                 # Get current price
                 current_price = await self._get_current_price(symbol)
                 if not current_price:
-                    continue
-                
-                signal = position['signal']
+                    # Try to get from Alpaca position directly
+                    try:
+                        alpaca_pos = self._api.get_position(symbol)
+                        current_price = float(alpaca_pos.current_price)
+                    except Exception:
+                        logger.warning(f"Cannot get current price for {symbol}, skipping exit check")
+                        continue
+
                 entry_price = position['entry_price']
                 side = position['side']
-                
+
                 # Calculate current P&L
                 if side == 'buy':
                     pnl_pct = (current_price - entry_price) / entry_price
                 else:
                     pnl_pct = (entry_price - current_price) / entry_price
-                
+
                 should_exit = False
                 exit_reason = ""
-                
+
+                # Log position status periodically (every ~60 checks = ~1 min)
+                if int(time.time()) % 60 == 0:
+                    logger.info(f"📊 {symbol}: Entry ${entry_price:.4f} | Current ${current_price:.4f} | P&L: {pnl_pct:.2%} | Stop: ${position['stop_price']:.4f} | Target: ${position['target_price']:.4f}")
+
                 # Profit target hit
-                if ((side == 'buy' and current_price >= position['target_price']) or 
+                if ((side == 'buy' and current_price >= position['target_price']) or
                     (side == 'sell' and current_price <= position['target_price'])):
                     should_exit = True
                     exit_reason = "PROFIT_TARGET"
-                
+
                 # Stop loss hit
-                elif ((side == 'buy' and current_price <= position['stop_price']) or 
+                elif ((side == 'buy' and current_price <= position['stop_price']) or
                       (side == 'sell' and current_price >= position['stop_price'])):
                     should_exit = True
                     exit_reason = "STOP_LOSS"
-                
-                # Time-based exit (hold for max 30 minutes for scalping)
-                elif (datetime.now() - position['entry_time']).seconds > 1800:
+
+                # Time-based exit (configurable max hold time)
+                elif (datetime.now() - position['entry_time']).total_seconds() > self.max_hold_time_seconds:
                     should_exit = True
                     exit_reason = "TIME_LIMIT"
-                
-                # Trailing stop for profitable positions
-                elif pnl_pct > 0.01:  # 1% profit
+
+                # Trailing stop for profitable positions (activate at 1% profit)
+                elif pnl_pct > self.trailing_stop_pct:
                     # Implement trailing stop
-                    trail_distance = 0.005  # 0.5% trailing distance
+                    trail_distance = self.trailing_stop_pct * 0.5  # Trail at half the activation threshold
                     if side == 'buy':
                         new_stop = current_price * (1 - trail_distance)
                         if new_stop > position['stop_price']:
+                            old_stop = position['stop_price']
                             position['stop_price'] = new_stop
+                            logger.info(f"📈 {symbol}: Trailing stop raised from ${old_stop:.4f} to ${new_stop:.4f}")
                     else:
                         new_stop = current_price * (1 + trail_distance)
                         if new_stop < position['stop_price']:
+                            old_stop = position['stop_price']
                             position['stop_price'] = new_stop
-                
+                            logger.info(f"📉 {symbol}: Trailing stop lowered from ${old_stop:.4f} to ${new_stop:.4f}")
+
                 if should_exit:
+                    logger.info(f"🚨 EXIT SIGNAL: {symbol} | Reason: {exit_reason} | P&L: {pnl_pct:.2%}")
                     positions_to_close.append((symbol, exit_reason, current_price, pnl_pct))
-            
+
             except Exception as e:
-                logger.error(f"Error checking exit for {symbol}: {e}")
-        
+                logger.error(f"Error checking exit for {symbol}: {e}", exc_info=True)
+
         # Close positions
         for symbol, reason, price, pnl_pct in positions_to_close:
             await self._execute_exit(symbol, reason, price, pnl_pct)
@@ -1061,6 +1138,65 @@ class CryptoDayTradingBot:
         # Reset on successful operations
         self.reconnect_attempts = 0
     
+    def get_status(self) -> dict:
+        """Get comprehensive bot status for dashboard/API"""
+        positions_status = []
+        total_unrealized_pnl = 0.0
+
+        for symbol, pos in self.active_positions.items():
+            try:
+                # Try to get current price
+                current_price = None
+                try:
+                    alpaca_pos = self._api.get_position(symbol)
+                    current_price = float(alpaca_pos.current_price)
+                    unrealized_pnl = float(alpaca_pos.unrealized_pl)
+                except Exception:
+                    current_price = pos.get('current_price', pos['entry_price'])
+                    entry_val = pos['entry_price'] * pos['quantity']
+                    current_val = current_price * pos['quantity']
+                    unrealized_pnl = current_val - entry_val if pos['side'] == 'buy' else entry_val - current_val
+
+                pnl_pct = (current_price - pos['entry_price']) / pos['entry_price'] if pos['side'] == 'buy' else (pos['entry_price'] - current_price) / pos['entry_price']
+                total_unrealized_pnl += unrealized_pnl
+
+                positions_status.append({
+                    'symbol': symbol,
+                    'side': pos['side'],
+                    'entry_price': pos['entry_price'],
+                    'current_price': current_price,
+                    'quantity': pos['quantity'],
+                    'stop_price': pos['stop_price'],
+                    'target_price': pos['target_price'],
+                    'pnl_pct': round(pnl_pct * 100, 2),
+                    'unrealized_pnl': round(unrealized_pnl, 2),
+                    'entry_time': pos['entry_time'].isoformat() if isinstance(pos['entry_time'], datetime) else str(pos['entry_time']),
+                    'hold_time_seconds': int((datetime.now() - pos['entry_time']).total_seconds()) if isinstance(pos['entry_time'], datetime) else 0,
+                    'synced_from_alpaca': pos.get('synced_from_alpaca', False)
+                })
+            except Exception as e:
+                logger.error(f"Error getting status for {symbol}: {e}")
+
+        return {
+            'is_running': self.is_running,
+            'active_positions_count': len(self.active_positions),
+            'max_concurrent_positions': self.max_concurrent_positions,
+            'daily_trades': self.daily_trades,
+            'total_trades': self.total_trades,
+            'daily_profit': round(self.daily_profit, 2),
+            'total_unrealized_pnl': round(total_unrealized_pnl, 2),
+            'win_rate': round(self.win_rate * 100, 2),
+            'wins': self.wins,
+            'error_count': self.error_count,
+            'thresholds': {
+                'stop_loss_pct': self.stop_loss_pct,
+                'take_profit_pct': self.take_profit_pct,
+                'trailing_stop_pct': self.trailing_stop_pct,
+                'max_hold_time_seconds': self.max_hold_time_seconds
+            },
+            'positions': positions_status
+        }
+
     def _log_trade(self, trade_log: TradeLog):
         """Log trade to console and file with timeline format"""
         # Add to in-memory log
