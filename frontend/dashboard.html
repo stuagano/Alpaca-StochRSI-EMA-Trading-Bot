@@ -1,11 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trading Bot Dashboard - New Architecture</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -41,12 +46,24 @@
             animation: pulse 2s infinite;
         }
 
-        .status-dot.connected { background: #00ff88; }
-        .status-dot.disconnected { background: #ff4444; }
+        .status-dot.connected {
+            background: #00ff88;
+        }
+
+        .status-dot.disconnected {
+            background: #ff4444;
+        }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
         }
 
         .container {
@@ -107,9 +124,17 @@
             font-size: 16px;
         }
 
-        .positive { color: #00ff88; }
-        .negative { color: #ff4444; }
-        .neutral { color: #ffaa00; }
+        .positive {
+            color: #00ff88;
+        }
+
+        .negative {
+            color: #ff4444;
+        }
+
+        .neutral {
+            color: #ffaa00;
+        }
 
         .position-table {
             width: 100%;
@@ -175,9 +200,20 @@
             font-size: 12px;
         }
 
-        .signal-buy { background: #00ff88; color: #000; }
-        .signal-sell { background: #ff4444; color: #fff; }
-        .signal-hold { background: #ffaa00; color: #000; }
+        .signal-buy {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .signal-sell {
+            background: #ff4444;
+            color: #fff;
+        }
+
+        .signal-hold {
+            background: #ffaa00;
+            color: #000;
+        }
 
         .chart-container {
             grid-column: span 2;
@@ -206,27 +242,46 @@
             .dashboard-grid {
                 grid-template-columns: 1fr;
             }
+
             .chart-container {
                 grid-column: span 1;
             }
         }
     </style>
 </head>
+
 <body>
     <div class="header">
         <h1>🚀 Trading Bot Dashboard</h1>
-        <div class="status-indicator">
-            <span id="connection-status">Connecting...</span>
-            <div class="status-dot disconnected" id="status-dot"></div>
+        <div class="status-indicator" id="connection-status">
+            <span class="status-text">Connecting...</span>
+            <div class="status-dot disconnected"></div>
+        </div>
+        <div style="margin-left: auto; color: #888; font-size: 12px; display: flex; gap: 15px; align-items: center;">
+            <span id="auto-refresh-text" style="cursor: pointer;" onclick="toggleAutoRefresh()">Auto Refresh: ON</span>
+            <span>Last Update: <span id="last-update">--:--:--</span></span>
         </div>
     </div>
 
     <div class="container">
         <div class="controls">
-            <button class="btn" onclick="startTrading()">▶️ Start Trading</button>
-            <button class="btn danger" onclick="stopTrading()">⏹ Stop Trading</button>
-            <button class="btn" onclick="refreshAll()">🔄 Refresh All</button>
-            <button class="btn" onclick="exportData()">📊 Export P&L</button>
+            <!-- Note: script.js doesn't currently attach these via ID, but via global functions which we might need to expose or refactor. 
+                 script.js has a class 'CryptoDashboard' but doesn't expose 'startTrading' globally except via the instance?
+                 Wait, script.js defines 'dashboard' global variable.
+                 But it doesn't have startTrading/stopTrading methods in the class shown in the previous view_file.
+                 I need to check if script.js has those methods. 
+                 Looking at previous view_file for script.js: It does NOT have startTrading/stopTrading methods. 
+                 I need to ADD those to script.js or keep the API calls for them.
+            -->
+            <!-- For now, I will keep the buttons but I might need to add the handlers to script.js -->
+            <button class="btn"
+                onclick="fetch('/api/v1/trading/start', {method: 'POST'}).then(() => dashboard.loadAllData())">▶️ Start
+                Trading</button>
+            <button class="btn danger"
+                onclick="if(confirm('Stop trading?')) fetch('/api/v1/trading/stop', {method: 'POST'}).then(() => dashboard.loadAllData())">⏹
+                Stop Trading</button>
+            <button class="btn" onclick="refreshDashboard()">🔄 Refresh All</button>
+            <button class="btn" onclick="window.location.href='/api/v1/pnl/export'">📊 Export P&L</button>
         </div>
 
         <div class="dashboard-grid">
@@ -234,10 +289,26 @@
             <div class="card">
                 <div class="card-header">
                     <span class="card-title">💰 Account</span>
-                    <button class="btn" data-testid="refresh-account" style="padding: 5px 10px; font-size: 12px;" onclick="updateAccount()">↻</button>
+                    <button class="btn" style="padding: 5px 10px; font-size: 12px;"
+                        onclick="dashboard.loadAllData()">↻</button>
                 </div>
                 <div id="account-content">
-                    <div class="loading">Loading account data...</div>
+                    <div class="metric">
+                        <span class="metric-label">Portfolio Value</span>
+                        <span class="metric-value" id="portfolio-value">Loading...</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Buying Power</span>
+                        <span class="metric-value" id="buying-power">Loading...</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Cash</span>
+                        <span class="metric-value" id="cash">Loading...</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Status</span>
+                        <span class="metric-value" id="account-status">Loading...</span>
+                    </div>
                 </div>
             </div>
 
@@ -245,20 +316,29 @@
             <div class="card">
                 <div class="card-header">
                     <span class="card-title">📈 P&L Summary</span>
-                    <button class="btn" data-testid="refresh-pnl" style="padding: 5px 10px; font-size: 12px;" onclick="updatePnL()">↻</button>
+                    <button class="btn" style="padding: 5px 10px; font-size: 12px;"
+                        onclick="dashboard.loadAllData()">↻</button>
                 </div>
                 <div id="pnl-content">
-                    <div class="loading">Loading P&L data...</div>
+                    <div class="metric">
+                        <span class="metric-label">Total P&L</span>
+                        <span class="metric-value" id="total-pnl">Loading...</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Daily P&L</span>
+                        <span class="metric-value" id="daily-pnl">Loading...</span>
+                    </div>
                 </div>
             </div>
 
             <!-- Positions Card -->
             <div class="card" style="grid-column: span 2;">
                 <div class="card-header">
-                    <span class="card-title">📊 Positions</span>
-                    <button class="btn" data-testid="refresh-positions" style="padding: 5px 10px; font-size: 12px;" onclick="updatePositions()">↻</button>
+                    <span class="card-title">📊 Positions (<span id="positions-count">0</span>)</span>
+                    <button class="btn" style="padding: 5px 10px; font-size: 12px;"
+                        onclick="dashboard.loadAllData()">↻</button>
                 </div>
-                <div id="positions-content">
+                <div id="positions-list">
                     <div class="loading">Loading positions...</div>
                 </div>
             </div>
@@ -267,9 +347,10 @@
             <div class="card" style="grid-column: span 2;">
                 <div class="card-header">
                     <span class="card-title">🎯 Trading Signals</span>
-                    <button class="btn" data-testid="refresh-signals" style="padding: 5px 10px; font-size: 12px;" onclick="updateSignals()">↻</button>
+                    <button class="btn" style="padding: 5px 10px; font-size: 12px;"
+                        onclick="dashboard.loadAllData()">↻</button>
                 </div>
-                <div id="signals-content">
+                <div id="signals-list">
                     <div class="loading">Loading signals...</div>
                 </div>
             </div>
@@ -281,6 +362,34 @@
                 </div>
                 <canvas id="pnlChart"></canvas>
             </div>
+
+            <!-- Trade History Card -->
+            <div class="card" style="grid-column: span 2;">
+                <div class="card-header">
+                    <span class="card-title">📜 Trade History</span>
+                    <button class="btn" onclick="dashboard.loadAllData()"
+                        style="padding: 5px 10px; font-size: 12px;">↻</button>
+                </div>
+                <div style="max-height: 300px; overflow-y: auto;">
+                    <table class="position-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Symbol</th>
+                                <th>Side</th>
+                                <th>Qty</th>
+                                <th>Price</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trades-body">
+                            <tr>
+                                <td colspan="6" style="text-align: center;">Loading trades...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -290,421 +399,9 @@
     <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
     <!-- Frontend config -->
     <script src="config.js"></script>
-
-    <script>
-        // API Configuration
-        const API_BASE = (window.API_CONFIG && window.API_CONFIG.baseURL) || window.location.origin;
-        const resolveEndpoint = (endpointKeyOrPath) => {
-            if (!endpointKeyOrPath) {
-                return endpointKeyOrPath;
-            }
-
-            if (typeof endpointKeyOrPath === 'string') {
-                if (typeof buildApiUrl === 'function' && !endpointKeyOrPath.startsWith('/') && !endpointKeyOrPath.startsWith('http')) {
-                    return buildApiUrl(endpointKeyOrPath);
-                }
-
-                if (endpointKeyOrPath.startsWith('/')) {
-                    return `${API_BASE}${endpointKeyOrPath}`;
-                }
-            }
-
-            return endpointKeyOrPath;
-        };
-        let socket = null;
-        let pnlChart = null;
-        let updateIntervals = {};
-
-        // Initialize dashboard
-        window.onload = function() {
-            initializeWebSocket();
-            initializeChart();
-            refreshAll();
-            setupAutoRefresh();
-        };
-
-        // WebSocket initialization
-        function initializeWebSocket() {
-            socket = io(API_BASE);
-
-            socket.on('connect', function() {
-                updateConnectionStatus(true);
-                console.log('WebSocket connected');
-            });
-
-            socket.on('disconnect', function() {
-                updateConnectionStatus(false);
-                console.log('WebSocket disconnected');
-            });
-
-            socket.on('account_update', function(data) {
-                renderAccountData(data);
-            });
-
-            socket.on('positions_update', function(data) {
-                renderPositions(data);
-            });
-
-            socket.on('signals_update', function(data) {
-                renderSignals(data);
-            });
-        }
-
-        // Update connection status
-        function updateConnectionStatus(connected) {
-            const statusText = document.getElementById('connection-status');
-            const statusDot = document.getElementById('status-dot');
-
-            if (connected) {
-                statusText.textContent = 'Connected';
-                statusDot.className = 'status-dot connected';
-            } else {
-                statusText.textContent = 'Disconnected';
-                statusDot.className = 'status-dot disconnected';
-            }
-        }
-
-        // Refresh all data
-        function refreshAll() {
-            updateAccount();
-            updatePositions();
-            updateSignals();
-            updatePnL();
-            updateChart();
-        }
-
-        // Setup auto-refresh
-        function setupAutoRefresh() {
-            // Clear existing intervals
-            Object.values(updateIntervals).forEach(clearInterval);
-
-            // Set new intervals
-            updateIntervals.account = setInterval(updateAccount, 30000);
-            updateIntervals.positions = setInterval(updatePositions, 5000);
-            updateIntervals.signals = setInterval(updateSignals, 10000);
-            updateIntervals.pnl = setInterval(updatePnL, 5000);
-        }
-
-        // API Calls
-        async function fetchAPI(endpointKey) {
-            try {
-                const url = resolveEndpoint(endpointKey);
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                return await response.json();
-            } catch (error) {
-                console.error('API Error:', error);
-                return null;
-            }
-        }
-
-        async function postAPI(endpointKey, data = {}) {
-            try {
-                const url = resolveEndpoint(endpointKey);
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                return await response.json();
-            } catch (error) {
-                console.error('API Error:', error);
-                return null;
-            }
-        }
-
-        // Update functions
-        async function updateAccount() {
-            const data = await fetchAPI('account');
-            if (data) renderAccountData(data);
-        }
-
-        async function updatePositions() {
-            const data = await fetchAPI('positions');
-            if (data) renderPositions(data);
-        }
-
-        async function updateSignals() {
-            const data = await fetchAPI('signals');
-            if (data) renderSignals(data);
-        }
-
-        async function updatePnL() {
-            const data = await fetchAPI('currentPnl');
-            if (data) renderPnL(data);
-        }
-
-        async function updateChart() {
-            const data = await fetchAPI('pnlChart');
-            if (data) updatePnLChart(data);
-        }
-
-        // Render functions
-        function renderAccountData(data) {
-            const content = document.getElementById('account-content');
-            content.innerHTML = `
-                <div class="metric">
-                    <span class="metric-label">Portfolio Value</span>
-                    <span class="metric-value">$${formatNumber(data.portfolio_value)}</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Buying Power</span>
-                    <span class="metric-value">$${formatNumber(data.buying_power)}</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Cash</span>
-                    <span class="metric-value">$${formatNumber(data.cash)}</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Status</span>
-                    <span class="metric-value ${data.status === 'ACTIVE' ? 'positive' : 'negative'}">${data.status}</span>
-                </div>
-                <div class="update-time">Updated: ${new Date().toLocaleTimeString()}</div>
-            `;
-        }
-
-        function renderPositions(data) {
-            const content = document.getElementById('positions-content');
-
-            if (!data || data.length === 0) {
-                content.innerHTML = '<p style="text-align: center; color: #888;">No open positions</p>';
-                return;
-            }
-
-            let html = '<table class="position-table"><thead><tr>';
-            html += '<th>Symbol</th><th>Qty</th><th>Entry</th><th>Current</th><th>P&L</th><th>P&L %</th>';
-            html += '</tr></thead><tbody>';
-
-            data.forEach(pos => {
-                const plClass = pos.unrealized_pl >= 0 ? 'positive' : 'negative';
-                html += `<tr>
-                    <td><strong>${pos.symbol}</strong></td>
-                    <td>${pos.qty}</td>
-                    <td>$${formatNumber(pos.avg_entry_price)}</td>
-                    <td>$${formatNumber(pos.current_price || pos.avg_entry_price)}</td>
-                    <td class="${plClass}">$${formatNumber(pos.unrealized_pl)}</td>
-                    <td class="${plClass}">${pos.unrealized_plpc.toFixed(2)}%</td>
-                </tr>`;
-            });
-
-            html += '</tbody></table>';
-            html += `<div class="update-time">Updated: ${new Date().toLocaleTimeString()}</div>`;
-            content.innerHTML = html;
-        }
-
-        function renderSignals(data) {
-            const content = document.getElementById('signals-content');
-
-            if (!data || data.length === 0) {
-                content.innerHTML = '<p style="text-align: center; color: #888;">No signals available</p>';
-                return;
-            }
-
-            let html = '<table class="position-table"><thead><tr>';
-            html += '<th>Symbol</th><th>Signal</th><th>RSI</th><th>Price</th><th>Strength</th>';
-            html += '</tr></thead><tbody>';
-
-            data.forEach(signal => {
-                const signalClass = signal.action === 'BUY' ? 'signal-buy' :
-                                  signal.action === 'SELL' ? 'signal-sell' : 'signal-hold';
-                html += `<tr>
-                    <td><strong>${signal.symbol}</strong></td>
-                    <td><span class="signal-indicator ${signalClass}">${signal.action}</span></td>
-                    <td>${signal.rsi}</td>
-                    <td>$${formatNumber(signal.price)}</td>
-                    <td>${signal.strength || 'Medium'}</td>
-                </tr>`;
-            });
-
-            html += '</tbody></table>';
-            html += `<div class="update-time">Updated: ${new Date().toLocaleTimeString()}</div>`;
-            content.innerHTML = html;
-        }
-
-        function renderPnL(data) {
-            const content = document.getElementById('pnl-content');
-            const totalClass = data.total_pnl >= 0 ? 'positive' : 'negative';
-            const unrealizedClass = data.unrealized_pnl >= 0 ? 'positive' : 'negative';
-
-            content.innerHTML = `
-                <div class="metric">
-                    <span class="metric-label">Total P&L</span>
-                    <span class="metric-value ${totalClass}">$${formatNumber(data.total_pnl)}</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Unrealized P&L</span>
-                    <span class="metric-value ${unrealizedClass}">$${formatNumber(data.unrealized_pnl)}</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Positions</span>
-                    <span class="metric-value">${data.positions_count || 0}</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Account Value</span>
-                    <span class="metric-value">$${formatNumber(data.account_value)}</span>
-                </div>
-                <div class="update-time">Updated: ${new Date().toLocaleTimeString()}</div>
-            `;
-        }
-
-        // Chart initialization
-        function initializeChart() {
-            const ctx = document.getElementById('pnlChart').getContext('2d');
-            pnlChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [
-                        {
-                            label: 'Daily P&L',
-                            data: [],
-                            borderColor: 'rgb(75, 192, 192)',
-                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                            tension: 0.4,
-                            yAxisID: 'y'
-                        },
-                        {
-                            label: 'Cumulative P&L',
-                            data: [],
-                            borderColor: 'rgb(255, 99, 132)',
-                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                            tension: 0.4,
-                            yAxisID: 'y1'
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false
-                    },
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top',
-                            labels: {
-                                color: '#888',
-                                usePointStyle: true,
-                                padding: 15
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed.y !== null) {
-                                        label += '$' + context.parsed.y.toFixed(2);
-                                    }
-                                    return label;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            grid: { color: 'rgba(75, 192, 192, 0.1)' },
-                            ticks: {
-                                color: 'rgb(75, 192, 192)',
-                                callback: function(value) {
-                                    return '$' + value.toFixed(2);
-                                }
-                            },
-                            title: {
-                                display: true,
-                                text: 'Daily P&L',
-                                color: 'rgb(75, 192, 192)'
-                            }
-                        },
-                        y1: {
-                            type: 'linear',
-                            display: true,
-                            position: 'right',
-                            grid: { drawOnChartArea: false },
-                            ticks: {
-                                color: 'rgb(255, 99, 132)',
-                                callback: function(value) {
-                                    return '$' + value.toFixed(2);
-                                }
-                            },
-                            title: {
-                                display: true,
-                                text: 'Cumulative P&L',
-                                color: 'rgb(255, 99, 132)'
-                            }
-                        },
-                        x: {
-                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                            ticks: { color: '#888' }
-                        }
-                    }
-                }
-            });
-        }
-
-        function updatePnLChart(data) {
-            if (!pnlChart || !data) return;
-
-            try {
-                pnlChart.data.labels = data.labels || [];
-
-                // Update both datasets
-                if (data.datasets && data.datasets.length > 0) {
-                    pnlChart.data.datasets[0].data = data.datasets[0]?.data || [];
-
-                    // Update second dataset if available
-                    if (data.datasets.length > 1 && pnlChart.data.datasets.length > 1) {
-                        pnlChart.data.datasets[1].data = data.datasets[1]?.data || [];
-                    }
-                }
-
-                pnlChart.update('none'); // Use 'none' mode for faster updates
-            } catch (error) {
-                console.error('Error updating P&L chart:', error);
-            }
-        }
-
-        // Trading controls
-        async function startTrading() {
-            const result = await postAPI('startTrading');
-            if (result) {
-                alert('Trading bot started successfully!');
-                refreshAll();
-            }
-        }
-
-        async function stopTrading() {
-            if (!confirm('Are you sure you want to stop trading?')) return;
-            const result = await postAPI('stopTrading');
-            if (result) {
-                alert('Trading bot stopped.');
-                refreshAll();
-            }
-        }
-
-        async function exportData() {
-            const url = resolveEndpoint('pnlExport');
-            if (url) {
-                window.open(`${url}?format=csv`, '_blank');
-            }
-        }
-
-        // Utility functions
-        function formatNumber(num) {
-            if (num === undefined || num === null) return '0.00';
-            return parseFloat(num).toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-        }
-    </script>
+    <!-- Main Script -->
+    <!-- Main Script -->
+    <script src="script.js?v=3"></script>
 </body>
+
 </html>

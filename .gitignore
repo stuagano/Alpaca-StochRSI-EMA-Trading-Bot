@@ -96,7 +96,7 @@ frontend-shadcn/.playwright/
 # Archive directories (old code)
 /archive/
 /docs/
-/scripts/
+
 /backtesting/
 /services/
 /src/

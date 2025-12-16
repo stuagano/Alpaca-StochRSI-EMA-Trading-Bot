@@ -45,3 +45,9 @@ def simple_dashboard():
 def advanced_dashboard():
     """Advanced dashboard view with all features."""
     return _serve_dashboard('advanced')
+
+
+@dashboard_bp.route('/favicon.ico')
+def favicon():
+    """Suppress favicon 404s."""
+    return '', 204

@@ -141,6 +141,7 @@ class CryptoScannerConfig:
     min_24h_volume: int = 100000
     min_volatility: float = 0.0001
     max_spread: float = 0.01
+    enable_market_scan: bool = False
 
 
 @dataclass
@@ -625,8 +626,11 @@ class UnifiedConfigManager:
             errors.append(f"strategy must be one of {valid_strategies}")
 
         # Validate symbols
-        if not config.symbols or len(config.symbols) == 0:
-            errors.append("At least one symbol must be specified")
+        if (not config.symbols or len(config.symbols) == 0):
+            # Allow empty symbols if scanner is enabled
+            is_scanner_enabled = config.crypto_scanner and config.crypto_scanner.enable_market_scan
+            if not is_scanner_enabled:
+                 errors.append("At least one symbol must be specified or market scan enabled")
         
         # Validate indicator parameters
         if config.indicators.stochRSI.enabled:

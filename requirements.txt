@@ -11,7 +11,7 @@ flask-cors>=4.0.0
 flask-compress>=1.13
 pyjwt>=2.8.0
 eventlet>=0.33.0
-pandas-ta>=0.3.14b
+pandas-ta
 
 # Performance optimization dependencies
 aiohttp>=3.8.0

@@ -1,0 +1,17 @@
+{
+	"ulid": "01KCHAFZHPC3TVTMBT9XW18G6Q",
+	"minTime": 1765802077978,
+	"maxTime": 1765807200000,
+	"stats": {
+		"numSamples": 156,
+		"numSeries": 39,
+		"numChunks": 39
+	},
+	"compaction": {
+		"level": 1,
+		"sources": [
+			"01KCHAFZHPC3TVTMBT9XW18G6Q"
+		]
+	},
+	"version": 1
+}

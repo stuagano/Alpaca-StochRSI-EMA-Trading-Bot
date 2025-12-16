@@ -24,6 +24,30 @@ services:
         condition: service_healthy
     volumes:
       - ${LOCAL_DATA_ROOT}/logs:/app/logs
+      - ../../AUTH:/app/AUTH
+    profiles: ["core"]
+    restart: unless-stopped
+
+  dashboard:
+    build: *app-build
+    image: ${TRADING_IMAGE_NAME:-alpaca-scalper:local}
+    command: ["python", "-m", "backend.api.run", "--host", "0.0.0.0", "--port", "5001"]
+    working_dir: /app
+    env_file:
+      - ../../.env
+    environment:
+      DATABASE_URL: ${COMPOSE_DATABASE_URL}
+      REDIS_URL: ${COMPOSE_REDIS_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../../AUTH:/app/AUTH
+      - ../../backend:/app/backend
+    ports:
+      - "${DASHBOARD_HOST_PORT:-5001}:5001"
     profiles: ["core"]
     restart: unless-stopped
 
@@ -31,7 +55,7 @@ services:
     image: ${REDIS_IMAGE}
     command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
     ports:
-      - "${REDIS_PORT}:6379"
+      - "${REDIS_HOST_PORT:-6379}:6379"
     volumes:
       - ${LOCAL_DATA_ROOT}/redis:/data
     healthcheck:
@@ -49,7 +73,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     ports:
-      - "${DB_PORT}:5432"
+      - "${DB_HOST_PORT:-5432}:5432"
     volumes:
       - ${LOCAL_DATA_ROOT}/postgres:/var/lib/postgresql/data
     healthcheck:
@@ -67,7 +91,7 @@ services:
       - "--storage.tsdb.path=/prometheus"
       - "--web.listen-address=:${PROMETHEUS_WEB_PORT}"
     ports:
-      - "${PROMETHEUS_WEB_PORT}:9090"
+      - "${PROMETHEUS_HOST_PORT:-9090}:9090"
     volumes:
       - ${PROMETHEUS_CONFIG_PATH}:/etc/prometheus/prometheus.yml:ro
       - ${LOCAL_DATA_ROOT}/prometheus:/prometheus
@@ -98,7 +122,7 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "${RISK_API_PORT}:${RISK_API_PORT}"
+      - "${RISK_API_HOST_PORT:-8090}:${RISK_API_PORT}"
     profiles: ["analytics"]
     restart: unless-stopped
 
@@ -126,7 +150,7 @@ services:
     environment:
       GF_PATHS_PROVISIONING: /etc/grafana/provisioning
     ports:
-      - "${GRAFANA_PORT}:3000"
+      - "${GRAFANA_HOST_PORT:-3000}:3000"
     volumes:
       - ${GRAFANA_PROVISIONING_PATH}:/etc/grafana/provisioning
       - ${LOCAL_DATA_ROOT}/grafana:/var/lib/grafana

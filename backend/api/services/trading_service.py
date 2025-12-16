@@ -44,6 +44,11 @@ class TradingService:
         # Trading state
         self.is_trading = False
         self.last_update = datetime.now()
+        
+        # Scanner state
+        self.scanner = None
+        self._scanned_symbols_cache = []
+        self._last_scan_time = datetime.min
 
     def get_system_status(self) -> Dict:
         """Get system status information"""
@@ -51,7 +56,7 @@ class TradingService:
             account = self.api.get_account()
             market_status = 'OPEN' if account.trading_blocked == False else 'CLOSED'
 
-            return {
+            status = {
                 'last_update': self.last_update.isoformat(),
                 'market_status': market_status,
                 'is_trading': self.is_trading,
@@ -60,6 +65,12 @@ class TradingService:
                     'trading_bot': 'running' if self.is_trading else 'stopped'
                 }
             }
+            
+            # Enrich with detailed bot status if available
+            if self.is_trading and self.trading_bot and hasattr(self.trading_bot, 'get_status'):
+                status['bot_status'] = self.trading_bot.get_status()
+                
+            return status
         except Exception as e:
             logger.error(f"Error getting system status: {e}")
             return {
@@ -141,25 +152,35 @@ class TradingService:
         for symbol in effective_symbols:
             try:
                 # Get market data
-                bars = self.api.get_bars(
-                    symbol,
-                    timeframe,
-                    limit=100
-                ).df
+                if self._is_crypto(symbol):
+                    bars = self.api.get_crypto_bars(
+                        symbol,
+                        timeframe,
+                        limit=100
+                    ).df
+                    # Normalize columns to lowercase for consistency
+                    bars.columns = [c.lower() for c in bars.columns]
+                else:
+                    bars = self.api.get_bars(
+                        symbol,
+                        timeframe,
+                        limit=100
+                    ).df
 
                 if len(bars) < 20:
                     continue
 
                 # Calculate indicators
-                prices = bars['close'].values
-                volumes = bars['volume'].values
-
-                rsi = self.indicator.calculate_rsi(prices)
-                stoch_k, stoch_d = self.indicator.calculate_stochastic(
-                    bars['high'].values,
-                    bars['low'].values,
-                    bars['close'].values
-                )
+                indicators = self.indicator.calculate_indicators(bars, symbol)
+                
+                rsi = indicators.get('rsi', 50)
+                stoch_data = indicators.get('stochastic', {})
+                stoch_k = stoch_data.get('k', 50)
+                stoch_d = stoch_data.get('d', 50)
+                
+                # Get latest price and volume
+                current_price = indicators.get('price', bars['close'].iloc[-1] if not bars.empty else 0)
+                current_volume = indicators.get('volume', bars['volume'].iloc[-1] if not bars.empty else 0)
 
                 # Generate signal
                 signal_strength = self._calculate_signal_strength(rsi, stoch_k, stoch_d)
@@ -168,11 +189,11 @@ class TradingService:
                 signals.append({
                     'symbol': symbol,
                     'action': action,
-                    'rsi': round(rsi, 2),
-                    'stoch_k': round(stoch_k, 2),
-                    'stoch_d': round(stoch_d, 2),
-                    'price': round(prices[-1], 4),
-                    'volume': int(volumes[-1]),
+                    'rsi': round(float(rsi), 2),
+                    'stoch_k': round(float(stoch_k), 2),
+                    'stoch_d': round(float(stoch_d), 2),
+                    'price': round(float(current_price), 4),
+                    'volume': int(current_volume),
                     'strength': signal_strength,
                     'timestamp': datetime.now().isoformat()
                 })
@@ -243,8 +264,36 @@ class TradingService:
                 pass
 
             # Initialize trading bot
-            self.trading_bot = TradingBot(self.config)
-            self.trading_executor = self.trading_bot.executor
+            # Strategy and data manager placeholders
+            strategy_name = getattr(self.config, 'strategy', 'stoch_rsi')
+            
+            # Check for crypto scalping strategy override or default
+            if strategy_name == 'crypto_scalping' or getattr(self.config, 'crypto_scanner', {}).get('enabled', False):
+                try:
+                    from strategies.crypto_scalping_strategy import create_crypto_day_trader
+                    self.trading_bot = create_crypto_day_trader(self.client, self.config)
+                    # CryptoDayTradingBot handles its own execution logic
+                    self.trading_executor = getattr(self.trading_bot, 'trading_executor', None) 
+                    
+                    # Start bot in a background thread with its own event loop
+                    import threading
+                    import asyncio
+                    def run_async_bot():
+                        asyncio.run(self.trading_bot.start_trading())
+                        
+                    self._bot_thread = threading.Thread(target=run_async_bot, daemon=True)
+                    self._bot_thread.start()
+                    
+                    logger.info("Crypto Scalping Bot started in background thread")
+                    
+                except ImportError as e:
+                    logger.error(f"Failed to import crypto strategy: {e}")
+                    # Fallback to stub
+                    self.trading_bot = TradingBot(self, strategy_name)
+                    self.trading_executor = self.trading_bot.trading_executor
+            else:
+                self.trading_bot = TradingBot(self, strategy_name)  # Pass self as data_manager placeholder
+                self.trading_executor = self.trading_bot.trading_executor
 
             # Start trading
             self.is_trading = True
@@ -252,7 +301,8 @@ class TradingService:
             logger.info("Trading bot started")
             return {
                 'status': 'started',
-                'config': self._config_snapshot()
+                'config': self._config_snapshot(),
+                'strategy': strategy_name
             }
 
         except Exception as e:
@@ -272,6 +322,9 @@ class TradingService:
                 results = self.close_all_positions()
                 positions_closed = len(results)
 
+            if hasattr(self.trading_bot, 'stop'):
+                self.trading_bot.stop()
+                
             self.is_trading = False
             self.trading_bot = None
             self.trading_executor = None
@@ -329,6 +382,49 @@ class TradingService:
     def _resolve_symbols(self, override: Optional[List[str]] = None) -> List[str]:
         if override:
             return list(override)
+
+        # Check if scanner is enabled in config
+        crypto_scanner_cfg = getattr(self.config, 'crypto_scanner', None)
+        
+        if crypto_scanner_cfg and getattr(crypto_scanner_cfg, 'enable_market_scan', False):
+            # Use cached symbols if available and recent (5 mins)
+            if self._scanned_symbols_cache and \
+               (datetime.now() - self._last_scan_time).total_seconds() < 300:
+                logger.info("Using cached scanned symbols")
+                return self._scanned_symbols_cache
+
+            try:
+                # Initialize scanner if needed
+                if not self.scanner:
+                    from strategies.crypto_scalping_strategy import CryptoVolatilityScanner
+                    self.scanner = CryptoVolatilityScanner(
+                        config=crypto_scanner_cfg
+                    )
+                
+                logger.info("Scanning market for top volatile pairs...")
+                # Allow scanner to fetch all assets and select top 20
+                top_pairs = self.scanner.select_top_volatile_pairs(self.api, target_count=20)
+
+                # Normalize symbols to BASE/QUOTE format (e.g. BTCUSD -> BTC/USD)
+                formatted_pairs = []
+                for symbol in top_pairs:
+                    if "/" not in symbol:
+                        if symbol.endswith("USD"):
+                            formatted_pairs.append(f"{symbol[:-3]}/USD")
+                        elif symbol.endswith("USDT"):
+                            formatted_pairs.append(f"{symbol[:-4]}/USDT")
+                        elif symbol.endswith("USDC"):
+                            formatted_pairs.append(f"{symbol[:-4]}/USDC")
+                        else:
+                            formatted_pairs.append(symbol)
+                    else:
+                        formatted_pairs.append(symbol)
+                
+                self._scanned_symbols_cache = formatted_pairs
+                self._last_scan_time = datetime.now()
+                return formatted_pairs
+            except Exception as e:
+                logger.error(f"Scanner failed, falling back to configured symbols: {e}", exc_info=True)
 
         symbols = getattr(self.config, 'symbols', None)
         if symbols:

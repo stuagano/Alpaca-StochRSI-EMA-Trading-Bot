@@ -244,28 +244,39 @@ class CryptoVolatilityScanner:
     def fetch_all_crypto_assets(self, api) -> List[str]:
         """Fetch all available crypto assets from Alpaca"""
         try:
-            from alpaca.trading.requests import GetAssetsRequest
-            from alpaca.trading.enums import AssetClass, AssetStatus
+            # Try the alpaca_trade_api.REST method first
+            if hasattr(api, 'list_assets'):
+                # Using alpaca_trade_api.REST
+                assets = api.list_assets(status='active', asset_class='crypto')
+                crypto_symbols = []
+                for asset in assets:
+                    symbol = asset.symbol
+                    # Only include USD pairs for trading
+                    if 'USD' in symbol and len(symbol) <= 10:
+                        # Convert to slash format if needed for API calls later
+                        crypto_symbols.append(symbol)
+                
+                logger.info(f"📡 Fetched {len(crypto_symbols)} crypto assets from Alpaca")
+                return sorted(crypto_symbols)
+            else:
+                # Try newer alpaca-py SDK
+                from alpaca.trading.requests import GetAssetsRequest
+                from alpaca.trading.enums import AssetClass, AssetStatus
 
-            # Create request for crypto assets
-            search_params = GetAssetsRequest(
-                status=AssetStatus.ACTIVE,
-                asset_class=AssetClass.CRYPTO
-            )
+                search_params = GetAssetsRequest(
+                    status=AssetStatus.ACTIVE,
+                    asset_class=AssetClass.CRYPTO
+                )
+                assets = api.get_all_assets(search_params)
 
-            # Get all crypto assets
-            assets = api.get_all_assets(search_params)
+                crypto_symbols = []
+                for asset in assets:
+                    symbol = asset.symbol
+                    if 'USD' in symbol and len(symbol) <= 10:
+                        crypto_symbols.append(symbol)
 
-            # Filter for USD pairs and extract symbols
-            crypto_symbols = []
-            for asset in assets:
-                symbol = asset.symbol
-                # Only include USD pairs for trading
-                if symbol.endswith('USD') and len(symbol) <= 8:  # Reasonable symbol length
-                    crypto_symbols.append(symbol)
-
-            logger.info(f"📡 Fetched {len(crypto_symbols)} crypto assets from Alpaca")
-            return sorted(crypto_symbols)
+                logger.info(f"📡 Fetched {len(crypto_symbols)} crypto assets from Alpaca")
+                return sorted(crypto_symbols)
 
         except Exception as e:
             logger.error(f"Failed to fetch crypto assets: {e}")
@@ -370,10 +381,12 @@ class CryptoVolatilityScanner:
         
     def calculate_volatility(self, prices: List[float], window: int = 20) -> float:
         """Calculate price volatility using standard deviation"""
-        if len(prices) < window:
+        # Use smaller window if not enough data, minimum 3 points
+        actual_window = min(window, len(prices))
+        if actual_window < 3:
             return 0.0
         
-        returns = np.diff(np.log(prices[-window:]))
+        returns = np.diff(np.log(prices[-actual_window:]))
         return np.std(returns) * np.sqrt(1440)  # Annualized for 1-minute data
     
     def detect_volume_surge(self, volumes: List[float], window: int = 10) -> bool:
@@ -634,6 +647,18 @@ class CryptoDayTradingBot:
         self.is_running = False
         self.executor = ThreadPoolExecutor(max_workers=5)
         
+    @property
+    def _api(self):
+        """Get the raw Alpaca REST API object, handling both wrapper and direct types."""
+        # If alpaca has an 'api' attribute (it's a wrapper), use that
+        if hasattr(self.alpaca, 'api'):
+            return self.alpaca.api
+        # If alpaca has a 'get_api' method, use that
+        if hasattr(self.alpaca, 'get_api'):
+            return self.alpaca.get_api()
+        # Otherwise assume it's already the raw API
+        return self.alpaca
+        
     async def start_trading(self):
         """Start the day trading bot"""
         logger.info("🚀 Starting Crypto Day Trading Bot")
@@ -658,8 +683,8 @@ class CryptoDayTradingBot:
         # Check for exit signals on existing positions
         await self._check_exit_conditions()
         
-        # Look for new entry opportunities every 5 seconds
-        if int(time.time()) % 5 == 0:
+        # Look for new entry opportunities every 10 seconds (aligned with data polling)
+        if int(time.time()) % 10 == 0:
             await self._find_entry_opportunities()
         
         # Update metrics every minute
@@ -713,7 +738,7 @@ class CryptoDayTradingBot:
 
             # Clamp against available funds with a safety margin
             try:
-                account = self.alpaca.get_account()
+                account = self._api.get_account()
                 available_cash = float(getattr(account, 'cash', getattr(account, 'buying_power', 0.0)))
             except Exception as exc:
                 logger.warning(f"Unable to fetch account balance, defaulting to configured limits: {exc}")
@@ -970,7 +995,7 @@ class CryptoDayTradingBot:
             )
 
             # Submit order using Alpaca client
-            order = self.alpaca.submit_order(order_data=order_request)
+            order = self._api.submit_order(order_data=order_request)
             return order
 
         except Exception as e:
@@ -1085,55 +1110,108 @@ class CryptoDayTradingBot:
             return None
     
     def _start_market_data_feed(self):
-        """Start WebSocket feed for market data"""
-        # This would connect to crypto exchange WebSocket
-        # For now, simulate with random data updates
+        """Start polling feed for real market data"""
         import threading
-        
-        def simulate_data():
-            # Initialize with base prices for each symbol
-            base_prices = {}
-            for symbol in self.scanner.high_volume_pairs:
-                if 'BTC' in symbol:
-                    base_prices[symbol] = 45000 + np.random.random() * 10000
-                elif 'ETH' in symbol:
-                    base_prices[symbol] = 2800 + np.random.random() * 500
-                elif 'DOGE' in symbol:
-                    base_prices[symbol] = 0.08 + np.random.random() * 0.02
-                else:
-                    base_prices[symbol] = 10 + hash(symbol) % 1000
-                
-                # Initialize with some historical data for volatility calculation
-                for _ in range(50):
-                    price_change = (np.random.random() - 0.5) * 0.05  # ±2.5% for history
-                    price = base_prices[symbol] * (1 + price_change)
-                    volume = np.random.exponential(5000000) + 1000000
-                    self.scanner.update_market_data(symbol, price, volume)
+        from alpaca_trade_api.rest import TimeFrame
+
+        def poll_market_data():
+            logger.info("📡 Starting real market data polling...")
             
+            # Initial history fetch (last 60 mins) to build volatility baseline
+            try:
+                symbols = self.scanner.get_enabled_symbols()
+                if symbols:
+                    end = datetime.now()
+                    start = end - timedelta(minutes=60)
+                    # Convert to date strings (YYYY-MM-DD) for Alpaca API compatibility
+                    start_str = start.strftime('%Y-%m-%d')
+                    end_str = end.strftime('%Y-%m-%d')
+                    for symbol in symbols:
+                        try:
+                            # Convert BTCUSD to BTC/USD for Alpaca API 
+                            if '/' not in symbol:
+                                api_symbol = symbol[:-3] + '/' + symbol[-3:]  # BTC + USD -> BTC/USD
+                            else:
+                                api_symbol = symbol
+                            bars = self._api.get_crypto_bars(
+                                api_symbol, 
+                                TimeFrame.Minute,
+                                start=start_str,
+                                end=end_str
+                            ).df
+                            
+                            if not bars.empty:
+                                for index, row in bars.iterrows():
+                                    # Store with original symbol format (BTCUSD) or normalized  
+                                    self.scanner.update_market_data(
+                                        symbol, 
+                                        float(row['close']), 
+                                        float(row['volume'])
+                                    )
+                            logger.info(f"  Loaded {len(bars)} historical bars for {formatted_symbol}")
+                        except Exception as e:
+                            logger.error(f"Failed to load history for {symbol}: {e}")
+            except Exception as e:
+                logger.error(f"Initial data fetch failed: {e}")
+
+            # Main polling loop
             while self.is_running:
                 try:
-                    for symbol in self.scanner.high_volume_pairs:
-                        # Create more volatile price movements
-                        if np.random.random() < 0.1:  # 10% chance of high volatility event
-                            price_change = (np.random.random() - 0.5) * 0.08  # ±4% spike
-                            volume_multiplier = 2 + np.random.random() * 3  # 2-5x volume
-                        else:
-                            price_change = (np.random.random() - 0.5) * 0.02  # Normal ±1%
-                            volume_multiplier = 0.8 + np.random.random() * 0.4  # 0.8-1.2x
-                        
-                        # Update base price with trend
-                        base_prices[symbol] *= (1 + price_change)
-                        volume = np.random.exponential(2000000) * volume_multiplier + 1000000
-                        
-                        self.scanner.update_market_data(symbol, base_prices[symbol], volume)
+                    symbols = self.scanner.get_enabled_symbols()
+                    if not symbols:
+                        time.sleep(5)
+                        continue
+
+                    # Poll for latest data every 30 seconds (Alpaca crypto bars are 1 min typically, 
+                    # but we want to catch them as soon as they close or update)
+                    # Note: get_crypto_bars returns 1Min bars. For real-time 'tick' data we'd need websocket.
+                    # For scalping, 1Min bars are acceptable if we poll frequently to get the latest completed bar.
                     
-                    time.sleep(1)  # Update every second
+                    end = datetime.now()
+                    start = end - timedelta(minutes=5) # Get last few bars to ensure continuity
+                    # Convert to date strings for Alpaca API compatibility
+                    start_str = start.strftime('%Y-%m-%d')
+                    end_str = end.strftime('%Y-%m-%d')
+                    
+                    for symbol in symbols:
+                        try:
+                            # Convert BTCUSD to BTC/USD for Alpaca API
+                            if '/' not in symbol:
+                                api_symbol = symbol[:-3] + '/' + symbol[-3:]  # BTC + USD -> BTC/USD
+                            else:
+                                api_symbol = symbol
+                            bars = self._api.get_crypto_bars(
+                                api_symbol, 
+                                TimeFrame.Minute,
+                                start=start_str,
+                                end=end_str
+                            ).df
+                            
+                            if not bars.empty:
+                                # Update with latest bar - store with original symbol format
+                                latest = bars.iloc[-1]
+                                self.scanner.update_market_data(
+                                    symbol, 
+                                    float(latest['close']), 
+                                    float(latest['volume'])
+                                )
+                                logger.debug(f"Updated {symbol}: ${latest['close']:.2f} Vol:{latest['volume']:.0f}")
+                        except Exception as e:
+                            # Log rate limits specifically
+                            if "429" in str(e):
+                                logger.warning(f"Rate limit during polling {symbol}, slowing down...")
+                                time.sleep(1)
+                            else:
+                                logger.debug(f"Polling error for {symbol}: {e}")
+                                
+                    time.sleep(10)  # Poll every 10 seconds
+
                 except Exception as e:
-                    logger.error(f"Market data simulation error: {e}")
-                    time.sleep(5)
+                    logger.error(f"Market data polling error: {e}")
+                    time.sleep(10)
         
-        threading.Thread(target=simulate_data, daemon=True).start()
-        logger.info("📊 Market data feed started")
+        threading.Thread(target=poll_market_data, daemon=True).start()
+        logger.info("📊 Real market data polling started")
     
     def _update_metrics(self):
         """Update trading metrics"""

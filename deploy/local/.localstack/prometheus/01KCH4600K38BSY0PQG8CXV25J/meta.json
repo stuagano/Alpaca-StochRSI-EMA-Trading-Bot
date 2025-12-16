@@ -1,0 +1,17 @@
+{
+	"ulid": "01KCH4600K38BSY0PQG8CXV25J",
+	"minTime": 1765793451041,
+	"maxTime": 1765800000000,
+	"stats": {
+		"numSamples": 156,
+		"numSeries": 39,
+		"numChunks": 39
+	},
+	"compaction": {
+		"level": 1,
+		"sources": [
+			"01KCH4600K38BSY0PQG8CXV25J"
+		]
+	},
+	"version": 1
+}

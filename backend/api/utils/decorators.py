@@ -51,15 +51,16 @@ def require_auth(f):
     def decorated_function(*args, **kwargs):
         # Simple API key authentication
         api_key = request.headers.get('X-API-Key')
+        expected_key = current_app.config.get('API_KEY')
+
+        # If no key is configured, bypass authentication (dev mode)
+        if not expected_key:
+             return f(*args, **kwargs)
 
         if not api_key:
             return jsonify({'error': 'Authentication required'}), 401
-
-        # In production, validate against actual API keys
-        # For now, check against a configured key
-        expected_key = current_app.config.get('API_KEY')
-
-        if expected_key and api_key != expected_key:
+            
+        if api_key != expected_key:
             return jsonify({'error': 'Invalid API key'}), 401
 
         return f(*args, **kwargs)

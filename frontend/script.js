@@ -84,6 +84,8 @@ class CryptoDashboard {
         const url = typeof buildApiUrl === 'function'
             ? buildApiUrl(endpointKey)
             : endpointKey;
+        console.log('Fetching:', endpointKey, url);
+
 
         const response = await fetch(url);
         if (!response.ok) {
@@ -301,7 +303,7 @@ class CryptoDashboard {
                     },
                     tooltip: {
                         callbacks: {
-                            label: function(context) {
+                            label: function (context) {
                                 let label = context.dataset.label || '';
                                 if (label) {
                                     label += ': ';
@@ -322,7 +324,7 @@ class CryptoDashboard {
                         grid: { color: 'rgba(75, 192, 192, 0.1)' },
                         ticks: {
                             color: 'rgb(75, 192, 192)',
-                            callback: function(value) {
+                            callback: function (value) {
                                 return '$' + value.toFixed(2);
                             }
                         },
@@ -339,7 +341,7 @@ class CryptoDashboard {
                         grid: { drawOnChartArea: false },
                         ticks: {
                             color: 'rgb(255, 99, 132)',
-                            callback: function(value) {
+                            callback: function (value) {
                                 return '$' + value.toFixed(2);
                             }
                         },
@@ -449,6 +451,6 @@ function toggleAutoRefresh() {
 
 // Initialize dashboard when page loads
 let dashboard;
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     dashboard = new CryptoDashboard();
 });

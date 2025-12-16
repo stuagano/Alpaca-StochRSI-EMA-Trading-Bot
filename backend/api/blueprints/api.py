@@ -65,13 +65,9 @@ def api_signals():
         if symbols_param:
             symbols = [symbol.strip() for symbol in symbols_param.split(',') if symbol.strip()]
 
+    # If no symbols provided, pass None to service to let it resolve via config/scanner
     if not symbols:
-        default_symbols = list(getattr(config, 'symbols', []) or [])
-        symbols = default_symbols
-
-    if not symbols:
-        current_app.logger.warning("No symbols provided and none configured; returning empty signal list")
-        return jsonify([])
+        symbols = None
 
     signals = service.calculate_signals(symbols)
     return jsonify(signals)
