@@ -5,6 +5,7 @@ class CryptoDashboard {
         this.refreshInterval = null;
         this.lastUpdate = null;
         this.pnlChart = null;
+        this.botStatus = null;
 
         this.init();
     }
@@ -14,6 +15,8 @@ class CryptoDashboard {
         this.updateConnectionStatus('connecting');
         this.initializeChart();
         this.loadAllData();
+        this.loadBotStatus();
+        this.loadThresholds();
         this.updateChart();
         this.startAutoRefresh();
 
@@ -25,6 +28,7 @@ class CryptoDashboard {
         // Handle window focus to refresh data
         window.addEventListener('focus', () => {
             this.loadAllData();
+            this.loadBotStatus();
         });
     }
 
@@ -418,6 +422,7 @@ class CryptoDashboard {
         if (this.autoRefresh) {
             this.refreshInterval = setInterval(() => {
                 this.loadAllData();
+                this.loadBotStatus();
                 this.updateChart();
             }, 10000); // Refresh every 10 seconds
         }
@@ -428,6 +433,269 @@ class CryptoDashboard {
             clearInterval(this.refreshInterval);
             this.refreshInterval = null;
         }
+    }
+
+    // ==================== BOT CONTROL METHODS ====================
+
+    async startTrading() {
+        try {
+            const response = await fetch(buildApiUrl('tradingStart'), { method: 'POST' });
+            const data = await response.json();
+
+            if (response.ok) {
+                this.showNotification('Trading started successfully', 'success');
+                await this.loadBotStatus();
+                await this.loadAllData();
+            } else {
+                this.showNotification(data.error || 'Failed to start trading', 'error');
+            }
+        } catch (error) {
+            console.error('Error starting trading:', error);
+            this.showNotification('Error starting trading', 'error');
+        }
+    }
+
+    async stopTrading() {
+        if (!confirm('Are you sure you want to stop trading?')) return;
+
+        try {
+            const response = await fetch(buildApiUrl('tradingStop'), { method: 'POST' });
+            const data = await response.json();
+
+            if (response.ok) {
+                this.showNotification('Trading stopped', 'success');
+                await this.loadBotStatus();
+                await this.loadAllData();
+            } else {
+                this.showNotification(data.error || 'Failed to stop trading', 'error');
+            }
+        } catch (error) {
+            console.error('Error stopping trading:', error);
+            this.showNotification('Error stopping trading', 'error');
+        }
+    }
+
+    async liquidateAll() {
+        if (!confirm('⚠️ LIQUIDATE ALL POSITIONS?\n\nThis will close ALL open positions immediately at market price.')) return;
+
+        try {
+            const response = await fetch(buildApiUrl('liquidateAll'), { method: 'POST' });
+            const data = await response.json();
+
+            if (response.ok) {
+                this.showNotification(`Liquidated ${data.orders?.length || 0} positions`, 'success');
+                await this.loadBotStatus();
+                await this.loadAllData();
+            } else {
+                this.showNotification(data.error || 'Failed to liquidate positions', 'error');
+            }
+        } catch (error) {
+            console.error('Error liquidating positions:', error);
+            this.showNotification('Error liquidating positions', 'error');
+        }
+    }
+
+    async liquidatePosition(symbol) {
+        if (!confirm(`Close position for ${symbol}?`)) return;
+
+        try {
+            const response = await fetch(buildApiUrl('liquidate').replace('{symbol}', symbol), { method: 'POST' });
+            const data = await response.json();
+
+            if (response.ok) {
+                this.showNotification(`Position ${symbol} closed`, 'success');
+                await this.loadBotStatus();
+                await this.loadAllData();
+            } else {
+                this.showNotification(data.error || `Failed to close ${symbol}`, 'error');
+            }
+        } catch (error) {
+            console.error(`Error closing position ${symbol}:`, error);
+            this.showNotification(`Error closing ${symbol}`, 'error');
+        }
+    }
+
+    // ==================== BOT STATUS METHODS ====================
+
+    async loadBotStatus() {
+        try {
+            const data = await this.fetchData('botStatus');
+            this.botStatus = data;
+            this.updateBotStatusUI(data);
+        } catch (error) {
+            console.error('Error loading bot status:', error);
+            this.updateBotStatusUI({ status: 'error', bot: null });
+        }
+    }
+
+    updateBotStatusUI(data) {
+        const badge = document.getElementById('bot-status-badge');
+        const status = data.status || 'not_started';
+
+        badge.textContent = status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ');
+        badge.className = 'bot-status-badge ' + status;
+
+        const bot = data.bot;
+        if (bot) {
+            document.getElementById('bot-positions-count').textContent = bot.active_positions_count || 0;
+            document.getElementById('bot-total-trades').textContent = bot.total_trades || 0;
+            document.getElementById('bot-win-rate').textContent = (bot.win_rate || 0) + '%';
+
+            const unrealizedPnl = bot.total_unrealized_pnl || 0;
+            const pnlElement = document.getElementById('bot-unrealized-pnl');
+            pnlElement.textContent = this.formatCurrency(unrealizedPnl);
+            pnlElement.className = 'stat-value ' + (unrealizedPnl >= 0 ? 'positive' : 'negative');
+
+            // Update bot positions list
+            this.updateBotPositionsList(bot.positions || []);
+        } else {
+            document.getElementById('bot-positions-count').textContent = '0';
+            document.getElementById('bot-total-trades').textContent = '0';
+            document.getElementById('bot-win-rate').textContent = '0%';
+            document.getElementById('bot-unrealized-pnl').textContent = '$0.00';
+            document.getElementById('bot-positions-list').innerHTML = '<div class="no-data">Bot not running - Start trading to manage positions</div>';
+            document.getElementById('bot-positions-list-count').textContent = '0';
+        }
+    }
+
+    updateBotPositionsList(positions) {
+        const container = document.getElementById('bot-positions-list');
+        document.getElementById('bot-positions-list-count').textContent = positions.length;
+
+        if (!positions || positions.length === 0) {
+            container.innerHTML = '<div class="no-data">No positions being managed by bot</div>';
+            return;
+        }
+
+        let html = '';
+        positions.forEach(pos => {
+            const pnlClass = pos.pnl_pct >= 0 ? 'positive' : 'negative';
+            const holdProgress = Math.min(100, (pos.hold_time_seconds / 3600) * 100); // 1 hour = 100%
+
+            html += `
+                <div class="position-card">
+                    <div class="position-card-header">
+                        <span class="position-symbol">${pos.symbol}</span>
+                        <span class="position-pnl ${pnlClass}">
+                            ${pos.pnl_pct >= 0 ? '+' : ''}${pos.pnl_pct}% (${this.formatCurrency(pos.unrealized_pnl)})
+                        </span>
+                    </div>
+                    <div class="position-details-grid">
+                        <div class="position-detail">
+                            <span class="position-detail-label">Entry</span>
+                            <span class="position-detail-value">${this.formatCurrency(pos.entry_price)}</span>
+                        </div>
+                        <div class="position-detail">
+                            <span class="position-detail-label">Current</span>
+                            <span class="position-detail-value">${this.formatCurrency(pos.current_price)}</span>
+                        </div>
+                        <div class="position-detail">
+                            <span class="position-detail-label">Qty</span>
+                            <span class="position-detail-value">${pos.quantity}</span>
+                        </div>
+                        <div class="position-detail">
+                            <span class="position-detail-label">Stop</span>
+                            <span class="position-detail-value negative">${this.formatCurrency(pos.stop_price)}</span>
+                        </div>
+                        <div class="position-detail">
+                            <span class="position-detail-label">Target</span>
+                            <span class="position-detail-value positive">${this.formatCurrency(pos.target_price)}</span>
+                        </div>
+                        <div class="position-detail">
+                            <span class="position-detail-label">Hold Time</span>
+                            <span class="position-detail-value">${this.formatHoldTime(pos.hold_time_seconds)}</span>
+                        </div>
+                    </div>
+                    <div class="hold-time-bar">
+                        <div class="hold-time-progress" style="width: ${holdProgress}%"></div>
+                    </div>
+                    <div class="position-actions">
+                        ${pos.synced_from_alpaca ? '<span style="color: #888; font-size: 11px;">Synced from Alpaca</span>' : ''}
+                        <button class="btn danger small" onclick="dashboard.liquidatePosition('${pos.symbol}')">Close Position</button>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    }
+
+    formatHoldTime(seconds) {
+        if (seconds < 60) return `${seconds}s`;
+        if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+        return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+    }
+
+    // ==================== THRESHOLD METHODS ====================
+
+    async loadThresholds() {
+        try {
+            const data = await this.fetchData('botThresholds');
+            if (data && !data.error) {
+                document.getElementById('threshold-stop-loss').value = (data.stop_loss_pct * 100).toFixed(1);
+                document.getElementById('threshold-take-profit').value = (data.take_profit_pct * 100).toFixed(1);
+                document.getElementById('threshold-trailing-stop').value = (data.trailing_stop_pct * 100).toFixed(1);
+                document.getElementById('threshold-max-hold').value = Math.floor(data.max_hold_time_seconds / 60);
+            }
+        } catch (error) {
+            console.log('Could not load thresholds (bot may not be running):', error);
+        }
+    }
+
+    async updateThresholds() {
+        const thresholds = {
+            stop_loss_pct: parseFloat(document.getElementById('threshold-stop-loss').value) / 100,
+            take_profit_pct: parseFloat(document.getElementById('threshold-take-profit').value) / 100,
+            trailing_stop_pct: parseFloat(document.getElementById('threshold-trailing-stop').value) / 100,
+            max_hold_time_seconds: parseInt(document.getElementById('threshold-max-hold').value) * 60
+        };
+
+        try {
+            const response = await fetch(buildApiUrl('botThresholds'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(thresholds)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                this.showNotification('Thresholds updated successfully', 'success');
+                await this.loadBotStatus(); // Refresh to show updated stops/targets
+            } else {
+                this.showNotification(data.error || 'Failed to update thresholds', 'error');
+            }
+        } catch (error) {
+            console.error('Error updating thresholds:', error);
+            this.showNotification('Error updating thresholds', 'error');
+        }
+    }
+
+    // ==================== NOTIFICATION HELPER ====================
+
+    showNotification(message, type = 'info') {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            color: #fff;
+            font-weight: 600;
+            z-index: 10000;
+            animation: slideIn 0.3s ease;
+            background: ${type === 'success' ? '#00ff88' : type === 'error' ? '#ff4444' : '#ffaa00'};
+            color: ${type === 'success' ? '#000' : '#fff'};
+        `;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
     }
 }
 

@@ -55,14 +55,29 @@
         }
 
         @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
 
-            0%,
-            100% {
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
                 opacity: 1;
             }
+        }
 
-            50% {
-                opacity: 0.5;
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
             }
         }
 
@@ -185,11 +200,191 @@
             opacity: 0.5;
         }
 
+        .btn.warning {
+            background: #ffaa00;
+            color: #000;
+        }
+
+        .btn.warning:hover {
+            background: #dd9900;
+        }
+
+        .btn.small {
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+
         .controls {
             display: flex;
             justify-content: center;
             gap: 10px;
             margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        /* Bot Status Styles */
+        .bot-status-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .bot-status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .bot-status-badge.running {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .bot-status-badge.stopped {
+            background: #ff4444;
+            color: #fff;
+        }
+
+        .bot-status-badge.not_started {
+            background: #666;
+            color: #fff;
+        }
+
+        /* Thresholds Panel */
+        .threshold-controls {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .threshold-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .threshold-item label {
+            color: #888;
+            font-size: 12px;
+        }
+
+        .threshold-item input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            padding: 8px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .threshold-item input:focus {
+            outline: none;
+            border-color: #00ff88;
+        }
+
+        /* Position Card with Actions */
+        .position-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+
+        .position-card:hover {
+            border-color: #00ff88;
+        }
+
+        .position-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .position-symbol {
+            font-weight: 600;
+            font-size: 16px;
+            color: #00ff88;
+        }
+
+        .position-pnl {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .position-details-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .position-detail {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .position-detail-label {
+            color: #666;
+        }
+
+        .position-detail-value {
+            color: #fff;
+        }
+
+        .position-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 5px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 5px;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #00ff88;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        /* Progress bar for hold time */
+        .hold-time-bar {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .hold-time-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #ffaa00, #ff4444);
+            transition: width 0.3s ease;
         }
 
         .signal-indicator {
@@ -265,26 +460,70 @@
 
     <div class="container">
         <div class="controls">
-            <!-- Note: script.js doesn't currently attach these via ID, but via global functions which we might need to expose or refactor. 
-                 script.js has a class 'CryptoDashboard' but doesn't expose 'startTrading' globally except via the instance?
-                 Wait, script.js defines 'dashboard' global variable.
-                 But it doesn't have startTrading/stopTrading methods in the class shown in the previous view_file.
-                 I need to check if script.js has those methods. 
-                 Looking at previous view_file for script.js: It does NOT have startTrading/stopTrading methods. 
-                 I need to ADD those to script.js or keep the API calls for them.
-            -->
-            <!-- For now, I will keep the buttons but I might need to add the handlers to script.js -->
-            <button class="btn"
-                onclick="fetch('/api/v1/trading/start', {method: 'POST'}).then(() => dashboard.loadAllData())">▶️ Start
-                Trading</button>
-            <button class="btn danger"
-                onclick="if(confirm('Stop trading?')) fetch('/api/v1/trading/stop', {method: 'POST'}).then(() => dashboard.loadAllData())">⏹
-                Stop Trading</button>
+            <button class="btn" onclick="dashboard.startTrading()">▶️ Start Trading</button>
+            <button class="btn danger" onclick="dashboard.stopTrading()">⏹ Stop Trading</button>
+            <button class="btn warning" onclick="dashboard.liquidateAll()">🚨 Liquidate All</button>
             <button class="btn" onclick="refreshDashboard()">🔄 Refresh All</button>
             <button class="btn" onclick="window.location.href='/api/v1/pnl/export'">📊 Export P&L</button>
         </div>
 
         <div class="dashboard-grid">
+            <!-- Bot Status Card -->
+            <div class="card" style="grid-column: span 2;">
+                <div class="card-header">
+                    <span class="card-title">🤖 Bot Status</span>
+                    <span class="bot-status-badge" id="bot-status-badge">Not Started</span>
+                </div>
+                <div id="bot-status-content">
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-value" id="bot-positions-count">0</div>
+                            <div class="stat-label">Active Positions</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="bot-total-trades">0</div>
+                            <div class="stat-label">Total Trades</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="bot-win-rate">0%</div>
+                            <div class="stat-label">Win Rate</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="bot-unrealized-pnl">$0.00</div>
+                            <div class="stat-label">Unrealized P&L</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trading Thresholds Card -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">⚙️ Trading Thresholds</span>
+                </div>
+                <div class="threshold-controls">
+                    <div class="threshold-item">
+                        <label>Stop Loss %</label>
+                        <input type="number" id="threshold-stop-loss" step="0.1" value="1.5" min="0.1" max="10">
+                    </div>
+                    <div class="threshold-item">
+                        <label>Take Profit %</label>
+                        <input type="number" id="threshold-take-profit" step="0.1" value="2.0" min="0.1" max="20">
+                    </div>
+                    <div class="threshold-item">
+                        <label>Trailing Stop %</label>
+                        <input type="number" id="threshold-trailing-stop" step="0.1" value="1.0" min="0.1" max="5">
+                    </div>
+                    <div class="threshold-item">
+                        <label>Max Hold (mins)</label>
+                        <input type="number" id="threshold-max-hold" step="5" value="60" min="5" max="1440">
+                    </div>
+                </div>
+                <div style="margin-top: 15px; text-align: center;">
+                    <button class="btn" onclick="dashboard.updateThresholds()">💾 Save Thresholds</button>
+                </div>
+            </div>
+
             <!-- Account Card -->
             <div class="card">
                 <div class="card-header">
@@ -306,35 +545,36 @@
                         <span class="metric-value" id="cash">Loading...</span>
                     </div>
                     <div class="metric">
+                        <span class="metric-label">Total P&L</span>
+                        <span class="metric-value" id="total-pnl">$0.00</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Daily P&L</span>
+                        <span class="metric-value" id="daily-pnl">$0.00</span>
+                    </div>
+                    <div class="metric">
                         <span class="metric-label">Status</span>
                         <span class="metric-value" id="account-status">Loading...</span>
                     </div>
                 </div>
             </div>
 
-            <!-- P&L Card -->
-            <div class="card">
+            <!-- Bot Managed Positions Card -->
+            <div class="card" style="grid-column: span 2;">
                 <div class="card-header">
-                    <span class="card-title">📈 P&L Summary</span>
+                    <span class="card-title">📊 Bot Managed Positions (<span id="bot-positions-list-count">0</span>)</span>
                     <button class="btn" style="padding: 5px 10px; font-size: 12px;"
-                        onclick="dashboard.loadAllData()">↻</button>
+                        onclick="dashboard.loadBotStatus()">↻</button>
                 </div>
-                <div id="pnl-content">
-                    <div class="metric">
-                        <span class="metric-label">Total P&L</span>
-                        <span class="metric-value" id="total-pnl">Loading...</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Daily P&L</span>
-                        <span class="metric-value" id="daily-pnl">Loading...</span>
-                    </div>
+                <div id="bot-positions-list">
+                    <div class="loading">Loading bot positions...</div>
                 </div>
             </div>
 
-            <!-- Positions Card -->
+            <!-- Alpaca Positions Card -->
             <div class="card" style="grid-column: span 2;">
                 <div class="card-header">
-                    <span class="card-title">📊 Positions (<span id="positions-count">0</span>)</span>
+                    <span class="card-title">💼 Alpaca Positions (<span id="positions-count">0</span>)</span>
                     <button class="btn" style="padding: 5px 10px; font-size: 12px;"
                         onclick="dashboard.loadAllData()">↻</button>
                 </div>

@@ -68,6 +68,8 @@
         symbols: '/api/v1/symbols',
 
         // Trading
+        tradingStart: '/api/v1/trading/start',
+        tradingStop: '/api/v1/trading/stop',
         startTrading: '/api/v1/trading/start',
         stopTrading: '/api/v1/trading/stop',
         buy: '/api/v1/trading/buy',
@@ -75,6 +77,12 @@
         closePosition: '/api/v1/trading/close',
         closeAll: '/api/v1/trading/close-all',
         setMultiplier: '/api/v1/trading/set-multiplier',
+
+        // Bot Management
+        botStatus: '/api/v1/bot/status',
+        botThresholds: '/api/v1/bot/thresholds',
+        liquidate: '/api/v1/bot/liquidate/{symbol}',
+        liquidateAll: '/api/v1/bot/liquidate-all',
 
         // P&L
         currentPnl: '/api/v1/pnl/current',
