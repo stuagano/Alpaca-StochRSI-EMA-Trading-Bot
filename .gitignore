@@ -159,3 +159,6 @@ test-report*.md
 # Crush configuration
 .crush/
 ".crush.json "
+
+# LocalStack data (Docker volumes)
+deploy/local/.localstack/
