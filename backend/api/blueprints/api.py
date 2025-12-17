@@ -193,3 +193,39 @@ def api_liquidate_all():
         'message': f'Closed {len(results)} positions',
         'orders': results
     })
+
+@api_bp.route('/bot/reset-daily', methods=['POST'])
+@handle_errors
+def api_reset_daily_limits():
+    """Reset daily trading limits to allow trading to resume"""
+    service = current_app.trading_service
+
+    if not service.trading_bot:
+        return jsonify({'error': 'Bot not started'}), 400
+
+    if hasattr(service.trading_bot, 'reset_daily_limits'):
+        result = service.trading_bot.reset_daily_limits()
+        return jsonify({
+            'message': 'Daily limits reset successfully',
+            'result': result
+        })
+    else:
+        return jsonify({'error': 'Bot does not support daily limit reset'}), 400
+
+@api_bp.route('/bot/indicators/<symbol>')
+@handle_errors
+def api_get_indicators(symbol):
+    """Get current technical indicators for a symbol"""
+    service = current_app.trading_service
+
+    if not service.trading_bot or not hasattr(service.trading_bot, 'scanner'):
+        return jsonify({'error': 'Bot not running'}), 400
+
+    indicators = service.trading_bot.scanner.get_indicators(symbol)
+    if not indicators:
+        return jsonify({'error': f'No data available for {symbol}'}), 404
+
+    return jsonify({
+        'symbol': symbol,
+        'indicators': indicators
+    })

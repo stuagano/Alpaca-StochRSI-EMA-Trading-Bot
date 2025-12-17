@@ -83,6 +83,8 @@
         botThresholds: '/api/v1/bot/thresholds',
         liquidate: '/api/v1/bot/liquidate/{symbol}',
         liquidateAll: '/api/v1/bot/liquidate-all',
+        resetDaily: '/api/v1/bot/reset-daily',
+        botIndicators: '/api/v1/bot/indicators/{symbol}',
 
         // P&L
         currentPnl: '/api/v1/pnl/current',

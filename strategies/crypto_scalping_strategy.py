@@ -13,7 +13,7 @@ import math
 import time
 import os
 from dataclasses import dataclass, asdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_DOWN
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 from concurrent.futures import ThreadPoolExecutor
@@ -403,21 +403,135 @@ class CryptoVolatilityScanner:
         """Calculate price momentum using RSI-like indicator"""
         if len(prices) < period + 1:
             return 0.5
-        
+
         changes = np.diff(prices[-period-1:])
         gains = np.where(changes > 0, changes, 0)
         losses = np.where(changes < 0, -changes, 0)
-        
+
         avg_gain = np.mean(gains)
         avg_loss = np.mean(losses)
-        
+
         if avg_loss == 0:
             return 1.0
-        
+
         rs = avg_gain / avg_loss
         momentum = rs / (1 + rs)
-        
+
         return momentum
+
+    def calculate_rsi(self, prices: List[float], period: int = 14) -> float:
+        """Calculate RSI (Relative Strength Index) - 0-100 scale"""
+        if len(prices) < period + 1:
+            return 50.0  # Neutral
+
+        changes = np.diff(prices[-period-1:])
+        gains = np.where(changes > 0, changes, 0)
+        losses = np.where(changes < 0, -changes, 0)
+
+        avg_gain = np.mean(gains)
+        avg_loss = np.mean(losses)
+
+        if avg_loss == 0:
+            return 100.0
+        if avg_gain == 0:
+            return 0.0
+
+        rs = avg_gain / avg_loss
+        rsi = 100 - (100 / (1 + rs))
+
+        return rsi
+
+    def calculate_ema(self, prices: List[float], period: int) -> float:
+        """Calculate Exponential Moving Average"""
+        if len(prices) < period:
+            return prices[-1] if prices else 0.0
+
+        multiplier = 2 / (period + 1)
+        ema = prices[-period]  # Start with SMA
+
+        for price in prices[-period+1:]:
+            ema = (price * multiplier) + (ema * (1 - multiplier))
+
+        return ema
+
+    def calculate_macd(self, prices: List[float]) -> Tuple[float, float, float]:
+        """Calculate MACD (12, 26, 9) - returns (macd_line, signal_line, histogram)"""
+        if len(prices) < 26:
+            return 0.0, 0.0, 0.0
+
+        ema_12 = self.calculate_ema(prices, 12)
+        ema_26 = self.calculate_ema(prices, 26)
+        macd_line = ema_12 - ema_26
+
+        # Signal line is 9-period EMA of MACD line
+        # For simplicity, we'll approximate with the current MACD
+        # In production, you'd track historical MACD values
+        signal_line = macd_line * 0.9  # Approximation
+
+        histogram = macd_line - signal_line
+
+        return macd_line, signal_line, histogram
+
+    def calculate_stoch_rsi(self, prices: List[float], rsi_period: int = 14, stoch_period: int = 14) -> Tuple[float, float]:
+        """Calculate Stochastic RSI - returns (K, D)"""
+        if len(prices) < rsi_period + stoch_period:
+            return 50.0, 50.0
+
+        # Calculate RSI values for stoch period
+        rsi_values = []
+        for i in range(stoch_period):
+            end_idx = len(prices) - stoch_period + i + 1
+            rsi = self.calculate_rsi(prices[:end_idx], rsi_period)
+            rsi_values.append(rsi)
+
+        if not rsi_values:
+            return 50.0, 50.0
+
+        current_rsi = rsi_values[-1]
+        min_rsi = min(rsi_values)
+        max_rsi = max(rsi_values)
+
+        if max_rsi == min_rsi:
+            stoch_k = 50.0
+        else:
+            stoch_k = ((current_rsi - min_rsi) / (max_rsi - min_rsi)) * 100
+
+        # D is 3-period SMA of K
+        stoch_d = stoch_k  # Simplified
+
+        return stoch_k, stoch_d
+
+    def get_indicators(self, symbol: str) -> Dict[str, float]:
+        """Get all indicators for a symbol"""
+        with self.lock:
+            if symbol not in self.price_data or len(self.price_data[symbol]) < 26:
+                return {}
+
+            prices = self.price_data[symbol]
+            volumes = self.volume_data.get(symbol, [])
+
+            rsi = self.calculate_rsi(prices)
+            macd_line, signal_line, histogram = self.calculate_macd(prices)
+            stoch_k, stoch_d = self.calculate_stoch_rsi(prices)
+            ema_9 = self.calculate_ema(prices, 9)
+            ema_21 = self.calculate_ema(prices, 21)
+            volatility = self.calculate_volatility(prices)
+            volume_surge = self.detect_volume_surge(volumes)
+
+            return {
+                'price': prices[-1],
+                'rsi': rsi,
+                'macd': macd_line,
+                'macd_signal': signal_line,
+                'macd_histogram': histogram,
+                'stoch_k': stoch_k,
+                'stoch_d': stoch_d,
+                'ema_9': ema_9,
+                'ema_21': ema_21,
+                'ema_cross': 'bullish' if ema_9 > ema_21 else 'bearish',
+                'volatility': volatility,
+                'volume_surge': volume_surge
+            }
     
     def scan_for_opportunities(self) -> List[CryptoSignal]:
         """Scan all crypto pairs for day trading opportunities - ULTRA AGGRESSIVE MODE"""
@@ -478,92 +592,129 @@ class CryptoVolatilityScanner:
         _metric_set(SCANNER_SIGNALS_GAUGE, float(len(top_signals)))
         return top_signals
     
-    def _generate_signal(self, symbol: str, price: float, volatility: float, 
+    def _generate_signal(self, symbol: str, price: float, volatility: float,
                         volume_surge: bool, momentum: float) -> Optional[CryptoSignal]:
-        """Generate trading signal based on analysis"""
-        
-        # ULTRA AGGRESSIVE scalping thresholds for crypto
-        high_momentum_threshold = 0.55     # Very low threshold for more trades
-        low_momentum_threshold = 0.45      # Very tight range for more opportunities
-        high_volatility_threshold = 0.001  # 0.1% instead of 1% (10x more aggressive)
-        
-        # Determine action
+        """Generate trading signal based on technical indicators"""
+
+        # Get full indicator set
+        indicators = self.get_indicators(symbol)
+        if not indicators:
+            logger.info(f"    ❌ {symbol}: No indicators available (need more data)")
+            return None
+
+        rsi = indicators.get('rsi', 50)
+        macd = indicators.get('macd', 0)
+        macd_hist = indicators.get('macd_histogram', 0)
+        stoch_k = indicators.get('stoch_k', 50)
+        ema_cross = indicators.get('ema_cross', 'neutral')
+
         action = 'hold'
         confidence = 0.0
-        target_profit = 0.005  # Default 0.5% profit target
-        stop_loss = 0.003      # Default 0.3% stop loss
-        
-        # High volatility + momentum signals
-        if volatility > high_volatility_threshold:
-            target_profit = 0.008  # 0.8% profit for high volatility
-            stop_loss = 0.005      # 0.5% stop loss
-            
-            if momentum > high_momentum_threshold:
-                action = 'buy'
-                confidence = min(0.9, volatility * 10 + (0.3 if volume_surge else 0))
-            elif momentum < low_momentum_threshold:
-                action = 'sell'
-                confidence = min(0.9, volatility * 10 + (0.3 if volume_surge else 0))
-        
-        # ULTRA AGGRESSIVE volatility signals - REMOVED volatility requirement entirely!
-        elif True:  # Always generate signals regardless of volatility!
-            if momentum > 0.52 and volume_surge:  # Much lower threshold
-                action = 'buy'
-                confidence = 0.9  # Even higher confidence
-            elif momentum < 0.48 and volume_surge:  # Much tighter range
-                action = 'sell'
-                confidence = 0.9  # Even higher confidence
-            # Add signals without volume surge requirement (VERY AGGRESSIVE)
-            elif momentum > 0.52:  # Any momentum above neutral
-                action = 'buy'
-                confidence = 0.8  # Higher confidence
-            elif momentum < 0.48:  # Any momentum below neutral
-                action = 'sell'
-                confidence = 0.8  # Higher confidence
-            # EVEN MORE AGGRESSIVE: Generate signals for ANY momentum deviation
-            elif momentum > 0.51:  # TINY deviation above neutral
-                action = 'buy'
-                confidence = 0.7
-            elif momentum < 0.49:  # TINY deviation below neutral
-                action = 'sell'
-                confidence = 0.7
-        
-        # ULTRA AGGRESSIVE volume surge signals
-        if volume_surge and action == 'hold':
-            if momentum > 0.51:  # Almost any bullish momentum
-                action = 'buy'
-                confidence = 0.9     # Very high confidence
-                target_profit = 0.004  # Quick 0.4% target
-                stop_loss = 0.002      # Tight 0.2% stop
-            elif momentum < 0.49:    # Almost any bearish momentum
-                action = 'sell'
-                confidence = 0.9     # Very high confidence
-                target_profit = 0.004
-                stop_loss = 0.002
-        
-        # MAXIMUM AGGRESSION: Generate signals for ANY price movement!
-        if action == 'hold':  # No volatility requirement - trade everything!
-            if momentum > 0.505:  # ULTRA minimal bullish momentum (0.5% above neutral)
-                action = 'buy'
-                confidence = 0.9   # Very high confidence for maximum execution
-                target_profit = 0.003
-                stop_loss = 0.0015
-            elif momentum < 0.495:  # ULTRA minimal bearish momentum (0.5% below neutral)
-                action = 'sell'
-                confidence = 0.9   # Very high confidence for maximum execution
-                target_profit = 0.003
-                stop_loss = 0.0015
-            # FINAL FALLBACK: If absolutely no momentum, still try to trade on volatility
-            elif volatility > 0.0001:  # ANY volatility at all
-                import random
-                action = 'buy' if random.random() > 0.5 else 'sell'  # Random direction
-                confidence = 0.6  # Medium confidence for fallback trades
-                target_profit = 0.002
-                stop_loss = 0.001
-        
-        # ULTRA AGGRESSIVE: Accept ANY signal with ANY confidence > 0.01 (1%)
-        if action != 'hold' and confidence > 0.01:  # EXTREMELY LOW threshold - almost any signal
-            logger.info(f"    🎯 Creating signal: {action.upper()} {symbol} conf={confidence:.3f} vol={volatility:.6f}")
+        target_profit = 0.008  # 0.8% target
+        stop_loss = 0.005      # 0.5% stop loss
+        signal_reasons = []
+
+        # ============ BUY SIGNALS ============
+        buy_score = 0
+
+        # RSI oversold (< 30) = strong buy
+        if rsi < 30:
+            buy_score += 3
+            signal_reasons.append(f"RSI oversold ({rsi:.1f})")
+        elif rsi < 40:
+            buy_score += 1
+            signal_reasons.append(f"RSI low ({rsi:.1f})")
+
+        # MACD bullish crossover (histogram turning positive)
+        if macd_hist > 0 and macd > 0:
+            buy_score += 2
+            signal_reasons.append("MACD bullish")
+        elif macd_hist > 0:
+            buy_score += 1
+            signal_reasons.append("MACD hist positive")
+
+        # StochRSI oversold (< 20)
+        if stoch_k < 20:
+            buy_score += 2
+            signal_reasons.append(f"StochRSI oversold ({stoch_k:.1f})")
+        elif stoch_k < 35:
+            buy_score += 1
+            signal_reasons.append(f"StochRSI low ({stoch_k:.1f})")
+
+        # EMA bullish cross
+        if ema_cross == 'bullish':
+            buy_score += 1
+            signal_reasons.append("EMA bullish")
+
+        # Volume surge adds conviction
+        if volume_surge:
+            buy_score += 1
+            signal_reasons.append("Volume surge")
+
+        # ============ SELL SIGNALS ============
+        sell_score = 0
+        sell_reasons = []
+
+        # RSI overbought (> 70) = strong sell
+        if rsi > 70:
+            sell_score += 3
+            sell_reasons.append(f"RSI overbought ({rsi:.1f})")
+        elif rsi > 60:
+            sell_score += 1
+            sell_reasons.append(f"RSI high ({rsi:.1f})")
+
+        # MACD bearish crossover
+        if macd_hist < 0 and macd < 0:
+            sell_score += 2
+            sell_reasons.append("MACD bearish")
+        elif macd_hist < 0:
+            sell_score += 1
+            sell_reasons.append("MACD hist negative")
+
+        # StochRSI overbought (> 80)
+        if stoch_k > 80:
+            sell_score += 2
+            sell_reasons.append(f"StochRSI overbought ({stoch_k:.1f})")
+        elif stoch_k > 65:
+            sell_score += 1
+            sell_reasons.append(f"StochRSI high ({stoch_k:.1f})")
+
+        # EMA bearish cross
+        if ema_cross == 'bearish':
+            sell_score += 1
+            sell_reasons.append("EMA bearish")
+
+        # Volume surge on sell
+        if volume_surge and sell_score > buy_score:
+            sell_score += 1
+            sell_reasons.append("Volume surge")
+
+        # ============ DETERMINE ACTION ============
+        min_score = 3  # Minimum score needed for a signal
+
+        if buy_score >= min_score and buy_score > sell_score:
+            action = 'buy'
+            confidence = min(0.95, 0.5 + (buy_score * 0.1))
+            if buy_score >= 5:
+                target_profit = 0.012  # 1.2% for strong signals
+                stop_loss = 0.006
+            logger.info(f"    📈 BUY signal: score={buy_score} | {', '.join(signal_reasons)}")
+
+        elif sell_score >= min_score and sell_score > buy_score:
+            action = 'sell'
+            confidence = min(0.95, 0.5 + (sell_score * 0.1))
+            signal_reasons = sell_reasons
+            if sell_score >= 5:
+                target_profit = 0.012
+                stop_loss = 0.006
+            logger.info(f"    📉 SELL signal: score={sell_score} | {', '.join(sell_reasons)}")
+
+        else:
+            logger.info(f"    ⏸️ HOLD: buy_score={buy_score}, sell_score={sell_score}, RSI={rsi:.1f}, StochK={stoch_k:.1f}")
+            return None
+
+        # Create the signal
+        if action != 'hold' and confidence >= 0.6:
             return CryptoSignal(
                 symbol=symbol,
                 action=action,
@@ -576,9 +727,7 @@ class CryptoVolatilityScanner:
                 stop_loss=stop_loss,
                 timestamp=datetime.now()
             )
-        else:
-            logger.info(f"    ❌ Signal rejected: action={action}, confidence={confidence:.3f} (< 0.01)")
-        
+
         return None
     
     def update_market_data(self, symbol: str, price: float, volume: float):
@@ -758,8 +907,8 @@ class CryptoDayTradingBot:
         if len(self.active_positions) >= self.max_concurrent_positions:
             return
         
-        if abs(self.daily_profit) > self.max_daily_loss:
-            logger.warning("Daily loss limit reached, stopping new trades")
+        if self.daily_profit < -self.max_daily_loss:
+            logger.warning(f"Daily loss limit reached (${self.daily_profit:.2f}), stopping new trades")
             return
         
         # Get trading signals
@@ -1046,10 +1195,24 @@ class CryptoDayTradingBot:
                 del self.active_positions[symbol]
                 
                 logger.info(f"✅ Closed position: {symbol} | Reason: {reason} | P&L: {pnl_pct:.2%} | Profit: ${profit:.2f}")
-        
+
         except Exception as e:
             logger.error(f"Failed to execute exit for {symbol}: {e}")
-    
+
+    def reset_daily_limits(self):
+        """Reset daily trading limits - allows trading to resume"""
+        old_profit = self.daily_profit
+        old_trades = self.daily_trades
+        self.daily_profit = 0.0
+        self.daily_trades = 0
+        logger.info(f"🔄 Daily limits reset. Previous: ${old_profit:.2f} P&L, {old_trades} trades")
+        return {
+            'previous_daily_profit': old_profit,
+            'previous_daily_trades': old_trades,
+            'new_daily_profit': self.daily_profit,
+            'new_daily_trades': self.daily_trades
+        }
+
     async def _place_crypto_order(self, symbol: str, side: str, quantity: float, order_type: str = 'market'):
         """Place crypto order via Alpaca API - compatible with both alpaca_trade_api and alpaca-py"""
         try:
@@ -1262,39 +1425,42 @@ class CryptoDayTradingBot:
 
         def poll_market_data():
             logger.info("📡 Starting real market data polling...")
-            
-            # Initial history fetch (last 60 mins) to build volatility baseline
+
+            # Initial history fetch (last 60 mins) to build indicator baseline
             try:
                 symbols = self.scanner.get_enabled_symbols()
                 if symbols:
-                    end = datetime.now()
-                    start = end - timedelta(minutes=60)
-                    # Convert to date strings (YYYY-MM-DD) for Alpaca API compatibility
-                    start_str = start.strftime('%Y-%m-%d')
-                    end_str = end.strftime('%Y-%m-%d')
+                    # Use ISO format timestamps for intraday data
+                    end = datetime.now(timezone.utc)
+                    start = end - timedelta(minutes=120)  # Get 2 hours for better indicator calc
+                    start_str = start.isoformat()
+                    end_str = end.isoformat()
+
                     for symbol in symbols:
                         try:
-                            # Convert BTCUSD to BTC/USD for Alpaca API 
+                            # Convert BTCUSD to BTC/USD for Alpaca API
                             if '/' not in symbol:
-                                api_symbol = symbol[:-3] + '/' + symbol[-3:]  # BTC + USD -> BTC/USD
+                                api_symbol = symbol[:-3] + '/' + symbol[-3:]
                             else:
                                 api_symbol = symbol
+
                             bars = self._api.get_crypto_bars(
-                                api_symbol, 
+                                api_symbol,
                                 TimeFrame.Minute,
                                 start=start_str,
                                 end=end_str
                             ).df
-                            
+
                             if not bars.empty:
                                 for index, row in bars.iterrows():
-                                    # Store with original symbol format (BTCUSD) or normalized  
                                     self.scanner.update_market_data(
-                                        symbol, 
-                                        float(row['close']), 
+                                        symbol,
+                                        float(row['close']),
                                         float(row['volume'])
                                     )
-                            logger.info(f"  Loaded {len(bars)} historical bars for {formatted_symbol}")
+                                logger.info(f"  ✅ Loaded {len(bars)} historical bars for {symbol}")
+                            else:
+                                logger.warning(f"  ⚠️ No bars returned for {symbol}")
                         except Exception as e:
                             logger.error(f"Failed to load history for {symbol}: {e}")
             except Exception as e:
@@ -1308,54 +1474,46 @@ class CryptoDayTradingBot:
                         time.sleep(5)
                         continue
 
-                    # Poll for latest data every 30 seconds (Alpaca crypto bars are 1 min typically, 
-                    # but we want to catch them as soon as they close or update)
-                    # Note: get_crypto_bars returns 1Min bars. For real-time 'tick' data we'd need websocket.
-                    # For scalping, 1Min bars are acceptable if we poll frequently to get the latest completed bar.
-                    
-                    end = datetime.now()
-                    start = end - timedelta(minutes=5) # Get last few bars to ensure continuity
-                    # Convert to date strings for Alpaca API compatibility
-                    start_str = start.strftime('%Y-%m-%d')
-                    end_str = end.strftime('%Y-%m-%d')
-                    
+                    # Use ISO timestamps for intraday data
+                    end = datetime.now(timezone.utc)
+                    start = end - timedelta(minutes=5)
+                    start_str = start.isoformat()
+                    end_str = end.isoformat()
+
                     for symbol in symbols:
                         try:
-                            # Convert BTCUSD to BTC/USD for Alpaca API
                             if '/' not in symbol:
-                                api_symbol = symbol[:-3] + '/' + symbol[-3:]  # BTC + USD -> BTC/USD
+                                api_symbol = symbol[:-3] + '/' + symbol[-3:]
                             else:
                                 api_symbol = symbol
+
                             bars = self._api.get_crypto_bars(
-                                api_symbol, 
+                                api_symbol,
                                 TimeFrame.Minute,
                                 start=start_str,
                                 end=end_str
                             ).df
-                            
+
                             if not bars.empty:
-                                # Update with latest bar - store with original symbol format
                                 latest = bars.iloc[-1]
                                 self.scanner.update_market_data(
-                                    symbol, 
-                                    float(latest['close']), 
+                                    symbol,
+                                    float(latest['close']),
                                     float(latest['volume'])
                                 )
-                                logger.debug(f"Updated {symbol}: ${latest['close']:.2f} Vol:{latest['volume']:.0f}")
                         except Exception as e:
-                            # Log rate limits specifically
                             if "429" in str(e):
                                 logger.warning(f"Rate limit during polling {symbol}, slowing down...")
-                                time.sleep(1)
+                                time.sleep(2)
                             else:
                                 logger.debug(f"Polling error for {symbol}: {e}")
-                                
+
                     time.sleep(10)  # Poll every 10 seconds
 
                 except Exception as e:
                     logger.error(f"Market data polling error: {e}")
                     time.sleep(10)
-        
+
         threading.Thread(target=poll_market_data, daemon=True).start()
         logger.info("📊 Real market data polling started")
     

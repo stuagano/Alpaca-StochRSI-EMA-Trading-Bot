@@ -515,6 +515,25 @@ class CryptoDashboard {
         }
     }
 
+    async resetDailyLimits() {
+        if (!confirm('Reset daily trading limits? This will allow trading to resume if daily loss limit was hit.')) return;
+
+        try {
+            const response = await fetch(buildApiUrl('resetDaily'), { method: 'POST' });
+            const data = await response.json();
+
+            if (response.ok) {
+                this.showNotification('Daily limits reset - trading resumed', 'success');
+                await this.loadBotStatus();
+            } else {
+                this.showNotification(data.error || 'Failed to reset daily limits', 'error');
+            }
+        } catch (error) {
+            console.error('Error resetting daily limits:', error);
+            this.showNotification('Error resetting daily limits', 'error');
+        }
+    }
+
     // ==================== BOT STATUS METHODS ====================
 
     async loadBotStatus() {
