@@ -7,8 +7,14 @@ Main entry point for the refactored Flask application
 import argparse
 import logging
 import os
+import sys
 
-from . import create_app, socketio
+# Add the project root to the path for imports
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from backend.api import create_app, socketio
 
 # Configure logging
 logging.basicConfig(

@@ -1051,29 +1051,39 @@ class CryptoDayTradingBot:
             logger.error(f"Failed to execute exit for {symbol}: {e}")
     
     async def _place_crypto_order(self, symbol: str, side: str, quantity: float, order_type: str = 'market'):
-        """Place crypto order via Alpaca API"""
+        """Place crypto order via Alpaca API - compatible with both alpaca_trade_api and alpaca-py"""
         try:
             # Convert symbol format if needed (BTC/USD -> BTCUSD)
             alpaca_symbol = symbol.replace('/', '')
 
-            # Import order request classes
-            from alpaca.trading.requests import MarketOrderRequest
-            from alpaca.trading.enums import OrderSide, TimeInForce
+            api = self._api
 
-            # Convert side to enum
-            order_side = OrderSide.BUY if side.lower() == 'buy' else OrderSide.SELL
+            # Check if using newer alpaca-py SDK (has submit_order with order_data param)
+            # or older alpaca_trade_api (uses positional/keyword args directly)
+            try:
+                # Try newer alpaca-py SDK first
+                from alpaca.trading.requests import MarketOrderRequest
+                from alpaca.trading.enums import OrderSide, TimeInForce
 
-            # Create market order request
-            order_request = MarketOrderRequest(
-                symbol=alpaca_symbol,
-                qty=quantity,
-                side=order_side,
-                time_in_force=TimeInForce.IOC  # Immediate or cancel for crypto
-            )
-
-            # Submit order using Alpaca client
-            order = self._api.submit_order(order_data=order_request)
-            return order
+                order_side = OrderSide.BUY if side.lower() == 'buy' else OrderSide.SELL
+                order_request = MarketOrderRequest(
+                    symbol=alpaca_symbol,
+                    qty=quantity,
+                    side=order_side,
+                    time_in_force=TimeInForce.IOC
+                )
+                order = api.submit_order(order_data=order_request)
+                return order
+            except (ImportError, TypeError):
+                # Fall back to older alpaca_trade_api format
+                order = api.submit_order(
+                    symbol=alpaca_symbol,
+                    qty=quantity,
+                    side=side.lower(),
+                    type=order_type,
+                    time_in_force='ioc'  # Immediate or cancel for crypto
+                )
+                return order
 
         except Exception as e:
             logger.error(f"Order placement failed for {symbol}: {e}")
