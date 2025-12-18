@@ -1193,20 +1193,21 @@ class CryptoDayTradingBot:
             await self._execute_exit(symbol, reason, price, pnl_pct)
     
     async def _execute_exit(self, symbol: str, reason: str, price: float, pnl_pct: float):
-        """Execute exit trade"""
+        """Execute exit trade with P&L recording"""
+        start_time = time.time()
         try:
             position = self.active_positions[symbol]
-            
+
             # Place closing order
             opposite_side = 'sell' if position['side'] == 'buy' else 'buy'
-            
+
             order = await self._place_crypto_order(
                 symbol=symbol,
                 side=opposite_side,
                 quantity=position['quantity'],
                 order_type='market'
             )
-            
+
             if order:
                 # Update metrics
                 qty_dec = position.get('quantity_dec')
@@ -1218,16 +1219,31 @@ class CryptoDayTradingBot:
                 profit = float(qty_dec * price_dec * Decimal(str(pnl_pct)))
                 self.daily_profit += profit
                 self.total_trades += 1
-                
+
                 if pnl_pct > 0:
                     self.wins += 1
-                
+
                 self.win_rate = self.wins / self.total_trades if self.total_trades > 0 else 0
-                
+
                 # Remove from active positions
                 del self.active_positions[symbol]
-                
+
                 logger.info(f"✅ Closed position: {symbol} | Reason: {reason} | P&L: {pnl_pct:.2%} | Profit: ${profit:.2f}")
+
+                # Log the exit trade with actual P&L to TradeStore
+                exit_trade_log = TradeLog(
+                    timestamp=datetime.now().isoformat(),
+                    action=opposite_side.upper(),
+                    symbol=symbol,
+                    quantity=position['quantity'],
+                    price=price,
+                    status="filled",
+                    error_notes=f"EXIT:{reason}",
+                    order_id=order.id if hasattr(order, 'id') else str(order),
+                    pnl=profit,  # Record actual realized P&L
+                    execution_time_ms=int((time.time() - start_time) * 1000)
+                )
+                self._log_trade(exit_trade_log)
 
         except Exception as e:
             logger.error(f"Failed to execute exit for {symbol}: {e}")
