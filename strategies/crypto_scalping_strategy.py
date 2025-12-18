@@ -588,26 +588,14 @@ class CryptoVolatilityScanner:
     
     def _generate_signal(self, symbol: str, price: float, volatility: float,
                         volume_surge: bool, momentum: float) -> Optional[CryptoSignal]:
-        """Generate trading signal - ULTRA AGGRESSIVE MODE - always generate signals"""
+        """Generate trading signal - CONSERVATIVE MODE - only trade on strong signals"""
 
         # Get full indicator set
         indicators = self.get_indicators(symbol)
         if not indicators:
-            # No indicators? ALWAYS generate a BUY signal to keep trading active
-            # Base confidence on momentum direction
-            if momentum > 0.5:
-                confidence = 0.6 + (momentum - 0.5) * 0.4  # 0.6-0.8 for bullish
-            elif momentum < 0.4:
-                confidence = 0.55  # Contrarian buy
-            else:
-                confidence = 0.52  # Neutral but still trade
-
-            logger.info(f"    🎯 {symbol}: Generating BUY (no indicators, mom={momentum:.3f}, conf={confidence:.2f})")
-            return CryptoSignal(
-                symbol=symbol, action='buy', confidence=confidence, price=price,
-                volatility=volatility, volume_surge=volume_surge, momentum=momentum,
-                target_profit=0.005, stop_loss=0.003, timestamp=datetime.now()
-            )
+            # No indicators = no trade. Wait for proper data.
+            logger.debug(f"    ⏳ {symbol}: Waiting for indicators (need more data)")
+            return None
 
         rsi = indicators.get('rsi', 50)
         macd = indicators.get('macd', 0)
@@ -617,115 +605,113 @@ class CryptoVolatilityScanner:
 
         action = 'hold'
         confidence = 0.0
-        target_profit = 0.005  # 0.5% target - quick scalps
-        stop_loss = 0.003      # 0.3% stop loss - tight
+        # Use wider stops to avoid getting stopped out by noise
+        target_profit = 0.015  # 1.5% target profit
+        stop_loss = 0.015      # 1.5% stop loss (matches config)
         signal_reasons = []
 
-        # ============ BUY SIGNALS (AGGRESSIVE) ============
+        # ============ BUY SIGNALS (CONSERVATIVE - need strong oversold) ============
         buy_score = 0
 
-        # RSI - widened thresholds
-        if rsi < 35:
+        # RSI - require truly oversold conditions
+        if rsi < 25:
+            buy_score += 3  # Strong oversold
+            signal_reasons.append(f"RSI very low ({rsi:.1f})")
+        elif rsi < 30:
             buy_score += 2
-            signal_reasons.append(f"RSI low ({rsi:.1f})")
-        elif rsi < 45:
+            signal_reasons.append(f"RSI oversold ({rsi:.1f})")
+        elif rsi < 35:
             buy_score += 1
-            signal_reasons.append(f"RSI neutral-low ({rsi:.1f})")
+            signal_reasons.append(f"RSI low ({rsi:.1f})")
 
-        # MACD
+        # MACD turning positive (momentum shift)
         if macd_hist > 0:
             buy_score += 1
             signal_reasons.append("MACD positive")
 
-        # StochRSI - widened
-        if stoch_k < 30:
+        # StochRSI - require strong oversold
+        if stoch_k < 20:
+            buy_score += 3  # Very oversold
+            signal_reasons.append(f"StochRSI very low ({stoch_k:.1f})")
+        elif stoch_k < 30:
             buy_score += 2
-            signal_reasons.append(f"StochRSI low ({stoch_k:.1f})")
-        elif stoch_k < 45:
-            buy_score += 1
-            signal_reasons.append(f"StochRSI neutral-low ({stoch_k:.1f})")
+            signal_reasons.append(f"StochRSI oversold ({stoch_k:.1f})")
 
-        # EMA bullish
+        # EMA bullish crossover
         if ema_cross == 'bullish':
-            buy_score += 1
-            signal_reasons.append("EMA bullish")
+            buy_score += 2
+            signal_reasons.append("EMA bullish cross")
 
-        # Volume surge
+        # Volume surge confirms the move
         if volume_surge:
             buy_score += 1
-            signal_reasons.append("Volume surge")
+            signal_reasons.append("Volume confirmation")
 
-        # Volatility bonus - we want volatile coins
-        if volatility > 0.01:
-            buy_score += 1
-            signal_reasons.append("High volatility")
-
-        # ============ SELL SIGNALS (AGGRESSIVE) ============
+        # ============ SELL SIGNALS (CONSERVATIVE - need strong overbought) ============
         sell_score = 0
         sell_reasons = []
 
-        # RSI overbought - widened
-        if rsi > 65:
+        # RSI - require truly overbought conditions
+        if rsi > 75:
+            sell_score += 3  # Strong overbought
+            sell_reasons.append(f"RSI very high ({rsi:.1f})")
+        elif rsi > 70:
             sell_score += 2
-            sell_reasons.append(f"RSI high ({rsi:.1f})")
-        elif rsi > 55:
+            sell_reasons.append(f"RSI overbought ({rsi:.1f})")
+        elif rsi > 65:
             sell_score += 1
-            sell_reasons.append(f"RSI neutral-high ({rsi:.1f})")
+            sell_reasons.append(f"RSI high ({rsi:.1f})")
 
-        # MACD bearish
+        # MACD turning negative
         if macd_hist < 0:
             sell_score += 1
             sell_reasons.append("MACD negative")
 
-        # StochRSI overbought - widened
-        if stoch_k > 70:
+        # StochRSI - require strong overbought
+        if stoch_k > 80:
+            sell_score += 3  # Very overbought
+            sell_reasons.append(f"StochRSI very high ({stoch_k:.1f})")
+        elif stoch_k > 70:
             sell_score += 2
-            sell_reasons.append(f"StochRSI high ({stoch_k:.1f})")
-        elif stoch_k > 55:
-            sell_score += 1
-            sell_reasons.append(f"StochRSI neutral-high ({stoch_k:.1f})")
+            sell_reasons.append(f"StochRSI overbought ({stoch_k:.1f})")
 
-        # EMA bearish
+        # EMA bearish crossover
         if ema_cross == 'bearish':
-            sell_score += 1
-            sell_reasons.append("EMA bearish")
+            sell_score += 2
+            sell_reasons.append("EMA bearish cross")
 
-        # Volume on sell
+        # Volume surge on sell
         if volume_surge:
             sell_score += 1
-            sell_reasons.append("Volume surge")
+            sell_reasons.append("Volume confirmation")
 
-        # ============ DETERMINE ACTION (LOWER THRESHOLD) ============
-        min_score = 2  # LOWERED from 3 to 2 for more trades
+        # ============ DETERMINE ACTION (REQUIRE STRONG SIGNALS) ============
+        min_score = 3  # Require at least 3 points for a trade
 
         if buy_score >= min_score and buy_score > sell_score:
             action = 'buy'
-            confidence = min(0.95, 0.6 + (buy_score * 0.08))
-            if buy_score >= 4:
-                target_profit = 0.008  # Better target for strong signals
-                stop_loss = 0.004
+            confidence = min(0.95, 0.5 + (buy_score * 0.1))
+            if buy_score >= 5:
+                target_profit = 0.02  # 2% target for very strong signals
+                stop_loss = 0.012    # Tighter stop for strong signals
             logger.info(f"    📈 BUY: score={buy_score} | {', '.join(signal_reasons)}")
 
         elif sell_score >= min_score and sell_score > buy_score:
             action = 'sell'
-            confidence = min(0.95, 0.6 + (sell_score * 0.08))
+            confidence = min(0.95, 0.5 + (sell_score * 0.1))
             signal_reasons = sell_reasons
-            if sell_score >= 4:
-                target_profit = 0.008
-                stop_loss = 0.004
+            if sell_score >= 5:
+                target_profit = 0.02
+                stop_loss = 0.012
             logger.info(f"    📉 SELL: score={sell_score} | {', '.join(sell_reasons)}")
 
         else:
-            # ALWAYS generate a buy signal to keep trading active
-            action = 'buy'
-            if momentum > 0.5:
-                confidence = 0.55 + (momentum - 0.5) * 0.3
-            else:
-                confidence = 0.52  # Still trade even on neutral/weak momentum
-            signal_reasons = [f"Momentum-based ({momentum:.3f})"]
+            # No clear signal - DO NOT TRADE
+            logger.debug(f"    ⏸️ {symbol}: No signal (buy={buy_score}, sell={sell_score}, need {min_score})")
+            return None
 
-        # Create the signal - lower confidence threshold
-        if action != 'hold' and confidence >= 0.5:
+        # Create the signal only with sufficient confidence
+        if action != 'hold' and confidence >= 0.6:
             return CryptoSignal(
                 symbol=symbol,
                 action=action,
@@ -775,9 +761,9 @@ class CryptoDayTradingBot:
         self.alpaca = alpaca_client
         self.scanner = CryptoVolatilityScanner(scanner_config, enabled_symbols=enabled_symbols)
         self.initial_capital = initial_capital
-        self.max_position_size = min(50, initial_capital * 0.02)  # 2% per trade, max $50 for more positions
-        self.max_concurrent_positions = 20  # INCREASED from 10 to 20
-        self.min_profit_target = 0.003  # 0.3% minimum profit
+        self.max_position_size = min(100, initial_capital * 0.03)  # 3% per trade, max $100
+        self.max_concurrent_positions = 10  # Limit positions for better management
+        self.min_profit_target = 0.01  # 1% minimum profit target
 
         # Trading metrics
         self.active_positions = {}
@@ -787,9 +773,9 @@ class CryptoDayTradingBot:
         self.total_trades = 0
         self.wins = 0
 
-        # Risk management - RELAXED for more active trading
-        self.max_daily_loss = initial_capital * 0.05  # 5% daily loss limit (up from 2%)
-        self.max_drawdown = initial_capital * 0.10    # 10% maximum drawdown (up from 5%)
+        # Risk management - CONSERVATIVE to protect capital
+        self.max_daily_loss = initial_capital * 0.03  # 3% daily loss limit
+        self.max_drawdown = initial_capital * 0.08    # 8% maximum drawdown
         
         # Error handling
         self.error_count = 0
@@ -807,11 +793,12 @@ class CryptoDayTradingBot:
         self.is_running = False
         self.executor = ThreadPoolExecutor(max_workers=10)  # More workers for parallel operations
 
-        # Configurable thresholds - AGGRESSIVE for active trading
-        self.stop_loss_pct = 0.008  # 0.8% stop loss (tighter)
-        self.take_profit_pct = 0.005  # 0.5% take profit (quick scalps)
-        self.trailing_stop_pct = 0.003  # 0.3% trailing stop (tighter)
-        self.max_hold_time_seconds = 300  # 5 minutes max hold (down from 1 hour)
+        # Configurable thresholds - CONSERVATIVE to avoid churning
+        self.stop_loss_pct = 0.015  # 1.5% stop loss (wider to avoid noise)
+        self.take_profit_pct = 0.015  # 1.5% take profit (realistic target)
+        self.trailing_stop_pct = 0.01  # 1% trailing stop
+        self.max_hold_time_seconds = 1800  # 30 minutes max hold (allow positions to develop)
+        self.min_hold_time_seconds = 120  # 2 minutes minimum hold (avoid churning)
 
     @property
     def _api(self):
