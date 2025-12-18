@@ -720,13 +720,15 @@
 
             tbody.innerHTML = positions.map(pos => {
                 const plClass = pos.unrealized_pl >= 0 ? 'pnl-positive' : 'pnl-negative';
+                // unrealized_plpc is already in percentage form from backend
+                const plPercent = parseFloat(pos.unrealized_plpc).toFixed(2);
                 return `<tr>
                     <td><span class="symbol-badge">${pos.symbol}</span></td>
-                    <td>${pos.qty}</td>
-                    <td>$${parseFloat(pos.avg_entry_price).toFixed(2)}</td>
-                    <td>$${parseFloat(pos.current_price || pos.avg_entry_price).toFixed(2)}</td>
+                    <td>${parseFloat(pos.qty).toFixed(6)}</td>
+                    <td>$${parseFloat(pos.avg_entry_price).toFixed(4)}</td>
+                    <td>$${parseFloat(pos.current_price || pos.avg_entry_price).toFixed(4)}</td>
                     <td class="${plClass}">$${parseFloat(pos.unrealized_pl).toFixed(2)}</td>
-                    <td class="${plClass}">${(pos.unrealized_plpc * 100).toFixed(2)}%</td>
+                    <td class="${plClass}">${plPercent}%</td>
                 </tr>`;
             }).join('');
         }

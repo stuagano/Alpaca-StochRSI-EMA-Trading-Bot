@@ -22,37 +22,35 @@ logger = logging.getLogger(__name__)
 
 
 def _default_crypto_scanner_universe() -> List[str]:
-    """Provide the default crypto scanner universe."""
+    """Provide the default crypto scanner universe - EXPANDED for more trading."""
 
     return [
-        # Major pairs - confirmed working
-        "BTCUSD",
-        "ETHUSD",
-        "LTCUSD",
-        "BCHUSD",
-        # DeFi tokens - verified
-        "UNIUSD",
-        "LINKUSD",
-        "AAVEUSD",
-        "MKRUSD",
-        # Layer 1 blockchains - verified
-        "SOLUSD",
-        "AVAXUSD",
-        "ADAUSD",
-        "DOTUSD",
-        "MATICUSD",
-        # Meme coins & popular - verified
-        "DOGEUSD",
-        "SHIBUSD",
+        # Major pairs - highest liquidity
+        "BTCUSD", "ETHUSD", "LTCUSD", "BCHUSD",
+        # Layer 1 blockchains
+        "SOLUSD", "AVAXUSD", "ADAUSD", "DOTUSD", "MATICUSD", "ATOMUSD", "NEARUSD", "APTUSD",
+        # DeFi tokens
+        "UNIUSD", "LINKUSD", "AAVEUSD", "MKRUSD", "CRVUSD", "COMPUSD", "SNXUSD", "SUSHIUSD",
+        # Meme coins & popular
+        "DOGEUSD", "SHIBUSD", "PEPEUSD",
+        # Gaming & Metaverse
+        "MANAUSD", "SANDUSD", "AXSUSD", "GALAUSD", "ENJUSD",
+        # Infrastructure & Storage
+        "FILUSD", "ARWEAVE", "STORJUSD",
+        # Exchange tokens
+        "BNBUSD", "CROUPSD",
         # Additional liquid pairs
-        "XRPUSD",
-        "XLMUSD",
-        "ALGOUSD",
-        # Stablecoins trading pairs
-        "BTCUSDT",
-        "ETHUSDT",
-        "BTCUSDC",
-        "ETHUSDC",
+        "XRPUSD", "XLMUSD", "ALGOUSD", "HBARUSD", "VETUSD", "ICPUSD",
+        # Oracles & Data
+        "BANDUSD", "GRTUSD",
+        # Privacy coins
+        "ZECUSD",
+        # Layer 2
+        "OPUSD", "ARBUSD",
+        # USDT pairs for more opportunities
+        "BTCUSDT", "ETHUSDT", "SOLUSDT", "AVAXUSDT", "DOGEUSDT",
+        # USDC pairs
+        "BTCUSDC", "ETHUSDC", "SOLUSDC",
     ]
 
 
@@ -121,6 +119,12 @@ class DatabaseConfig:
     max_overflow: int = 20
     pool_timeout: int = 30
     pool_recycle: int = 3600
+
+    def get_sqlite_path(self) -> str:
+        """Extract SQLite file path from the database URL."""
+        if self.url.startswith("sqlite:///"):
+            return self.url.replace("sqlite:///", "", 1)
+        return self.url
 
 
 @dataclass
@@ -730,3 +734,53 @@ def reload_config() -> TradingConfig:
 def get_legacy_config() -> Dict[str, Any]:
     """Get configuration in legacy format for backward compatibility."""
     return get_config_manager().get_legacy_format()
+
+
+def get_database_path() -> str:
+    """Get the SQLite database file path from unified configuration."""
+    config = get_config()
+    return config.database.get_sqlite_path()
+
+
+def setup_logging(config: Optional[TradingConfig] = None) -> None:
+    """
+    Set up logging with rotation based on unified configuration.
+
+    Args:
+        config: Optional TradingConfig. If None, loads from get_config().
+    """
+    import logging.handlers
+
+    if config is None:
+        config = get_config()
+
+    log_config = config.logging
+    log_path = Path(log_config.file_path)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Get the root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(getattr(logging, log_config.level.upper(), logging.INFO))
+
+    # Remove existing handlers to avoid duplicates
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+
+    # Create rotating file handler
+    file_handler = logging.handlers.RotatingFileHandler(
+        log_path,
+        maxBytes=log_config.max_bytes,
+        backupCount=log_config.backup_count,
+    )
+    file_handler.setLevel(getattr(logging, log_config.level.upper(), logging.INFO))
+    file_handler.setFormatter(logging.Formatter(log_config.format))
+
+    # Create console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(getattr(logging, log_config.level.upper(), logging.INFO))
+    console_handler.setFormatter(logging.Formatter(log_config.format))
+
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
+
+    logger.info("Logging configured: level=%s, file=%s", log_config.level, log_path)

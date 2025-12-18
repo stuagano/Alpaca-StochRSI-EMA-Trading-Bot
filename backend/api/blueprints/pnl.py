@@ -6,20 +6,35 @@ Consolidated from realtime_pnl_dashboard.py and other P&L features
 """
 
 from flask import Blueprint, jsonify, request, send_file, current_app
-from datetime import datetime, timedelta
+from datetime import datetime
 import pandas as pd
 import io
 
-from ..services.pnl_service import PnLService
 from ..utils.decorators import handle_errors
 
 pnl_bp = Blueprint('pnl', __name__)
+
+
+def _get_pnl_service():
+    """Get P&L service with null-safety check."""
+    service = current_app.pnl_service
+    if not service:
+        return None
+    return service
+
+
+def _service_unavailable_response():
+    """Standard response when P&L service is unavailable."""
+    return jsonify({'error': 'P&L service not initialized'}), 503
 
 @pnl_bp.route('/current')
 @handle_errors
 def current_pnl():
     """Get current P&L data"""
-    service = current_app.pnl_service
+    service = _get_pnl_service()
+    if not service:
+        return _service_unavailable_response()
+
     pnl_data = service.get_current_pnl()
 
     return jsonify({
@@ -38,7 +53,9 @@ def current_pnl():
 @handle_errors
 def pnl_history():
     """Get P&L history data"""
-    service = current_app.pnl_service
+    service = _get_pnl_service()
+    if not service:
+        return _service_unavailable_response()
 
     # Get query parameters
     days = int(request.args.get('days', 30))
@@ -57,9 +74,11 @@ def pnl_history():
 @handle_errors
 def pnl_chart_data():
     """Get P&L data formatted for Chart.js"""
-    service = current_app.pnl_service
-    days = int(request.args.get('days', 7))
+    service = _get_pnl_service()
+    if not service:
+        return _service_unavailable_response()
 
+    days = int(request.args.get('days', 7))
     chart_data = service.get_chart_data(days=days)
 
     return jsonify({
@@ -86,9 +105,11 @@ def pnl_chart_data():
 @handle_errors
 def pnl_statistics():
     """Get comprehensive P&L statistics"""
-    service = current_app.pnl_service
-    days = int(request.args.get('days', 30))
+    service = _get_pnl_service()
+    if not service:
+        return _service_unavailable_response()
 
+    days = int(request.args.get('days', 30))
     stats = service.calculate_statistics(days=days)
 
     return jsonify({
@@ -111,17 +132,19 @@ def pnl_statistics():
 @handle_errors
 def export_pnl():
     """Export P&L data to CSV"""
-    service = current_app.pnl_service
+    service = _get_pnl_service()
+    if not service:
+        return _service_unavailable_response()
 
     # Get export parameters
-    format = request.args.get('format', 'csv')
+    export_format = request.args.get('format', 'csv')
     days = int(request.args.get('days', 30))
     include_trades = request.args.get('include_trades', 'true').lower() == 'true'
 
     # Get data
     data = service.get_export_data(days=days, include_trades=include_trades)
 
-    if format == 'csv':
+    if export_format == 'csv':
         # Create DataFrame and convert to CSV
         df = pd.DataFrame(data)
         output = io.StringIO()
@@ -137,7 +160,7 @@ def export_pnl():
         )
         return response
 
-    elif format == 'json':
+    elif export_format == 'json':
         return jsonify(data)
 
     else:
@@ -147,10 +170,18 @@ def export_pnl():
 @handle_errors
 def recent_trades():
     """Get recent trades with P&L"""
-    service = current_app.pnl_service
-    limit = int(request.args.get('limit', 50))
+    service = _get_pnl_service()
+    if not service:
+        return _service_unavailable_response()
 
+    limit = int(request.args.get('limit', 50))
     trades = service.get_recent_trades(limit=limit)
+
+    current_app.logger.debug(
+        "Recent trades: count=%d, total_pnl=%.2f",
+        len(trades),
+        sum(t.get('pnl', 0) for t in trades)
+    )
 
     return jsonify({
         'trades': trades,
@@ -162,7 +193,9 @@ def recent_trades():
 @handle_errors
 def performance_metrics():
     """Get performance metrics by symbol"""
-    service = current_app.pnl_service
+    service = _get_pnl_service()
+    if not service:
+        return _service_unavailable_response()
 
     metrics = service.get_performance_by_symbol()
 

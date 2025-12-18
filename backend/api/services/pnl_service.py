@@ -162,10 +162,13 @@ class PnLService:
             start_date = datetime.now() - timedelta(days=days)
 
             if interval == 'daily':
+                # Use unrealized_pnl and account_value for meaningful data
                 query = '''
                     SELECT DATE(timestamp) as date,
-                           MAX(total_pnl) as total_pnl,
-                           SUM(daily_pnl) as daily_pnl
+                           AVG(unrealized_pnl) as avg_unrealized_pnl,
+                           MAX(account_value) - MIN(account_value) as daily_change,
+                           MAX(account_value) as end_value,
+                           MIN(account_value) as start_value
                     FROM pnl_history
                     WHERE timestamp >= ?
                     GROUP BY DATE(timestamp)
@@ -174,8 +177,10 @@ class PnLService:
             elif interval == 'hourly':
                 query = '''
                     SELECT strftime('%Y-%m-%d %H:00', timestamp) as hour,
-                           AVG(total_pnl) as total_pnl,
-                           SUM(daily_pnl) as daily_pnl
+                           AVG(unrealized_pnl) as avg_unrealized_pnl,
+                           MAX(account_value) - MIN(account_value) as daily_change,
+                           MAX(account_value) as end_value,
+                           MIN(account_value) as start_value
                     FROM pnl_history
                     WHERE timestamp >= ?
                     GROUP BY strftime('%Y-%m-%d %H', timestamp)
@@ -184,8 +189,8 @@ class PnLService:
             else:  # 5min
                 query = '''
                     SELECT timestamp,
-                           total_pnl,
-                           daily_pnl
+                           unrealized_pnl,
+                           account_value
                     FROM pnl_history
                     WHERE timestamp >= ?
                     ORDER BY timestamp
@@ -195,14 +200,26 @@ class PnLService:
             rows = cursor.fetchall()
             conn.close()
 
-            return [
-                {
-                    'timestamp': row[0],
-                    'total_pnl': round(row[1], 2),
-                    'daily_pnl': round(row[2], 2)
-                }
-                for row in rows
-            ]
+            if interval in ('daily', 'hourly'):
+                return [
+                    {
+                        'timestamp': row[0],
+                        'total_pnl': round(row[1] or 0, 2),  # Use avg unrealized as "total"
+                        'daily_pnl': round(row[2] or 0, 2),  # Account value change
+                        'account_value': round(row[3] or 0, 2)
+                    }
+                    for row in rows
+                ]
+            else:
+                return [
+                    {
+                        'timestamp': row[0],
+                        'total_pnl': round(row[1] or 0, 2),
+                        'daily_pnl': round(row[1] or 0, 2),
+                        'account_value': round(row[2] or 0, 2)
+                    }
+                    for row in rows
+                ]
 
         except Exception as e:
             logger.error(f"Error getting P&L history: {e}")
@@ -210,16 +227,29 @@ class PnLService:
 
     def get_chart_data(self, days: int = 7) -> Dict:
         """Get P&L data formatted for Chart.js"""
-        history = self.get_pnl_history(days=days, interval='daily')
+        # Get hourly data for more granular charts
+        history = self.get_pnl_history(days=days, interval='hourly')
+
+        # If no hourly data, fall back to daily
+        if not history:
+            history = self.get_pnl_history(days=days, interval='daily')
 
         labels = []
         daily_pnl = []
         cumulative_pnl = []
 
+        # Calculate cumulative P&L from account value changes
+        cumulative = 0
+        base_value = history[0]['account_value'] if history else 0
+
         for entry in history:
             labels.append(entry['timestamp'])
-            daily_pnl.append(entry['daily_pnl'])
-            cumulative_pnl.append(entry['total_pnl'])
+            # Use unrealized P&L as the "daily" value
+            daily_pnl.append(entry['total_pnl'])
+            # Calculate cumulative from account value change vs baseline
+            if base_value > 0:
+                cumulative = round(entry['account_value'] - base_value, 2)
+            cumulative_pnl.append(cumulative)
 
         return {
             'labels': labels,
@@ -378,6 +408,7 @@ class PnLService:
 
     def _get_recent_trades(self, days: Optional[int] = None, limit: Optional[int] = None) -> List[Dict]:
         """Get recent trades from database"""
+        logger.debug("Fetching trades: db_path=%s, days=%s, limit=%s", self.db_path, days, limit)
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -403,6 +434,8 @@ class PnLService:
 
             rows = cursor.fetchall()
             conn.close()
+
+            logger.debug("Query returned %d rows", len(rows))
 
             trades = []
             for row in rows:

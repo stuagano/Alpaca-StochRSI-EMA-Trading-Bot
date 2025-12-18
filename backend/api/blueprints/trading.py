@@ -13,12 +13,28 @@ from ..utils.validators import validate_order
 
 trading_bp = Blueprint('trading', __name__)
 
+
+def _get_trading_service():
+    """Get trading service with null-safety check."""
+    service = current_app.trading_service
+    if not service:
+        return None
+    return service
+
+
+def _service_unavailable_response():
+    """Standard response when trading service is unavailable."""
+    return jsonify({'error': 'Trading service not initialized'}), 503
+
 @trading_bp.route('/start', methods=['POST'])
 @handle_errors
 @require_auth
 def start_trading():
     """Start automated trading"""
-    service = current_app.trading_service
+    service = _get_trading_service()
+    if not service:
+        return _service_unavailable_response()
+
     config = request.get_json(silent=True) or {}
 
     # Start trading with optional config overrides
@@ -35,7 +51,9 @@ def start_trading():
 @require_auth
 def stop_trading():
     """Stop automated trading"""
-    service = current_app.trading_service
+    service = _get_trading_service()
+    if not service:
+        return _service_unavailable_response()
 
     # Optional: close all positions
     data = request.get_json(silent=True) or {}
@@ -54,7 +72,10 @@ def stop_trading():
 @validate_order
 def place_buy_order():
     """Place a buy order"""
-    service = current_app.trading_service
+    service = _get_trading_service()
+    if not service:
+        return _service_unavailable_response()
+
     data = request.get_json()
 
     order = service.place_order({
@@ -76,7 +97,10 @@ def place_buy_order():
 @validate_order
 def place_sell_order():
     """Place a sell order"""
-    service = current_app.trading_service
+    service = _get_trading_service()
+    if not service:
+        return _service_unavailable_response()
+
     data = request.get_json()
 
     order = service.place_order({
@@ -97,7 +121,10 @@ def place_sell_order():
 @require_auth
 def close_position(symbol):
     """Close a specific position"""
-    service = current_app.trading_service
+    service = _get_trading_service()
+    if not service:
+        return _service_unavailable_response()
+
     result = service.close_position(symbol)
 
     return jsonify({
@@ -111,7 +138,10 @@ def close_position(symbol):
 @require_auth
 def close_all_positions():
     """Close all positions"""
-    service = current_app.trading_service
+    service = _get_trading_service()
+    if not service:
+        return _service_unavailable_response()
+
     results = service.close_all_positions()
 
     return jsonify({
@@ -119,6 +149,37 @@ def close_all_positions():
         'positions_closed': len(results),
         'results': results
     })
+
+@trading_bp.route('/set-multiplier', methods=['POST'])
+@handle_errors
+def set_multiplier():
+    """Set position size multiplier for next trades"""
+    service = _get_trading_service()
+    if not service:
+        return _service_unavailable_response()
+
+    data = request.get_json(silent=True) or {}
+    multiplier = data.get('multiplier', 1)
+
+    # Validate multiplier range (1x to 10x)
+    if not isinstance(multiplier, (int, float)) or multiplier < 1 or multiplier > 10:
+        return jsonify({'error': 'Multiplier must be between 1 and 10'}), 400
+
+    # Store multiplier on trading service
+    service.position_multiplier = float(multiplier)
+
+    # Also update on trading bot if running
+    if service.trading_bot and hasattr(service.trading_bot, 'position_multiplier'):
+        service.trading_bot.position_multiplier = float(multiplier)
+
+    current_app.logger.info(f"Position multiplier set to {multiplier}x")
+
+    return jsonify({
+        'status': 'updated',
+        'multiplier': multiplier,
+        'message': f'Position size multiplier set to {multiplier}x'
+    })
+
 
 @trading_bp.route('/strategy', methods=['GET', 'POST'])
 @handle_errors
@@ -136,8 +197,11 @@ def strategy_config():
         })
 
     # POST - Update strategy
+    service = _get_trading_service()
+    if not service:
+        return _service_unavailable_response()
+
     data = request.get_json(silent=True) or {}
-    service = current_app.trading_service
     result = service.update_strategy(data.get('strategy'), data.get('parameters')) or {}
 
     return jsonify({

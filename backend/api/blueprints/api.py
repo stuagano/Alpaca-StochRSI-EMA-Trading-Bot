@@ -5,31 +5,45 @@ Core API endpoints for account, positions, and signals
 """
 
 from flask import Blueprint, jsonify, current_app, request
-from ..services.trading_service import TradingService
 from ..utils.decorators import handle_errors, require_auth
 
 api_bp = Blueprint('api', __name__)
+
+
+def _get_trading_service():
+    """Get trading service with null-safety check."""
+    service = current_app.trading_service
+    if not service:
+        return None
+    return service
+
+
+def _service_unavailable_response():
+    """Standard response when trading service is unavailable."""
+    return jsonify({'error': 'Trading service not initialized'}), 503
 
 @api_bp.route('/status')
 @handle_errors
 def api_status():
     """Get system status"""
     cfg = current_app.config['TRADING_CONFIG']
-    service = current_app.trading_service
+    service = _get_trading_service()
 
-    try:
-        status = service.get_system_status()
-        services_state = status.get('services', {})
-        last_update = status.get('last_update')
-        market_status = status.get('market_status')
-    except Exception as exc:  # pragma: no cover - defensive fallback
-        current_app.logger.error("Status check failed: %s", exc, exc_info=True)
-        services_state = {}
-        last_update = None
-        market_status = 'UNKNOWN'
+    services_state = {}
+    last_update = None
+    market_status = 'UNKNOWN'
+
+    if service:
+        try:
+            status = service.get_system_status()
+            services_state = status.get('services', {})
+            last_update = status.get('last_update')
+            market_status = status.get('market_status')
+        except Exception as exc:  # pragma: no cover - defensive fallback
+            current_app.logger.error("Status check failed: %s", exc, exc_info=True)
 
     return jsonify({
-        'status': 'running',
+        'status': 'running' if service else 'degraded',
         'last_update': last_update,
         'market_status': market_status,
         'services': services_state,
@@ -40,7 +54,10 @@ def api_status():
 @handle_errors
 def api_account():
     """Get account information"""
-    service = current_app.trading_service
+    service = _get_trading_service()
+    if not service:
+        return _service_unavailable_response()
+
     account_data = service.get_account_data()
     return jsonify(account_data)
 
@@ -48,7 +65,10 @@ def api_account():
 @handle_errors
 def api_positions():
     """Get current crypto positions"""
-    service = current_app.trading_service
+    service = _get_trading_service()
+    if not service:
+        return _service_unavailable_response()
+
     positions = service.get_positions()
     return jsonify(positions)
 
@@ -56,8 +76,10 @@ def api_positions():
 @handle_errors
 def api_signals():
     """Get current trading signals"""
-    service = current_app.trading_service
-    config = current_app.config['TRADING_CONFIG']
+    service = _get_trading_service()
+    if not service:
+        return _service_unavailable_response()
+
     symbols = request.args.getlist('symbols')
 
     if not symbols:
@@ -76,11 +98,14 @@ def api_signals():
 @handle_errors
 def api_orders():
     """Get recent orders"""
-    service = current_app.trading_service
-    status = request.args.get('status', 'all')
+    service = _get_trading_service()
+    if not service:
+        return _service_unavailable_response()
+
+    order_status = request.args.get('status', 'all')
     limit = int(request.args.get('limit', 50))
 
-    orders = service.get_orders(status=status, limit=limit)
+    orders = service.get_orders(status=order_status, limit=limit)
     return jsonify(orders)
 
 @api_bp.route('/symbols')
@@ -101,10 +126,22 @@ def api_symbols():
 @handle_errors
 def api_bot_status():
     """Get detailed trading bot status including active positions with P&L"""
-    service = current_app.trading_service
+    service = _get_trading_service()
+    if not service:
+        return jsonify({
+            'status': 'unavailable',
+            'message': 'Trading service not initialized',
+            'bot': None
+        }), 503
 
     if service.trading_bot and hasattr(service.trading_bot, 'get_status'):
         bot_status = service.trading_bot.get_status()
+        current_app.logger.debug(
+            "Bot status: running=%s, positions=%d, trades=%d",
+            bot_status.get('is_running'),
+            len(bot_status.get('positions', [])),
+            bot_status.get('total_trades', 0)
+        )
         return jsonify({
             'status': 'running' if bot_status.get('is_running') else 'stopped',
             'bot': bot_status
@@ -120,7 +157,9 @@ def api_bot_status():
 @handle_errors
 def api_bot_thresholds():
     """Get or update bot trading thresholds"""
-    service = current_app.trading_service
+    service = _get_trading_service()
+    if not service:
+        return _service_unavailable_response()
 
     if not service.trading_bot:
         return jsonify({'error': 'Bot not started'}), 400
@@ -165,7 +204,9 @@ def api_bot_thresholds():
 @handle_errors
 def api_liquidate_position(symbol):
     """Force liquidate a specific position"""
-    service = current_app.trading_service
+    service = _get_trading_service()
+    if not service:
+        return _service_unavailable_response()
 
     result = service.close_position(symbol)
     if result:
@@ -181,7 +222,9 @@ def api_liquidate_position(symbol):
 @handle_errors
 def api_liquidate_all():
     """Force liquidate all positions"""
-    service = current_app.trading_service
+    service = _get_trading_service()
+    if not service:
+        return _service_unavailable_response()
 
     results = service.close_all_positions()
 
@@ -198,7 +241,9 @@ def api_liquidate_all():
 @handle_errors
 def api_reset_daily_limits():
     """Reset daily trading limits to allow trading to resume"""
-    service = current_app.trading_service
+    service = _get_trading_service()
+    if not service:
+        return _service_unavailable_response()
 
     if not service.trading_bot:
         return jsonify({'error': 'Bot not started'}), 400
@@ -216,7 +261,9 @@ def api_reset_daily_limits():
 @handle_errors
 def api_get_indicators(symbol):
     """Get current technical indicators for a symbol"""
-    service = current_app.trading_service
+    service = _get_trading_service()
+    if not service:
+        return _service_unavailable_response()
 
     if not service.trading_bot or not hasattr(service.trading_bot, 'scanner'):
         return jsonify({'error': 'Bot not running'}), 400

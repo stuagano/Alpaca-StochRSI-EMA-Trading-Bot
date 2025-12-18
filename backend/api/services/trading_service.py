@@ -50,6 +50,13 @@ class TradingService:
         self._scanned_symbols_cache = []
         self._last_scan_time = datetime.min
 
+        # Cache for rate limit protection (cache duration in seconds)
+        self._cache_duration = 5  # 5 second cache
+        self._account_cache = None
+        self._account_cache_time = datetime.min
+        self._positions_cache = None
+        self._positions_cache_time = datetime.min
+
     def get_system_status(self) -> Dict:
         """Get system status information"""
         try:
@@ -81,10 +88,15 @@ class TradingService:
             }
 
     def get_account_data(self) -> Dict:
-        """Get account information"""
+        """Get account information - with caching to reduce API calls"""
+        # Check cache first
+        now = datetime.now()
+        if self._account_cache and (now - self._account_cache_time).total_seconds() < self._cache_duration:
+            return self._account_cache
+
         try:
             account = self.api.get_account()
-            return {
+            self._account_cache = {
                 'status': account.status,
                 'buying_power': float(account.buying_power),
                 'portfolio_value': float(account.portfolio_value),
@@ -94,8 +106,13 @@ class TradingService:
                 'trading_blocked': account.trading_blocked,
                 'account_blocked': account.account_blocked
             }
+            self._account_cache_time = now
+            return self._account_cache
         except Exception as e:
             logger.error(f"Error getting account data: {e}")
+            # Return cached data if available, otherwise error state
+            if self._account_cache:
+                return self._account_cache
             return {
                 'status': 'ERROR',
                 'buying_power': 0,
@@ -105,7 +122,12 @@ class TradingService:
             }
 
     def get_positions(self) -> List[Dict]:
-        """Get current crypto positions."""
+        """Get current crypto positions - with caching to reduce API calls"""
+        # Check cache first
+        now = datetime.now()
+        if self._positions_cache is not None and (now - self._positions_cache_time).total_seconds() < self._cache_duration:
+            return self._positions_cache
+
         try:
             positions = self.api.list_positions()
             position_data = []
@@ -114,11 +136,15 @@ class TradingService:
                 if not self._is_crypto(pos.symbol):
                     continue
 
+                entry_price = float(pos.avg_entry_price)
+                current_price = float(pos.current_price) if hasattr(pos, 'current_price') else 0
                 position_data.append({
                     'symbol': pos.symbol,
                     'qty': float(pos.qty),
-                    'avg_entry_price': float(pos.avg_entry_price),
-                    'current_price': float(pos.current_price) if hasattr(pos, 'current_price') else 0,
+                    'avg_entry_price': entry_price,
+                    'avg_price': entry_price,  # Frontend compatibility
+                    'entry_price': entry_price,  # Frontend compatibility
+                    'current_price': current_price,
                     'market_value': float(pos.market_value),
                     'unrealized_pl': float(pos.unrealized_pl),
                     'unrealized_plpc': float(pos.unrealized_plpc) * 100,
@@ -126,82 +152,99 @@ class TradingService:
                     'asset_class': 'crypto'
                 })
 
-            self.last_update = datetime.now()
+            self._positions_cache = position_data
+            self._positions_cache_time = now
+            self.last_update = now
             return position_data
 
         except Exception as e:
             logger.error(f"Error getting positions: {e}")
+            # Return cached data if available
+            if self._positions_cache is not None:
+                return self._positions_cache
             return []
 
     def calculate_signals(self, symbols: Optional[List[str]] = None) -> List[Dict]:
         """
-        Calculate trading signals for symbols
+        Calculate trading signals for symbols - uses CACHED DATA to avoid API rate limits
 
         Args:
             symbols: List of symbols to analyze
         """
-        effective_symbols = self._resolve_symbols(symbols)
-
-        if not effective_symbols:
-            logger.warning("No symbols configured for signal calculation; returning empty list")
-            return []
-
+        logger.debug(
+            "Calculating signals: has_bot=%s, has_scanner=%s, symbols=%s",
+            self.trading_bot is not None,
+            self.trading_bot.scanner is not None if self.trading_bot and hasattr(self.trading_bot, 'scanner') else False,
+            symbols
+        )
         signals = []
-        timeframe = self._resolve_timeframe()
 
-        for symbol in effective_symbols:
+        # FIRST: Try to get signals from the trading bot's scanner (cached data)
+        if self.trading_bot and hasattr(self.trading_bot, 'scanner'):
             try:
-                # Get market data
-                if self._is_crypto(symbol):
-                    bars = self.api.get_crypto_bars(
-                        symbol,
-                        timeframe,
-                        limit=100
-                    ).df
-                    # Normalize columns to lowercase for consistency
-                    bars.columns = [c.lower() for c in bars.columns]
-                else:
-                    bars = self.api.get_bars(
-                        symbol,
-                        timeframe,
-                        limit=100
-                    ).df
+                scanner = self.trading_bot.scanner
+                if hasattr(scanner, 'price_data') and scanner.price_data:
+                    logger.debug(
+                        "Using cached scanner data: %d symbols",
+                        len(scanner.price_data) if scanner.price_data else 0
+                    )
 
-                if len(bars) < 20:
-                    continue
+                    for symbol, prices in scanner.price_data.items():
+                        if len(prices) < 2:
+                            continue
 
-                # Calculate indicators
-                indicators = self.indicator.calculate_indicators(bars, symbol)
-                
-                rsi = indicators.get('rsi', 50)
-                stoch_data = indicators.get('stochastic', {})
-                stoch_k = stoch_data.get('k', 50)
-                stoch_d = stoch_data.get('d', 50)
-                
-                # Get latest price and volume
-                current_price = indicators.get('price', bars['close'].iloc[-1] if not bars.empty else 0)
-                current_volume = indicators.get('volume', bars['volume'].iloc[-1] if not bars.empty else 0)
+                        try:
+                            current_price = prices[-1]
+                            volumes = scanner.volume_data.get(symbol, [0])
+                            current_volume = volumes[-1] if volumes else 0
 
-                # Generate signal
-                signal_strength = self._calculate_signal_strength(rsi, stoch_k, stoch_d)
-                action = self._determine_action(rsi, stoch_k, stoch_d)
+                            # Get indicators from scanner
+                            indicators = scanner.get_indicators(symbol) if hasattr(scanner, 'get_indicators') else {}
 
-                signals.append({
-                    'symbol': symbol,
-                    'action': action,
-                    'rsi': round(float(rsi), 2),
-                    'stoch_k': round(float(stoch_k), 2),
-                    'stoch_d': round(float(stoch_d), 2),
-                    'price': round(float(current_price), 4),
-                    'volume': int(current_volume),
-                    'strength': signal_strength,
-                    'timestamp': datetime.now().isoformat()
-                })
+                            rsi = indicators.get('rsi', 50)
+                            stoch_k = indicators.get('stoch_k', 50)
+                            stoch_d = indicators.get('stoch_d', 50)
+
+                            # Calculate momentum for action
+                            momentum = scanner.calculate_momentum(prices) if hasattr(scanner, 'calculate_momentum') else 0.5
+
+                            # Determine action
+                            if rsi < 35 or stoch_k < 30:
+                                action = 'BUY'
+                            elif rsi > 65 or stoch_k > 70:
+                                action = 'SELL'
+                            else:
+                                action = 'HOLD'
+
+                            signal_strength = self._calculate_signal_strength(rsi, stoch_k, stoch_d)
+
+                            signals.append({
+                                'symbol': symbol,
+                                'action': action,
+                                'rsi': round(float(rsi), 2),
+                                'stoch_k': round(float(stoch_k), 2),
+                                'stoch_d': round(float(stoch_d), 2),
+                                'price': round(float(current_price), 4),
+                                'volume': int(current_volume),
+                                'strength': signal_strength,
+                                'momentum': round(float(momentum), 3),
+                                'timestamp': datetime.now().isoformat(),
+                                'source': 'cached'
+                            })
+                        except Exception as e:
+                            logger.debug(f"Error processing cached {symbol}: {e}")
+
+                    if signals:
+                        logger.info(f"Returning {len(signals)} signals from cached data (0 API calls)")
+                        return signals
 
             except Exception as e:
-                logger.error(f"Error calculating signals for {symbol}: {e}")
+                logger.debug(f"Could not use scanner cache: {e}")
 
-        return signals
+        # FALLBACK: Return empty list instead of making API calls
+        # This preserves rate limit budget for trading operations
+        logger.info("No cached signals available - returning empty (rate limit protection)")
+        return []
 
     def place_order(self, order_params: Dict) -> Dict:
         """Place an order"""
@@ -279,8 +322,14 @@ class TradingService:
                     import threading
                     import asyncio
                     def run_async_bot():
-                        asyncio.run(self.trading_bot.start_trading())
-                        
+                        try:
+                            asyncio.run(self.trading_bot.start_trading())
+                        except Exception as e:
+                            logger.error(f"Trading bot thread crashed: {e}")
+                            import traceback
+                            logger.error(traceback.format_exc())
+                            self.is_trading = False
+
                     self._bot_thread = threading.Thread(target=run_async_bot, daemon=True)
                     self._bot_thread.start()
                     

@@ -9,7 +9,7 @@ api:
 candle_lookback_period: 50
 crypto_only: true
 crypto_scanner:
-  enable_market_scan: true
+  enable_market_scan: false
   max_spread: 0.01
   min_24h_volume: 100000
   min_volatility: 0.0001
@@ -17,9 +17,13 @@ crypto_scanner:
   - BTCUSD
   - ETHUSD
   - SOLUSD
-  - AVAXUSD
   - DOGEUSD
-  - BTCUSDT
+  - LTCUSD
+  - AVAXUSD
+  - LINKUSD
+  - UNIUSD
+  - XRPUSD
+  - DOTUSD
 database:
   max_overflow: 10
   pool_recycle: 1800
@@ -64,7 +68,7 @@ logging:
   level: INFO
   max_bytes: 10485760
 market_type: crypto
-max_trades_active: 15
+max_trades_active: 20
 risk_management:
   atr_multiplier: 1.5
   atr_period: 10
@@ -95,7 +99,17 @@ sleep_time_between_trades: 1
 start_date: 1 day ago
 stop_loss: 0.015
 strategy: crypto_scalping
-symbols: []
+symbols:
+- BTCUSD
+- ETHUSD
+- SOLUSD
+- DOGEUSD
+- LTCUSD
+- AVAXUSD
+- LINKUSD
+- UNIUSD
+- XRPUSD
+- DOTUSD
 timeframe: 1Min
 trade_capital_percent: 3
 trailing_stop: 0.01

@@ -1,4 +1,4 @@
-"""Service wiring for the Flask backend with optional dependency fallbacks."""
+"""Service wiring for the Flask backend with dependency injection via ServiceRegistry."""
 
 from __future__ import annotations
 
@@ -6,6 +6,8 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from utils.alpaca import load_alpaca_credentials
+from core.service_registry import ServiceRegistry
+from utils.trade_store import TradeStore
 
 logger = logging.getLogger(__name__)
 
@@ -186,17 +188,43 @@ def _sqlite_path_from_url(db_url: str) -> str:
 # Public service initialiser
 # ---------------------------------------------------------------------------
 def init_services(app) -> None:
-    """Initialise core services and attach them to the Flask ``app``."""
+    """Initialise core services and attach them to the Flask ``app``.
 
+    All services are registered with a mandatory ServiceRegistry for consistent
+    dependency injection. The database path is resolved from unified configuration.
+    """
     if "TRADING_CONFIG" not in app.config:
         raise KeyError("TRADING_CONFIG missing from app.config; cannot initialise services")
 
     trading_config = app.config["TRADING_CONFIG"]
     logger.info("Initialising backend services")
 
+    # Set up logging from unified configuration
+    try:
+        from config.unified_config import setup_logging
+        setup_logging(trading_config)
+    except Exception as exc:
+        logger.warning("Failed to configure logging from unified config: %s", exc)
+
+    # Resolve database path from config
+    database_url = getattr(getattr(trading_config, "database", None), "url", "")
+    db_path = _sqlite_path_from_url(database_url) if database_url else "database/trading_data.db"
+    if not database_url:
+        logger.warning("Trading config missing database URL; defaulting to %s", db_path)
+
+    # Configure TradeStore with unified database path
+    TradeStore.configure(db_path)
+    logger.info("TradeStore configured with database: %s", db_path)
+
+    # Create service registry (mandatory)
+    registry = ServiceRegistry()
+    app.service_registry = registry
+
+    # Initialise Alpaca client
     try:
         credentials = load_alpaca_credentials(trading_config)
         alpaca_client = AlpacaClient(credentials)
+        registry.register("alpaca_client", alpaca_client)
         logger.info("Alpaca client initialised successfully")
     except Exception as exc:
         logger.warning("Failed to initialise Alpaca client: %s", exc)
@@ -204,42 +232,27 @@ def init_services(app) -> None:
         alpaca_client = None
     app.alpaca_client = alpaca_client
 
+    # Initialise trading service
     trading_service = (
         TradingService(alpaca_client=alpaca_client, config=trading_config)
         if alpaca_client
         else None
     )
+    if trading_service:
+        registry.register("trading_service", trading_service)
     app.trading_service = trading_service
 
-    database_url = getattr(getattr(trading_config, "database", None), "url", "")
-    db_path = _sqlite_path_from_url(database_url) if database_url else "database/trading_data.db"
-    if not database_url:
-        logger.warning("Trading config missing database URL; defaulting to %s", db_path)
-
+    # Initialise P&L service
     pnl_service = PnLService(alpaca_client=alpaca_client, db_path=db_path) if alpaca_client else None
+    if pnl_service:
+        registry.register("pnl_service", pnl_service)
     app.pnl_service = pnl_service
 
-    try:
-        from core.service_registry import ServiceRegistry
-    except Exception:  # pragma: no cover - optional dependency
-        logger.info("ServiceRegistry unavailable; skipping registry integration")
-    else:
-        registry = ServiceRegistry()
-        registered = False
-        if alpaca_client:
-            registry.register("alpaca_client", alpaca_client)
-            registered = True
-        if trading_service:
-            registry.register("trading_service", trading_service)
-            registered = True
-        if pnl_service:
-            registry.register("pnl_service", pnl_service)
-            registered = True
-        if registered:
-            app.service_registry = registry
-            logger.info("Services registered with ServiceRegistry")
+    # Register config in registry for easy access
+    registry.register("trading_config", trading_config)
+    registry.register("db_path", db_path)
 
-    logger.info("Services initialised successfully")
+    logger.info("Services initialised and registered with ServiceRegistry")
 
 
 __all__ = ["init_services", "TradingService", "PnLService", "AlpacaClient"]

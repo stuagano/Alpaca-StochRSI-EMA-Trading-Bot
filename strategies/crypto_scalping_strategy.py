@@ -18,7 +18,7 @@ from decimal import Decimal, ROUND_DOWN
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 from concurrent.futures import ThreadPoolExecutor
 import logging
-from threading import Lock
+from threading import Lock, RLock
 from enum import Enum
 from alpaca.common.exceptions import APIError
 
@@ -154,7 +154,7 @@ class CryptoVolatilityScanner:
         enabled_symbols: Optional[List[str]] = None,
     ):
         self.config = config or CryptoScannerConfig()
-        self.lock = Lock()
+        self.lock = RLock()  # Use RLock to allow reentrant locking
 
         self.configured_universe = self._merge_symbol_lists([], self.config.universe)
         self.default_pairs = list(self.configured_universe)
@@ -543,19 +543,17 @@ class CryptoVolatilityScanner:
             _metric_set(SCANNER_TRACKED_SYMBOLS_GAUGE, float(len(self.high_volume_pairs)))
             logger.info(f"🔍 Scanning {len(self.high_volume_pairs)} symbols for opportunities...")
             
-            # DEBUG: Print all available price data keys
-            logger.info(f"📊 Price data available for: {list(self.price_data.keys())}")
-            logger.info(f"📊 Expected symbols: {self.high_volume_pairs}")
-            
+            symbols_with_data = [s for s in self.high_volume_pairs if s in self.price_data]
+            logger.info(f"📊 Scanning {len(symbols_with_data)} symbols with price data")
+
             for symbol in self.high_volume_pairs:
                 try:
                     if symbol not in self.price_data:
-                        logger.info(f"  ❌ {symbol}: No price data available")
                         continue
-                    
+
                     prices = self.price_data[symbol]
                     volumes = self.volume_data.get(symbol, [])
-                    
+
                     if len(prices) < 2:  # MINIMAL requirement for ultra-fast signals
                         logger.info(f"  ❌ {symbol}: Insufficient price data ({len(prices)} points)")
                         continue
@@ -565,22 +563,18 @@ class CryptoVolatilityScanner:
                     volume_surge = self.detect_volume_surge(volumes)
                     momentum = self.calculate_momentum(prices)
                     
-                    logger.info(f"  📊 {symbol}: Price=${current_price:.4f}, Vol={volatility:.6f}, Mom={momentum:.3f}, Surge={volume_surge}")
-                    
-                    # REMOVED VOLATILITY FILTER - Generate signals for ANY volatility!
-                    # Original filter was: if volatility < self.min_volatility: continue
-                    
                     # Generate trading signal
-                    signal = self._generate_signal(
-                        symbol, current_price, volatility, 
-                        volume_surge, momentum
-                    )
-                    
-                    if signal:
-                        signals.append(signal)
-                        logger.info(f"  ✅ {symbol}: Generated {signal.action.upper()} signal (confidence: {signal.confidence:.3f})")
-                    else:
-                        logger.info(f"  ❌ {symbol}: No signal generated (signal was None)")
+                    try:
+                        signal = self._generate_signal(
+                            symbol, current_price, volatility,
+                            volume_surge, momentum
+                        )
+
+                        if signal and signal.action == 'buy':
+                            signals.append(signal)
+                            logger.info(f"  ✅ {symbol}: BUY signal @ ${current_price:.2f} (conf={signal.confidence:.2f})")
+                    except Exception as sig_err:
+                        logger.error(f"  ❌ {symbol}: Signal generation error: {sig_err}")
                         
                 except Exception as e:
                     logger.error(f"Error scanning {symbol}: {e}")
@@ -594,13 +588,26 @@ class CryptoVolatilityScanner:
     
     def _generate_signal(self, symbol: str, price: float, volatility: float,
                         volume_surge: bool, momentum: float) -> Optional[CryptoSignal]:
-        """Generate trading signal based on technical indicators"""
+        """Generate trading signal - ULTRA AGGRESSIVE MODE - always generate signals"""
 
         # Get full indicator set
         indicators = self.get_indicators(symbol)
         if not indicators:
-            logger.info(f"    ❌ {symbol}: No indicators available (need more data)")
-            return None
+            # No indicators? ALWAYS generate a BUY signal to keep trading active
+            # Base confidence on momentum direction
+            if momentum > 0.5:
+                confidence = 0.6 + (momentum - 0.5) * 0.4  # 0.6-0.8 for bullish
+            elif momentum < 0.4:
+                confidence = 0.55  # Contrarian buy
+            else:
+                confidence = 0.52  # Neutral but still trade
+
+            logger.info(f"    🎯 {symbol}: Generating BUY (no indicators, mom={momentum:.3f}, conf={confidence:.2f})")
+            return CryptoSignal(
+                symbol=symbol, action='buy', confidence=confidence, price=price,
+                volatility=volatility, volume_surge=volume_surge, momentum=momentum,
+                target_profit=0.005, stop_loss=0.003, timestamp=datetime.now()
+            )
 
         rsi = indicators.get('rsi', 50)
         macd = indicators.get('macd', 0)
@@ -610,111 +617,115 @@ class CryptoVolatilityScanner:
 
         action = 'hold'
         confidence = 0.0
-        target_profit = 0.008  # 0.8% target
-        stop_loss = 0.005      # 0.5% stop loss
+        target_profit = 0.005  # 0.5% target - quick scalps
+        stop_loss = 0.003      # 0.3% stop loss - tight
         signal_reasons = []
 
-        # ============ BUY SIGNALS ============
+        # ============ BUY SIGNALS (AGGRESSIVE) ============
         buy_score = 0
 
-        # RSI oversold (< 30) = strong buy
-        if rsi < 30:
-            buy_score += 3
-            signal_reasons.append(f"RSI oversold ({rsi:.1f})")
-        elif rsi < 40:
-            buy_score += 1
+        # RSI - widened thresholds
+        if rsi < 35:
+            buy_score += 2
             signal_reasons.append(f"RSI low ({rsi:.1f})")
-
-        # MACD bullish crossover (histogram turning positive)
-        if macd_hist > 0 and macd > 0:
-            buy_score += 2
-            signal_reasons.append("MACD bullish")
-        elif macd_hist > 0:
+        elif rsi < 45:
             buy_score += 1
-            signal_reasons.append("MACD hist positive")
+            signal_reasons.append(f"RSI neutral-low ({rsi:.1f})")
 
-        # StochRSI oversold (< 20)
-        if stoch_k < 20:
-            buy_score += 2
-            signal_reasons.append(f"StochRSI oversold ({stoch_k:.1f})")
-        elif stoch_k < 35:
+        # MACD
+        if macd_hist > 0:
             buy_score += 1
+            signal_reasons.append("MACD positive")
+
+        # StochRSI - widened
+        if stoch_k < 30:
+            buy_score += 2
             signal_reasons.append(f"StochRSI low ({stoch_k:.1f})")
+        elif stoch_k < 45:
+            buy_score += 1
+            signal_reasons.append(f"StochRSI neutral-low ({stoch_k:.1f})")
 
-        # EMA bullish cross
+        # EMA bullish
         if ema_cross == 'bullish':
             buy_score += 1
             signal_reasons.append("EMA bullish")
 
-        # Volume surge adds conviction
+        # Volume surge
         if volume_surge:
             buy_score += 1
             signal_reasons.append("Volume surge")
 
-        # ============ SELL SIGNALS ============
+        # Volatility bonus - we want volatile coins
+        if volatility > 0.01:
+            buy_score += 1
+            signal_reasons.append("High volatility")
+
+        # ============ SELL SIGNALS (AGGRESSIVE) ============
         sell_score = 0
         sell_reasons = []
 
-        # RSI overbought (> 70) = strong sell
-        if rsi > 70:
-            sell_score += 3
-            sell_reasons.append(f"RSI overbought ({rsi:.1f})")
-        elif rsi > 60:
-            sell_score += 1
+        # RSI overbought - widened
+        if rsi > 65:
+            sell_score += 2
             sell_reasons.append(f"RSI high ({rsi:.1f})")
-
-        # MACD bearish crossover
-        if macd_hist < 0 and macd < 0:
-            sell_score += 2
-            sell_reasons.append("MACD bearish")
-        elif macd_hist < 0:
+        elif rsi > 55:
             sell_score += 1
-            sell_reasons.append("MACD hist negative")
+            sell_reasons.append(f"RSI neutral-high ({rsi:.1f})")
 
-        # StochRSI overbought (> 80)
-        if stoch_k > 80:
-            sell_score += 2
-            sell_reasons.append(f"StochRSI overbought ({stoch_k:.1f})")
-        elif stoch_k > 65:
+        # MACD bearish
+        if macd_hist < 0:
             sell_score += 1
+            sell_reasons.append("MACD negative")
+
+        # StochRSI overbought - widened
+        if stoch_k > 70:
+            sell_score += 2
             sell_reasons.append(f"StochRSI high ({stoch_k:.1f})")
+        elif stoch_k > 55:
+            sell_score += 1
+            sell_reasons.append(f"StochRSI neutral-high ({stoch_k:.1f})")
 
-        # EMA bearish cross
+        # EMA bearish
         if ema_cross == 'bearish':
             sell_score += 1
             sell_reasons.append("EMA bearish")
 
-        # Volume surge on sell
-        if volume_surge and sell_score > buy_score:
+        # Volume on sell
+        if volume_surge:
             sell_score += 1
             sell_reasons.append("Volume surge")
 
-        # ============ DETERMINE ACTION ============
-        min_score = 3  # Minimum score needed for a signal
+        # ============ DETERMINE ACTION (LOWER THRESHOLD) ============
+        min_score = 2  # LOWERED from 3 to 2 for more trades
 
         if buy_score >= min_score and buy_score > sell_score:
             action = 'buy'
-            confidence = min(0.95, 0.5 + (buy_score * 0.1))
-            if buy_score >= 5:
-                target_profit = 0.012  # 1.2% for strong signals
-                stop_loss = 0.006
-            logger.info(f"    📈 BUY signal: score={buy_score} | {', '.join(signal_reasons)}")
+            confidence = min(0.95, 0.6 + (buy_score * 0.08))
+            if buy_score >= 4:
+                target_profit = 0.008  # Better target for strong signals
+                stop_loss = 0.004
+            logger.info(f"    📈 BUY: score={buy_score} | {', '.join(signal_reasons)}")
 
         elif sell_score >= min_score and sell_score > buy_score:
             action = 'sell'
-            confidence = min(0.95, 0.5 + (sell_score * 0.1))
+            confidence = min(0.95, 0.6 + (sell_score * 0.08))
             signal_reasons = sell_reasons
-            if sell_score >= 5:
-                target_profit = 0.012
-                stop_loss = 0.006
-            logger.info(f"    📉 SELL signal: score={sell_score} | {', '.join(sell_reasons)}")
+            if sell_score >= 4:
+                target_profit = 0.008
+                stop_loss = 0.004
+            logger.info(f"    📉 SELL: score={sell_score} | {', '.join(sell_reasons)}")
 
         else:
-            logger.info(f"    ⏸️ HOLD: buy_score={buy_score}, sell_score={sell_score}, RSI={rsi:.1f}, StochK={stoch_k:.1f}")
-            return None
+            # ALWAYS generate a buy signal to keep trading active
+            action = 'buy'
+            if momentum > 0.5:
+                confidence = 0.55 + (momentum - 0.5) * 0.3
+            else:
+                confidence = 0.52  # Still trade even on neutral/weak momentum
+            signal_reasons = [f"Momentum-based ({momentum:.3f})"]
 
-        # Create the signal
-        if action != 'hold' and confidence >= 0.6:
+        # Create the signal - lower confidence threshold
+        if action != 'hold' and confidence >= 0.5:
             return CryptoSignal(
                 symbol=symbol,
                 action=action,
@@ -764,10 +775,10 @@ class CryptoDayTradingBot:
         self.alpaca = alpaca_client
         self.scanner = CryptoVolatilityScanner(scanner_config, enabled_symbols=enabled_symbols)
         self.initial_capital = initial_capital
-        self.max_position_size = min(100, initial_capital * 0.01)  # 1% per trade, max $100
-        self.max_concurrent_positions = 10
+        self.max_position_size = min(50, initial_capital * 0.02)  # 2% per trade, max $50 for more positions
+        self.max_concurrent_positions = 20  # INCREASED from 10 to 20
         self.min_profit_target = 0.003  # 0.3% minimum profit
-        
+
         # Trading metrics
         self.active_positions = {}
         self.daily_trades = 0
@@ -775,10 +786,10 @@ class CryptoDayTradingBot:
         self.win_rate = 0.0
         self.total_trades = 0
         self.wins = 0
-        
-        # Risk management
-        self.max_daily_loss = initial_capital * 0.02  # 2% daily loss limit
-        self.max_drawdown = initial_capital * 0.05    # 5% maximum drawdown
+
+        # Risk management - RELAXED for more active trading
+        self.max_daily_loss = initial_capital * 0.05  # 5% daily loss limit (up from 2%)
+        self.max_drawdown = initial_capital * 0.10    # 10% maximum drawdown (up from 5%)
         
         # Error handling
         self.error_count = 0
@@ -794,13 +805,13 @@ class CryptoDayTradingBot:
         os.makedirs('logs', exist_ok=True)
         
         self.is_running = False
-        self.executor = ThreadPoolExecutor(max_workers=5)
+        self.executor = ThreadPoolExecutor(max_workers=10)  # More workers for parallel operations
 
-        # Configurable thresholds (can be overridden)
-        self.stop_loss_pct = 0.015  # 1.5% stop loss
-        self.take_profit_pct = 0.02  # 2% take profit
-        self.trailing_stop_pct = 0.01  # 1% trailing stop
-        self.max_hold_time_seconds = 3600  # 1 hour max hold
+        # Configurable thresholds - AGGRESSIVE for active trading
+        self.stop_loss_pct = 0.008  # 0.8% stop loss (tighter)
+        self.take_profit_pct = 0.005  # 0.5% take profit (quick scalps)
+        self.trailing_stop_pct = 0.003  # 0.3% trailing stop (tighter)
+        self.max_hold_time_seconds = 300  # 5 minutes max hold (down from 1 hour)
 
     @property
     def _api(self):
@@ -875,51 +886,86 @@ class CryptoDayTradingBot:
         self.executor.submit(self._start_market_data_feed)
 
         # Main trading loop
+        logger.info("🔄 Starting main trading loop")
+        cycle_count = 0
         while self.is_running:
             try:
+                cycle_count += 1
+                if cycle_count % 60 == 0:  # Log every 60 seconds
+                    logger.info(f"🔄 Trading loop heartbeat: {cycle_count} cycles completed")
                 await self._trading_cycle()
                 await asyncio.sleep(1)  # 1-second cycle for high frequency
-                
+
             except Exception as e:
                 logger.error(f"Trading cycle error: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
                 await asyncio.sleep(5)
+
+        logger.info(f"🛑 Trading loop exited (is_running={self.is_running})")
     
     async def _trading_cycle(self):
-        """Main trading cycle - runs every second"""
+        """Main trading cycle - RATE LIMIT AWARE
 
-        # Check for exit signals on existing positions
-        await self._check_exit_conditions()
+        API Budget: 200 requests/min
+        - Data polling: ~2 req/min (batch every 30s)
+        - Position sync: ~2 req/min (every 30s)
+        - Exit checks: ~4 req/min (per position, every 15s)
+        - Entry scans: ~2 req/min (every 30s)
+        - Account checks: ~1 req/min
+        Total: ~11 req/min base + 4 per active position
+        Leaves plenty of room for trading operations
+        """
 
-        # Sync positions from Alpaca every 30 seconds to catch external changes
-        if int(time.time()) % 30 == 0:
+        current_time = int(time.time())
+
+        # Check for exit signals every 15 seconds (uses cached price data, minimal API)
+        if current_time % 15 == 0:
+            await self._check_exit_conditions()
+
+        # Sync positions from Alpaca every 30 seconds
+        if current_time % 30 == 0:
             await self._sync_positions_from_alpaca()
 
-        # Look for new entry opportunities every 10 seconds (aligned with data polling)
-        if int(time.time()) % 10 == 0:
+        # Look for new entry opportunities every 30 seconds (aligned with data updates)
+        if current_time % 30 == 15:  # Offset from sync to spread load
             await self._find_entry_opportunities()
 
-        # Update metrics every minute
-        if int(time.time()) % 60 == 0:
+        # Update metrics every 2 minutes
+        if current_time % 120 == 0:
             self._update_metrics()
     
     async def _find_entry_opportunities(self):
         """Find new trading opportunities"""
-        if len(self.active_positions) >= self.max_concurrent_positions:
-            return
-        
-        if self.daily_profit < -self.max_daily_loss:
-            logger.warning(f"Daily loss limit reached (${self.daily_profit:.2f}), stopping new trades")
-            return
-        
-        # Get trading signals
-        signals = self.scanner.scan_for_opportunities()
-        
-        for signal in signals[:5]:  # Top 5 opportunities
-            if signal.symbol in self.active_positions:
-                continue
-            
-            if signal.confidence > 0.7:  # High confidence trades only
-                await self._execute_entry(signal)
+        try:
+            logger.info(f"🔎 Entry scan: {len(self.active_positions)}/{self.max_concurrent_positions} positions, daily P&L: ${self.daily_profit:.2f}")
+
+            if len(self.active_positions) >= self.max_concurrent_positions:
+                logger.info("⏸️  Max positions reached, skipping entry scan")
+                return
+
+            if self.daily_profit < -self.max_daily_loss:
+                logger.warning(f"Daily loss limit reached (${self.daily_profit:.2f}), stopping new trades")
+                return
+
+            # Get trading signals
+            logger.info("📡 Getting trading signals from scanner...")
+            signals = self.scanner.scan_for_opportunities()
+            logger.info(f"📊 Got {len(signals)} signals from scanner")
+
+            for signal in signals[:5]:  # Top 5 opportunities
+                if signal.symbol in self.active_positions:
+                    continue
+
+                if signal.confidence > 0.5:  # Lower threshold for more trades
+                    logger.info(f"🎯 Executing entry for {signal.symbol} (conf={signal.confidence:.2f})")
+                    await self._execute_entry(signal)
+
+            logger.info("✅ Entry scan complete")
+        except Exception as e:
+            logger.error(f"Error in _find_entry_opportunities: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
     
     async def _execute_entry(self, signal: CryptoSignal):
         """Execute entry trade with comprehensive error handling and logging"""
@@ -1419,79 +1465,76 @@ class CryptoDayTradingBot:
             return None
     
     def _start_market_data_feed(self):
-        """Start polling feed for real market data"""
+        """Start RATE-LIMIT-AWARE polling feed for real market data
+
+        Alpaca limits: 200 requests/minute
+        Strategy:
+        - Individual requests with delays (more reliable than batch)
+        - 10 symbols × 2 requests/min = 20 requests/min for data
+        - Leaves 180 requests/min for trading operations
+        """
         import threading
         from alpaca_trade_api.rest import TimeFrame
 
         def poll_market_data():
-            logger.info("📡 Starting real market data polling...")
+            logger.info("📡 Starting RATE-LIMIT-AWARE market data polling...")
+            logger.info("   Strategy: Individual requests with delays, 30-sec cycle")
 
-            # Initial history fetch (last 60 mins) to build indicator baseline
-            try:
-                symbols = self.scanner.get_enabled_symbols()
-                if symbols:
-                    # Use ISO format timestamps for intraday data
+            # Get focused symbol list (top 10 most liquid)
+            all_symbols = self.scanner.get_enabled_symbols()
+            priority_symbols = ['BTCUSD', 'ETHUSD', 'SOLUSD', 'DOGEUSD', 'LTCUSD',
+                               'AVAXUSD', 'LINKUSD', 'UNIUSD', 'XRPUSD', 'DOTUSD']
+            focused_symbols = [s for s in priority_symbols if s in all_symbols][:10]
+            logger.info(f"   Focused on {len(focused_symbols)} symbols")
+
+            # Initial history fetch - individual requests with delays
+            logger.info(f"📥 Loading initial history...")
+            for symbol in focused_symbols:
+                try:
+                    api_symbol = symbol[:-3] + '/' + symbol[-3:]
                     end = datetime.now(timezone.utc)
-                    start = end - timedelta(minutes=120)  # Get 2 hours for better indicator calc
-                    start_str = start.isoformat()
-                    end_str = end.isoformat()
+                    start = end - timedelta(minutes=120)
 
-                    for symbol in symbols:
-                        try:
-                            # Convert BTCUSD to BTC/USD for Alpaca API
-                            if '/' not in symbol:
-                                api_symbol = symbol[:-3] + '/' + symbol[-3:]
-                            else:
-                                api_symbol = symbol
+                    bars = self._api.get_crypto_bars(
+                        api_symbol,
+                        TimeFrame.Minute,
+                        start=start.isoformat(),
+                        end=end.isoformat()
+                    ).df
 
-                            bars = self._api.get_crypto_bars(
-                                api_symbol,
-                                TimeFrame.Minute,
-                                start=start_str,
-                                end=end_str
-                            ).df
+                    if not bars.empty:
+                        for idx, row in bars.iterrows():
+                            self.scanner.update_market_data(
+                                symbol,
+                                float(row['close']),
+                                float(row['volume'])
+                            )
+                        logger.info(f"  ✅ {symbol}: {len(bars)} bars")
 
-                            if not bars.empty:
-                                for index, row in bars.iterrows():
-                                    self.scanner.update_market_data(
-                                        symbol,
-                                        float(row['close']),
-                                        float(row['volume'])
-                                    )
-                                logger.info(f"  ✅ Loaded {len(bars)} historical bars for {symbol}")
-                            else:
-                                logger.warning(f"  ⚠️ No bars returned for {symbol}")
-                        except Exception as e:
-                            logger.error(f"Failed to load history for {symbol}: {e}")
-            except Exception as e:
-                logger.error(f"Initial data fetch failed: {e}")
+                    time.sleep(0.5)  # 500ms delay between requests
 
-            # Main polling loop
+                except Exception as e:
+                    logger.warning(f"  ⚠️ {symbol}: {e}")
+
+            logger.info(f"✅ Initial data load complete")
+
+            # Main polling loop - RATE LIMIT AWARE
+            poll_interval = 30  # Full cycle every 30 seconds
+
             while self.is_running:
                 try:
-                    symbols = self.scanner.get_enabled_symbols()
-                    if not symbols:
-                        time.sleep(5)
-                        continue
-
-                    # Use ISO timestamps for intraday data
                     end = datetime.now(timezone.utc)
                     start = end - timedelta(minutes=5)
-                    start_str = start.isoformat()
-                    end_str = end.isoformat()
+                    updates = 0
 
-                    for symbol in symbols:
+                    for symbol in focused_symbols:
                         try:
-                            if '/' not in symbol:
-                                api_symbol = symbol[:-3] + '/' + symbol[-3:]
-                            else:
-                                api_symbol = symbol
-
+                            api_symbol = symbol[:-3] + '/' + symbol[-3:]
                             bars = self._api.get_crypto_bars(
                                 api_symbol,
                                 TimeFrame.Minute,
-                                start=start_str,
-                                end=end_str
+                                start=start.isoformat(),
+                                end=end.isoformat()
                             ).df
 
                             if not bars.empty:
@@ -1501,21 +1544,27 @@ class CryptoDayTradingBot:
                                     float(latest['close']),
                                     float(latest['volume'])
                                 )
+                                updates += 1
+
+                            time.sleep(0.3)  # 300ms between requests
+
                         except Exception as e:
                             if "429" in str(e):
-                                logger.warning(f"Rate limit during polling {symbol}, slowing down...")
-                                time.sleep(2)
-                            else:
-                                logger.debug(f"Polling error for {symbol}: {e}")
+                                logger.warning(f"⚠️ Rate limit, backing off...")
+                                time.sleep(10)
 
-                    time.sleep(10)  # Poll every 10 seconds
+                    if updates > 0:
+                        logger.info(f"📊 Updated {updates}/{len(focused_symbols)} symbols")
+
+                    # Wait remaining time in cycle
+                    time.sleep(max(1, poll_interval - len(focused_symbols) * 0.3))
 
                 except Exception as e:
-                    logger.error(f"Market data polling error: {e}")
-                    time.sleep(10)
+                    logger.error(f"Polling error: {e}")
+                    time.sleep(poll_interval)
 
         threading.Thread(target=poll_market_data, daemon=True).start()
-        logger.info("📊 Real market data polling started")
+        logger.info("📊 Rate-limit-aware polling started")
     
     def _update_metrics(self):
         """Update trading metrics"""
@@ -1531,16 +1580,76 @@ class CryptoDayTradingBot:
                    f"Total Trades: {self.total_trades}")
     
     def get_status(self) -> Dict:
-        """Get current bot status"""
+        """Get current bot status with detailed position info for frontend"""
+        position_count = len(self.active_positions)
+        total_unrealized_pnl = 0.0
+        positions_detail = []
+
+        for symbol, pos in self.active_positions.items():
+            try:
+                entry_price = pos.get('entry_price', 0)
+                current_price = pos.get('current_price', entry_price)
+                quantity = float(pos.get('quantity', 0))
+
+                # Try to get real-time price from Alpaca
+                try:
+                    alpaca_pos = self.alpaca.get_position(symbol)
+                    current_price = float(alpaca_pos.current_price)
+                    unrealized_pnl = float(alpaca_pos.unrealized_pl)
+                except Exception:
+                    # Calculate from cached data
+                    if entry_price > 0:
+                        if pos.get('side') == 'buy':
+                            unrealized_pnl = (current_price - entry_price) * quantity
+                        else:
+                            unrealized_pnl = (entry_price - current_price) * quantity
+                    else:
+                        unrealized_pnl = 0
+
+                # Calculate P&L percentage
+                if entry_price > 0:
+                    if pos.get('side') == 'buy':
+                        pnl_pct = ((current_price - entry_price) / entry_price) * 100
+                    else:
+                        pnl_pct = ((entry_price - current_price) / entry_price) * 100
+                else:
+                    pnl_pct = 0
+
+                total_unrealized_pnl += unrealized_pnl
+
+                # Calculate hold time
+                entry_time = pos.get('entry_time')
+                if isinstance(entry_time, datetime):
+                    hold_time_seconds = int((datetime.now() - entry_time).total_seconds())
+                else:
+                    hold_time_seconds = 0
+
+                positions_detail.append({
+                    'symbol': symbol,
+                    'side': pos.get('side', 'buy'),
+                    'entry_price': entry_price,
+                    'current_price': current_price,
+                    'quantity': quantity,
+                    'stop_price': pos.get('stop_price', 0),
+                    'target_price': pos.get('target_price', 0),
+                    'pnl_pct': round(pnl_pct, 2),
+                    'unrealized_pnl': round(unrealized_pnl, 4),
+                    'hold_time_seconds': hold_time_seconds
+                })
+            except Exception as e:
+                logger.error(f"Error getting status for {symbol}: {e}")
+
         return {
             'is_running': self.is_running,
             'bot_running': self.is_running,  # For frontend compatibility
-            'active_positions': len(self.active_positions),
+            'active_positions': position_count,
+            'active_positions_count': position_count,  # Frontend expects this name
             'daily_profit': self.daily_profit,
             'daily_trades': self.daily_trades,
             'win_rate': self.win_rate,
             'total_trades': self.total_trades,
-            'positions': list(self.active_positions.keys()),
+            'positions': positions_detail,  # Full position objects for frontend
+            'total_unrealized_pnl': round(total_unrealized_pnl, 2),
             'error_count': self.error_count,
             'rate_limit_errors': self.rate_limit_errors,
             'recent_trades': len(self.trade_log)
