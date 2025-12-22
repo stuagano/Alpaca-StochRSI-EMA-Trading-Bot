@@ -1,36 +1,32 @@
-from strategies.strategy_base import Strategy
-from indicator import rsi, stochastic
-from indicators.volume_analysis import get_volume_analyzer
-import logging
+from typing import List, Dict, Any
 
-logger = logging.getLogger(__name__)
+from strategies.base_strategy import Strategy
+from indicator import rsi, stochastic
+import logging
 import pandas as pd
 import numpy as np
 from datetime import datetime
-import logging
+
+logger = logging.getLogger(__name__)
+
 
 class StochRSIStrategy(Strategy):
     """
     Enhanced Stochastic RSI strategy with dynamic band adjustment based on ATR volatility.
-    
+
     Features:
     - ATR-based dynamic band adjustment
     - Volatility-adaptive signal generation
     - Performance tracking and analysis
     - Backward compatibility with static bands
     """
-    
+
     def __init__(self, config):
-        super().__init__(config)
+        super().__init__(name="StochRSI")
+        self.config = config
         self.stoch_rsi_params = self.config.indicators.stochRSI
         self.lookback_period = self.config.candle_lookback_period
-        
-        # Initialize volume analyzer
-        # self.volume_analyzer = get_volume_analyzer(self.config.volume_confirmation)
-        # self.require_volume_confirmation = getattr(self.config.volume_confirmation, 'require_volume_confirmation', True)
-        
-        # logger.info(f"StochRSI Strategy initialized with volume confirmation: {self.require_volume_confirmation}")
-        
+
         # Performance tracking
         self.performance_metrics = {
             'total_signals': 0,
@@ -46,22 +42,22 @@ class StochRSIStrategy(Strategy):
         # Setup logging
         self.logger = logging.getLogger(__name__)
 
-    def generate_signal(self, df):
+    def generate_signals(self, df: pd.DataFrame) -> List[Dict[str, Any]]:
         """
         Generate enhanced trading signals using dynamic StochRSI bands.
         
         Returns:
-            int: 1 for buy, -1 for sell, 0 for no signal
+            List[Dict]: List of signal dictionaries
         """
         if not self.stoch_rsi_params.enabled:
-            return 0
+            return []
 
         # Calculate RSI and StochRSI with dynamic bands
         df = rsi(df)
         df = stochastic(df, TYPE='StochRSI')
         
         if 'StochRSI Signal' not in df.columns:
-            return 0
+            return []
         
         # Get recent signals and data for analysis
         recent_signals = df['StochRSI Signal'].iloc[-self.lookback_period:]
@@ -71,9 +67,31 @@ class StochRSIStrategy(Strategy):
         self._update_performance_metrics(df)
         
         # Enhanced signal logic
-        signal = self._evaluate_signals(recent_signals, signal_strengths, df)
+        signal_action_int = self._evaluate_signals(recent_signals, signal_strengths, df)
         
-        return signal
+        if signal_action_int == 0:
+            return []
+            
+        action = 'buy' if signal_action_int == 1 else 'sell'
+        symbol = df['symbol'].iloc[-1] if 'symbol' in df.columns else 'UNKNOWN'
+        
+        # Use base class helper for signal creation
+        confidence = signal_strengths.iloc[-1] if len(signal_strengths) > 0 else 0.5
+        signal_dict = self._create_signal_dict(
+            symbol=symbol,
+            action=action,
+            confidence=confidence,
+            price=df['close'].iloc[-1],
+            timestamp=df.index[-1],
+            reason=f'StochRSI enhanced signal ({action})',
+            indicators={
+                'rsi': df['rsi'].iloc[-1] if 'rsi' in df.columns else None,
+                'stoch_k': df['stoch_k'].iloc[-1] if 'stoch_k' in df.columns else None,
+                'stoch_d': df['stoch_d'].iloc[-1] if 'stoch_d' in df.columns else None
+            }
+        )
+
+        return self._record_signal(signal_dict)
 
     def _evaluate_signals(self, recent_signals, signal_strengths, df):
         """

@@ -53,13 +53,15 @@ def create_app(config_name='development'):
         trading_bp,
         api_bp,
         pnl_bp,
-        websocket_bp
+        websocket_bp,
+        activity_bp
     )
 
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(trading_bp, url_prefix='/api/v1/trading')
     app.register_blueprint(api_bp, url_prefix='/api/v1')
     app.register_blueprint(pnl_bp, url_prefix='/api/v1/pnl')
+    app.register_blueprint(activity_bp, url_prefix='/api/v1/activity')
 
     # Register WebSocket handlers
     from .blueprints.websocket_events import register_socketio_handlers

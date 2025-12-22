@@ -10,30 +10,16 @@ from datetime import datetime
 import pandas as pd
 import io
 
-from ..utils.decorators import handle_errors
+from ..utils.decorators import handle_api_errors, require_service
 
 pnl_bp = Blueprint('pnl', __name__)
 
 
-def _get_pnl_service():
-    """Get P&L service with null-safety check."""
-    service = current_app.pnl_service
-    if not service:
-        return None
-    return service
-
-
-def _service_unavailable_response():
-    """Standard response when P&L service is unavailable."""
-    return jsonify({'error': 'P&L service not initialized'}), 503
-
 @pnl_bp.route('/current')
-@handle_errors
-def current_pnl():
+@handle_api_errors()
+@require_service('pnl_service', 'P&L service not initialized')
+def current_pnl(service):
     """Get current P&L data"""
-    service = _get_pnl_service()
-    if not service:
-        return _service_unavailable_response()
 
     pnl_data = service.get_current_pnl()
 
@@ -50,13 +36,10 @@ def current_pnl():
     })
 
 @pnl_bp.route('/history')
-@handle_errors
-def pnl_history():
+@handle_api_errors()
+@require_service('pnl_service', 'P&L service not initialized')
+def pnl_history(service):
     """Get P&L history data"""
-    service = _get_pnl_service()
-    if not service:
-        return _service_unavailable_response()
-
     # Get query parameters
     days = int(request.args.get('days', 30))
     interval = request.args.get('interval', 'daily')  # daily, hourly, 5min
@@ -71,13 +54,10 @@ def pnl_history():
     })
 
 @pnl_bp.route('/chart-data')
-@handle_errors
-def pnl_chart_data():
+@handle_api_errors()
+@require_service('pnl_service', 'P&L service not initialized')
+def pnl_chart_data(service):
     """Get P&L data formatted for Chart.js"""
-    service = _get_pnl_service()
-    if not service:
-        return _service_unavailable_response()
-
     days = int(request.args.get('days', 7))
     chart_data = service.get_chart_data(days=days)
 
@@ -85,7 +65,7 @@ def pnl_chart_data():
         'labels': chart_data.get('labels', []),
         'datasets': [
             {
-                'label': 'Daily P&L',
+                'label': 'Hourly P&L',
                 'data': chart_data.get('daily_pnl', []),
                 'borderColor': 'rgb(75, 192, 192)',
                 'backgroundColor': 'rgba(75, 192, 192, 0.2)',
@@ -102,13 +82,10 @@ def pnl_chart_data():
     })
 
 @pnl_bp.route('/statistics')
-@handle_errors
-def pnl_statistics():
+@handle_api_errors()
+@require_service('pnl_service', 'P&L service not initialized')
+def pnl_statistics(service):
     """Get comprehensive P&L statistics"""
-    service = _get_pnl_service()
-    if not service:
-        return _service_unavailable_response()
-
     days = int(request.args.get('days', 30))
     stats = service.calculate_statistics(days=days)
 
@@ -129,13 +106,10 @@ def pnl_statistics():
     })
 
 @pnl_bp.route('/export')
-@handle_errors
-def export_pnl():
+@handle_api_errors()
+@require_service('pnl_service', 'P&L service not initialized')
+def export_pnl(service):
     """Export P&L data to CSV"""
-    service = _get_pnl_service()
-    if not service:
-        return _service_unavailable_response()
-
     # Get export parameters
     export_format = request.args.get('format', 'csv')
     days = int(request.args.get('days', 30))
@@ -167,13 +141,10 @@ def export_pnl():
         return jsonify({'error': 'Unsupported format'}), 400
 
 @pnl_bp.route('/trades')
-@handle_errors
-def recent_trades():
+@handle_api_errors()
+@require_service('pnl_service', 'P&L service not initialized')
+def recent_trades(service):
     """Get recent trades with P&L"""
-    service = _get_pnl_service()
-    if not service:
-        return _service_unavailable_response()
-
     limit = int(request.args.get('limit', 50))
     trades = service.get_recent_trades(limit=limit)
 
@@ -190,13 +161,10 @@ def recent_trades():
     })
 
 @pnl_bp.route('/performance')
-@handle_errors
-def performance_metrics():
+@handle_api_errors()
+@require_service('pnl_service', 'P&L service not initialized')
+def performance_metrics(service):
     """Get performance metrics by symbol"""
-    service = _get_pnl_service()
-    if not service:
-        return _service_unavailable_response()
-
     metrics = service.get_performance_by_symbol()
 
     return jsonify({

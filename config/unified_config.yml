@@ -9,7 +9,7 @@ api:
 candle_lookback_period: 50
 crypto_only: true
 crypto_scanner:
-  enable_market_scan: false
+  enable_market_scan: true
   max_spread: 0.01
   min_24h_volume: 100000
   min_volatility: 0.0001
@@ -52,9 +52,13 @@ indicators:
     D: 3
     K: 3
     atr_period: 10
+    atr_sensitivity: 1.5
+    band_adjustment_factor: 1.0
     dynamic_bands_enabled: false
     enabled: true
     lower_band: 35
+    max_band_width: 40.0
+    min_band_width: 10.0
     rsi_length: 9
     source: Close
     stoch_length: 9
@@ -68,7 +72,7 @@ logging:
   level: INFO
   max_bytes: 10485760
 market_type: crypto
-max_trades_active: 20
+max_trades_active: 50
 risk_management:
   atr_multiplier: 1.5
   atr_period: 10

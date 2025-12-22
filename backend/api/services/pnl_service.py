@@ -19,7 +19,7 @@ class PnLService:
     Service for P&L tracking, history, and analytics
     """
 
-    def __init__(self, alpaca_client, db_path: str = 'database/trading_data.db'):
+    def __init__(self, alpaca_client, db_path: str = 'database/crypto_trading.db'):
         """
         Initialize P&L service
 
@@ -235,25 +235,36 @@ class PnLService:
             history = self.get_pnl_history(days=days, interval='daily')
 
         labels = []
-        daily_pnl = []
+        hourly_pnl = []
         cumulative_pnl = []
 
-        # Calculate cumulative P&L from account value changes
-        cumulative = 0
-        base_value = history[0]['account_value'] if history else 0
+        if not history:
+            return {
+                'labels': labels,
+                'daily_pnl': hourly_pnl,
+                'cumulative_pnl': cumulative_pnl
+            }
+
+        # Calculate P&L from account value changes (not unrealized P&L)
+        base_value = history[0]['account_value']
+        prev_value = base_value
 
         for entry in history:
             labels.append(entry['timestamp'])
-            # Use unrealized P&L as the "daily" value
-            daily_pnl.append(entry['total_pnl'])
+
+            # Calculate hourly P&L as change from previous period
+            current_value = entry['account_value']
+            period_pnl = round(current_value - prev_value, 2)
+            hourly_pnl.append(period_pnl)
+            prev_value = current_value
+
             # Calculate cumulative from account value change vs baseline
-            if base_value > 0:
-                cumulative = round(entry['account_value'] - base_value, 2)
+            cumulative = round(current_value - base_value, 2)
             cumulative_pnl.append(cumulative)
 
         return {
             'labels': labels,
-            'daily_pnl': daily_pnl,
+            'daily_pnl': hourly_pnl,
             'cumulative_pnl': cumulative_pnl
         }
 

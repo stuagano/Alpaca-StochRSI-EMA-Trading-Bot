@@ -13,6 +13,8 @@ from typing import Dict, List, Optional, Any
 from trading_bot import TradingBot
 from trading_executor import TradingExecutor
 from signal_processor import SignalProcessor
+from strategies import get_strategy
+from core.service_registry import get_service_registry
 from indicator import Indicator
 
 logger = logging.getLogger(__name__)
@@ -306,48 +308,46 @@ class TradingService:
                 # Update config with overrides
                 pass
 
-            # Initialize trading bot
-            # Strategy and data manager placeholders
+            # Initialize modular components
             strategy_name = getattr(self.config, 'strategy', 'stoch_rsi')
+            logger.info(f"Initializing modular TradingBot with strategy: {strategy_name}")
             
-            # Check for crypto scalping strategy override or default
-            if strategy_name == 'crypto_scalping' or getattr(self.config, 'crypto_scanner', {}).get('enabled', False):
+            # 1. Get Strategy from factory
+            strategy = get_strategy(strategy_name, self.config)
+            
+            # 2. Get Data Manager from registry (setup in main.py or setup_core_services)
+            registry = get_service_registry()
+            data_manager = registry.get('data_manager')
+            
+            # 3. Create Executor and Processor
+            self.trading_executor = TradingExecutor(self.api, self.config)
+            self.signal_processor = SignalProcessor(self.trading_executor, self.config)
+            
+            # 4. Create the modular TradingBot
+            self.trading_bot = TradingBot(
+                config=self.config,
+                strategy=strategy,
+                signal_processor=self.signal_processor,
+                data_manager=data_manager
+            )
+
+            # Start bot in a background thread
+            import threading
+            import asyncio
+            def run_async_bot():
                 try:
-                    from strategies.crypto_scalping_strategy import create_crypto_day_trader
-                    self.trading_bot = create_crypto_day_trader(self.client, self.config)
-                    # CryptoDayTradingBot handles its own execution logic
-                    self.trading_executor = getattr(self.trading_bot, 'trading_executor', None) 
-                    
-                    # Start bot in a background thread with its own event loop
-                    import threading
-                    import asyncio
-                    def run_async_bot():
-                        try:
-                            asyncio.run(self.trading_bot.start_trading())
-                        except Exception as e:
-                            logger.error(f"Trading bot thread crashed: {e}")
-                            import traceback
-                            logger.error(traceback.format_exc())
-                            self.is_trading = False
+                    # Modular TradingBot.run() is an async loop
+                    asyncio.run(self.trading_bot.run())
+                except Exception as e:
+                    logger.error(f"Modular TradingBot thread crashed: {e}")
+                    self.is_trading = False
 
-                    self._bot_thread = threading.Thread(target=run_async_bot, daemon=True)
-                    self._bot_thread.start()
-                    
-                    logger.info("Crypto Scalping Bot started in background thread")
-                    
-                except ImportError as e:
-                    logger.error(f"Failed to import crypto strategy: {e}")
-                    # Fallback to stub
-                    self.trading_bot = TradingBot(self, strategy_name)
-                    self.trading_executor = self.trading_bot.trading_executor
-            else:
-                self.trading_bot = TradingBot(self, strategy_name)  # Pass self as data_manager placeholder
-                self.trading_executor = self.trading_bot.trading_executor
-
+            self._bot_thread = threading.Thread(target=run_async_bot, daemon=True)
+            self._bot_thread.start()
+            
             # Start trading
             self.is_trading = True
-
-            logger.info("Trading bot started")
+            logger.info(f"Modular TradingBot ({strategy_name}) started successfully")
             return {
                 'status': 'started',
                 'config': self._config_snapshot(),

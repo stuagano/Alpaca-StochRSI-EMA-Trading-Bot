@@ -7,9 +7,23 @@ import sqlite3
 import threading
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
+from typing import Callable, List, Optional
 
 logger = logging.getLogger(__name__)
+
+# Callbacks for trade events (used by learning service)
+_trade_callbacks: List[Callable] = []
+
+
+def register_trade_callback(callback: Callable) -> None:
+    """Register a callback to be called when trades are recorded."""
+    _trade_callbacks.append(callback)
+
+
+def unregister_trade_callback(callback: Callable) -> None:
+    """Unregister a trade callback."""
+    if callback in _trade_callbacks:
+        _trade_callbacks.remove(callback)
 
 
 def _get_default_db_path() -> Path:
@@ -18,7 +32,7 @@ def _get_default_db_path() -> Path:
         from config.unified_config import get_database_path
         return Path(get_database_path())
     except Exception:
-        return Path("database/trading_data.db")
+        return Path("database/crypto_trading.db")
 
 
 class TradeStore:
@@ -96,6 +110,23 @@ class TradeStore:
                     ts, order_ref, cursor.lastrowid
                 )
                 conn.close()
+
+                # Trigger callbacks for learning service
+                trade_data = {
+                    'symbol': symbol,
+                    'side': side,
+                    'qty': qty,
+                    'price': price,
+                    'pnl': pnl,
+                    'order_id': order_ref,
+                    'timestamp': ts
+                }
+                for callback in _trade_callbacks:
+                    try:
+                        callback(trade_data)
+                    except Exception as cb_exc:
+                        logger.debug("Trade callback error: %s", cb_exc)
+
             except Exception as exc:  # pragma: no cover - defensive logging
                 logger.error("Failed to record trade: %s", exc, exc_info=True)
 

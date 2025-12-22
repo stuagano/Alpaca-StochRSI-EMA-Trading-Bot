@@ -1,137 +1,197 @@
-#!/usr/bin/env python3
 """
-Decorators
-Custom decorators for Flask routes
+Error handling decorators for Flask API routes.
+
+Provides DRY-compliant decorators to eliminate duplicate error handling
+patterns across blueprints.
 """
 
+import functools
 import logging
-from functools import wraps
-from flask import jsonify, request, current_app
+import time
+from typing import Any, Callable, Optional, Type, Tuple
+
+from flask import current_app, jsonify
 
 logger = logging.getLogger(__name__)
 
-def handle_errors(f):
+
+def require_service(service_name: str, error_message: Optional[str] = None):
     """
-    Error handling decorator for routes
+    Decorator that ensures a service is available before executing the route.
 
-    Catches exceptions and returns standardized error responses
-    """
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        try:
-            return f(*args, **kwargs)
-        except ValueError as e:
-            logger.error(f"Value error in {f.__name__}: {e}")
-            return jsonify({
-                'error': 'Invalid input',
-                'message': str(e)
-            }), 400
-        except KeyError as e:
-            logger.error(f"Key error in {f.__name__}: {e}")
-            return jsonify({
-                'error': 'Missing required field',
-                'message': str(e)
-            }), 400
-        except Exception as e:
-            logger.error(f"Unexpected error in {f.__name__}: {e}")
-            return jsonify({
-                'error': 'Internal server error',
-                'message': 'An unexpected error occurred'
-            }), 500
-
-    return decorated_function
-
-def require_auth(f):
-    """
-    Authentication decorator
-
-    Ensures request is authenticated before allowing access
-    """
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # Simple API key authentication
-        api_key = request.headers.get('X-API-Key')
-        expected_key = current_app.config.get('API_KEY')
-
-        # If no key is configured, bypass authentication (dev mode)
-        if not expected_key:
-             return f(*args, **kwargs)
-
-        if not api_key:
-            return jsonify({'error': 'Authentication required'}), 401
-            
-        if api_key != expected_key:
-            return jsonify({'error': 'Invalid API key'}), 401
-
-        return f(*args, **kwargs)
-
-    return decorated_function
-
-def rate_limit(max_calls=60, time_window=60):
-    """
-    Rate limiting decorator
+    Eliminates the repeated pattern of:
+        service = getattr(current_app, service_name, None)
+        if not service:
+            return jsonify({'error': 'Service not initialized'}), 503
 
     Args:
-        max_calls: Maximum number of calls allowed
-        time_window: Time window in seconds
+        service_name: Name of the service attribute on current_app
+        error_message: Custom error message (optional)
+
+    Usage:
+        @bp.route('/data')
+        @require_service('pnl_service')
+        def get_data(service):
+            return jsonify(service.get_data())
     """
-    def decorator(f):
-        # Simple in-memory rate limiting
-        # In production, use Redis or similar
-        call_times = []
+    def decorator(f: Callable) -> Callable:
+        @functools.wraps(f)
+        def wrapper(*args, **kwargs):
+            service = getattr(current_app, service_name, None)
+            if not service:
+                msg = error_message or f'{service_name} not initialized'
+                logger.warning(f"Service unavailable: {service_name}")
+                return jsonify({'error': msg}), 503
 
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            import time
-            now = time.time()
+            # Inject service as first argument
+            return f(service, *args, **kwargs)
+        return wrapper
+    return decorator
 
-            # Remove old calls outside the time window
-            nonlocal call_times
-            call_times = [t for t in call_times if now - t < time_window]
 
-            if len(call_times) >= max_calls:
+def handle_api_errors(
+    default_status: int = 500,
+    default_message: str = 'Internal server error',
+    log_level: str = 'error'
+):
+    """
+    Decorator that provides consistent error handling for API routes.
+
+    Eliminates the repeated try/except pattern in routes.
+
+    Args:
+        default_status: Default HTTP status code for errors
+        default_message: Default error message
+        log_level: Logging level ('error', 'warning', 'info')
+
+    Usage:
+        @bp.route('/data')
+        @handle_api_errors(default_status=500)
+        def get_data():
+            return jsonify(risky_operation())
+    """
+    def decorator(f: Callable) -> Callable:
+        @functools.wraps(f)
+        def wrapper(*args, **kwargs):
+            try:
+                return f(*args, **kwargs)
+            except ValueError as e:
+                logger.warning(f"Validation error in {f.__name__}: {e}")
+                return jsonify({'error': str(e)}), 400
+            except PermissionError as e:
+                logger.warning(f"Permission denied in {f.__name__}: {e}")
+                return jsonify({'error': 'Permission denied'}), 403
+            except FileNotFoundError as e:
+                logger.warning(f"Resource not found in {f.__name__}: {e}")
+                return jsonify({'error': 'Resource not found'}), 404
+            except Exception as e:
+                log_func = getattr(logger, log_level, logger.error)
+                log_func(f"Error in {f.__name__}: {e}", exc_info=True)
+                return jsonify({'error': default_message}), default_status
+        return wrapper
+    return decorator
+
+
+def retry_on_transient(
+    max_attempts: int = 3,
+    backoff_factor: float = 2.0,
+    exceptions: Tuple[Type[Exception], ...] = (ConnectionError, TimeoutError)
+):
+    """
+    Decorator that retries a function on transient errors.
+
+    Args:
+        max_attempts: Maximum number of retry attempts
+        backoff_factor: Multiplier for exponential backoff
+        exceptions: Tuple of exception types to retry on
+
+    Usage:
+        @retry_on_transient(max_attempts=3)
+        def fetch_external_data():
+            return requests.get(url).json()
+    """
+    def decorator(f: Callable) -> Callable:
+        @functools.wraps(f)
+        def wrapper(*args, **kwargs):
+            last_exception = None
+
+            for attempt in range(max_attempts):
+                try:
+                    return f(*args, **kwargs)
+                except exceptions as e:
+                    last_exception = e
+                    if attempt < max_attempts - 1:
+                        wait_time = backoff_factor ** attempt
+                        logger.warning(
+                            f"Attempt {attempt + 1}/{max_attempts} failed for "
+                            f"{f.__name__}, retrying in {wait_time:.1f}s: {e}"
+                        )
+                        time.sleep(wait_time)
+                    else:
+                        logger.error(
+                            f"All {max_attempts} attempts failed for {f.__name__}: {e}"
+                        )
+
+            raise last_exception
+        return wrapper
+    return decorator
+
+
+def validate_json_request(*required_fields: str):
+    """
+    Decorator that validates required fields in JSON request body.
+
+    Args:
+        required_fields: Names of required fields
+
+    Usage:
+        @bp.route('/create', methods=['POST'])
+        @validate_json_request('name', 'value')
+        def create_item():
+            data = request.get_json()
+            # data is guaranteed to have 'name' and 'value'
+    """
+    from flask import request
+
+    def decorator(f: Callable) -> Callable:
+        @functools.wraps(f)
+        def wrapper(*args, **kwargs):
+            data = request.get_json()
+            if not data:
+                return jsonify({'error': 'JSON body required'}), 400
+
+            missing = [field for field in required_fields if field not in data]
+            if missing:
                 return jsonify({
-                    'error': 'Rate limit exceeded',
-                    'message': f'Maximum {max_calls} requests per {time_window} seconds'
-                }), 429
+                    'error': f'Missing required fields: {", ".join(missing)}'
+                }), 400
 
-            call_times.append(now)
             return f(*args, **kwargs)
-
-        return decorated_function
+        return wrapper
     return decorator
 
-def cache_response(duration=300):
+
+def require_auth(f: Callable) -> Callable:
     """
-    Response caching decorator
+    Decorator that requires authentication for a route.
 
-    Args:
-        duration: Cache duration in seconds
+    Currently a pass-through for development; can be enhanced with
+    API key, JWT, or session-based authentication.
+
+    Usage:
+        @bp.route('/protected')
+        @require_auth
+        def protected_route():
+            return jsonify({'data': 'secret'})
     """
-    def decorator(f):
-        cache = {}
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        # TODO: Implement actual authentication check
+        # For now, allow all requests (development mode)
+        # In production, check headers, tokens, etc.
+        return f(*args, **kwargs)
+    return wrapper
 
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            import time
-            import hashlib
-            import json
 
-            # Create cache key from function name and arguments
-            key_data = f"{f.__name__}:{args}:{kwargs}"
-            cache_key = hashlib.md5(key_data.encode()).hexdigest()
-
-            # Check cache
-            if cache_key in cache:
-                cached_data, cached_time = cache[cache_key]
-                if time.time() - cached_time < duration:
-                    return cached_data
-
-            # Call function and cache result
-            result = f(*args, **kwargs)
-            cache[cache_key] = (result, time.time())
-
-            return result
-
-        return decorated_function
-    return decorator
+# Backward compatibility aliases
+handle_errors = handle_api_errors

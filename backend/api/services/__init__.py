@@ -94,7 +94,7 @@ except Exception as exc:  # pragma: no cover
         """Fallback P&L service returning safe default structures."""
 
         def __init__(self, *_, **kwargs: Any) -> None:
-            self.db_path = kwargs.get("db_path", "database/trading_data.db")
+            self.db_path = kwargs.get("db_path", "database/crypto_trading.db")
             logger.warning("PnLService fallback active: %s", _PNL_IMPORT_ERROR)
 
         def _message(self) -> str:
@@ -208,7 +208,7 @@ def init_services(app) -> None:
 
     # Resolve database path from config
     database_url = getattr(getattr(trading_config, "database", None), "url", "")
-    db_path = _sqlite_path_from_url(database_url) if database_url else "database/trading_data.db"
+    db_path = _sqlite_path_from_url(database_url) if database_url else "database/crypto_trading.db"
     if not database_url:
         logger.warning("Trading config missing database URL; defaulting to %s", db_path)
 

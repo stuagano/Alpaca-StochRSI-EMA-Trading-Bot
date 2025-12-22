@@ -6,6 +6,7 @@ class CryptoDashboard {
         this.lastUpdate = null;
         this.pnlChart = null;
         this.botStatus = null;
+        this.positionMultiplier = 1;
 
         this.init();
     }
@@ -17,6 +18,7 @@ class CryptoDashboard {
         this.loadAllData();
         this.loadBotStatus();
         this.loadThresholds();
+        this.loadActivity();
         this.updateChart();
         this.startAutoRefresh();
 
@@ -177,7 +179,7 @@ class CryptoDashboard {
                     <div class="signal-details">
                         <div class="detail">
                             <span>RSI:</span>
-                            <span>${signal.rsi}</span>
+                            <span>${signal.rsi || 'N/A'}</span>
                         </div>
                         <div class="detail">
                             <span>Price:</span>
@@ -185,7 +187,7 @@ class CryptoDashboard {
                         </div>
                         <div class="detail">
                             <span>Strength:</span>
-                            <span class="${strengthClass}">${signal.strength}</span>
+                            <span class="${strengthClass}">${signal.strength || 'Normal'}</span>
                         </div>
                     </div>
                 </div>
@@ -229,7 +231,7 @@ class CryptoDashboard {
         }
 
         let html = '';
-        tradesArray.slice(-10).reverse().forEach(trade => { // Show last 10 trades, newest first
+        tradesArray.slice(0, 10).forEach(trade => { // Show first 10 trades (API returns newest first)
             const sideClass = trade.side === 'buy' ? 'buy' : 'sell';
             const value = trade.qty * trade.price;
 
@@ -271,7 +273,7 @@ class CryptoDashboard {
                 labels: [],
                 datasets: [
                     {
-                        label: 'Daily P&L',
+                        label: 'Hourly P&L',
                         data: [],
                         borderColor: 'rgb(75, 192, 192)',
                         backgroundColor: 'rgba(75, 192, 192, 0.2)',
@@ -334,7 +336,7 @@ class CryptoDashboard {
                         },
                         title: {
                             display: true,
-                            text: 'Daily P&L',
+                            text: 'Hourly P&L',
                             color: 'rgb(75, 192, 192)'
                         }
                     },
@@ -423,6 +425,7 @@ class CryptoDashboard {
             this.refreshInterval = setInterval(() => {
                 this.loadAllData();
                 this.loadBotStatus();
+                this.loadActivity();
                 this.updateChart();
             }, 10000); // Refresh every 10 seconds
         }
@@ -715,6 +718,171 @@ class CryptoDashboard {
             notification.style.animation = 'slideOut 0.3s ease';
             setTimeout(() => notification.remove(), 300);
         }, 3000);
+    }
+
+    // ==================== ACTIVITY FEED METHODS ====================
+
+    async loadActivity() {
+        try {
+            const response = await fetch('/api/v1/activity/summary');
+            if (!response.ok) {
+                console.log('Activity endpoint not available');
+                return;
+            }
+            const data = await response.json();
+
+            this.updateActivityFeed(data.activity || []);
+            this.updateSignalAnalysis(data.signals || []);
+            this.updateScannerStatus(data.scanner || {});
+        } catch (error) {
+            console.log('Activity feed not available:', error.message);
+        }
+    }
+
+    updateActivityFeed(activities) {
+        const container = document.getElementById('activity-feed');
+        if (!container) return;
+
+        if (!activities || activities.length === 0) {
+            container.innerHTML = '<div class="no-data">No activity yet</div>';
+            return;
+        }
+
+        let html = '';
+        activities.slice(0, 50).forEach(entry => {
+            const time = this.formatActivityTime(entry.timestamp);
+            const typeColors = {
+                'scan': '#4ecdc4',
+                'signal': '#00ff88',
+                'decision': '#ffaa00',
+                'trade': '#ff6b6b',
+                'info': '#666',
+                'warning': '#ffaa00'
+            };
+
+            html += `
+                <div class="activity-item ${entry.type}">
+                    <span class="activity-time">${time}</span>
+                    <span class="activity-type" style="color: ${typeColors[entry.type] || '#666'}">${entry.type}</span>
+                    <span>${entry.message}</span>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+
+        const statusEl = document.getElementById('activity-status');
+        if (statusEl) {
+            statusEl.textContent = `${activities.length} entries`;
+        }
+    }
+
+    updateSignalAnalysis(signals) {
+        const container = document.getElementById('signal-analysis');
+        if (!container) return;
+
+        if (!signals || signals.length === 0) {
+            container.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">No signals cached</div>';
+            return;
+        }
+
+        let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+        signals.slice(0, 10).forEach(signal => {
+            const actionColor = signal.action === 'buy' ? '#00ff88' : signal.action === 'sell' ? '#ff6b6b' : '#888';
+            const acceptedBadge = signal.accepted
+                ? '<span style="background: #00ff88; color: #000; padding: 2px 6px; border-radius: 4px; font-size: 10px;">ACCEPTED</span>'
+                : '<span style="background: #ff6b6b; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px;">REJECTED</span>';
+
+            html += `
+                <div style="padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="color: #4ecdc4; font-weight: 600;">${signal.symbol || 'Unknown'}</span>
+                        ${acceptedBadge}
+                    </div>
+                    <div style="display: flex; gap: 10px; font-size: 12px;">
+                        <span style="color: ${actionColor}; text-transform: uppercase; font-weight: 600;">${signal.action || 'HOLD'}</span>
+                        <span style="color: #888;">Conf: ${((signal.confidence || 0) * 100).toFixed(0)}%</span>
+                        <span style="color: #888;">$${(signal.price || 0).toFixed(4)}</span>
+                    </div>
+                    ${signal.reason ? `<div style="color: #666; font-size: 11px; margin-top: 4px;">${signal.reason}</div>` : ''}
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        container.innerHTML = html;
+    }
+
+    updateScannerStatus(scanner) {
+        const setElement = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
+
+        setElement('scanner-symbols', scanner.symbols_tracked || 0);
+        setElement('scanner-last-scan', scanner.last_scan ? this.formatActivityTime(scanner.last_scan) : 'Never');
+        setElement('scanner-signals-count', scanner.signals_generated || 0);
+        setElement('scanner-rejected-count', scanner.signals_rejected || 0);
+        setElement('scanner-avg-confidence', scanner.avg_confidence ? `${(scanner.avg_confidence * 100).toFixed(1)}%` : '-');
+    }
+
+    formatActivityTime(timestamp) {
+        if (!timestamp) return '';
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diff = (now - date) / 1000;
+
+        if (diff < 60) return `${Math.floor(diff)}s ago`;
+        if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+        return date.toLocaleDateString();
+    }
+
+    // ==================== MULTIPLIER METHODS ====================
+
+    async doubleDown() {
+        this.positionMultiplier *= 2;
+        if (this.positionMultiplier > 10) this.positionMultiplier = 10;
+        this.updateMultiplierUI();
+
+        try {
+            const url = typeof buildApiUrl === 'function' ? buildApiUrl('setMultiplier') : '/api/v1/trading/set-multiplier';
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ multiplier: this.positionMultiplier })
+            });
+
+            if (response.ok) {
+                this.showNotification(`Multiplier set to ${this.positionMultiplier}x! 🚀`, 'success');
+            }
+        } catch (error) {
+            console.error('Error setting multiplier:', error);
+        }
+    }
+
+    async resetMultiplier() {
+        this.positionMultiplier = 1;
+        this.updateMultiplierUI();
+
+        try {
+            const url = typeof buildApiUrl === 'function' ? buildApiUrl('setMultiplier') : '/api/v1/trading/set-multiplier';
+            await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ multiplier: 1 })
+            });
+            this.showNotification('Multiplier reset to 1x', 'info');
+        } catch (error) {
+            console.error('Error resetting multiplier:', error);
+        }
+    }
+
+    updateMultiplierUI() {
+        const valElem = document.getElementById('bot-multiplier-value');
+        const nextElem = document.getElementById('next-trade-multiplier');
+        if (valElem) valElem.textContent = this.positionMultiplier + 'x';
+        if (nextElem) nextElem.textContent = this.positionMultiplier + 'x';
     }
 }
 

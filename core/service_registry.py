@@ -30,20 +30,22 @@ def get_service_registry():
         _registry = ServiceRegistry()
     return _registry
 
-def setup_core_services():
+from core.stubs import TradingDataServiceStub
+from core.alpaca_data_service import AlpacaDataService
+
+def setup_core_services(api_key: str = None, secret_key: str = None):
+    """Initialize and register core services."""
     logger.info("Setting up core services.")
-    # Removed backend dependency - using simple data service stub
-    class TradingDataService:
-        """Simple data service stub to replace backend dependency"""
-        def __init__(self):
-            pass
-
-        def get_market_data(self, symbol):
-            """Get market data for symbol"""
-            return {'symbol': symbol, 'price': 0, 'volume': 0}
-
     registry = get_service_registry()
-    registry.register('data_manager', TradingDataService())
+    
+    if api_key and secret_key:
+        logger.info("Registering production AlpacaDataService")
+        # We'll use paper URL as default for safety
+        base_url = "https://paper-api.alpaca.markets"
+        registry.register('data_manager', AlpacaDataService(api_key, secret_key, base_url))
+    else:
+        logger.warning("No credentials provided, registering TradingDataServiceStub")
+        registry.register('data_manager', TradingDataServiceStub())
 
 def cleanup_service_registry():
     logger.info("Cleaning up service registry (placeholder).")

@@ -10,8 +10,8 @@ dashboard_bp = Blueprint('dashboard', __name__)
 
 _DASHBOARD_TEMPLATES = {
     'root': 'dashboard.html',
-    'simple': 'index.html',
-    'advanced': 'crypto-dashboard.html',
+    'simple': 'dashboard.html',
+    'advanced': 'dashboard.html',
 }
 
 

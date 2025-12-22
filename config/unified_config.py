@@ -67,6 +67,11 @@ class StochRSIConfig:
     source: str = "Close"
     dynamic_bands_enabled: bool = True
     atr_period: int = 14
+    # Dynamic band adjustment parameters
+    atr_sensitivity: float = 1.5
+    band_adjustment_factor: float = 1.0
+    min_band_width: float = 10.0
+    max_band_width: float = 40.0
 
 
 @dataclass
@@ -114,7 +119,7 @@ class RiskManagementConfig:
 @dataclass
 class DatabaseConfig:
     """Database configuration."""
-    url: str = "sqlite:///database/trading_data.db"
+    url: str = "sqlite:///database/crypto_trading.db"
     pool_size: int = 10
     max_overflow: int = 20
     pool_timeout: int = 30

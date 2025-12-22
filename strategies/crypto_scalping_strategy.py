@@ -9,6 +9,7 @@ import pandas as pd
 import asyncio
 import websocket
 import json
+import threading
 import math
 import time
 import os
@@ -24,6 +25,21 @@ from alpaca.common.exceptions import APIError
 
 from utils.trade_store import TradeStore
 from config.unified_config import CryptoScannerConfig, TradingConfig
+from strategies.trading_metrics import TradeLog  # Import instead of duplicate
+from strategies.constants import RISK, POSITION, SCANNER
+
+# Import activity service for dashboard visibility
+try:
+    from backend.api.services.activity_service import get_activity_service
+    _activity_service = None
+    def _get_activity():
+        global _activity_service
+        if _activity_service is None:
+            _activity_service = get_activity_service()
+        return _activity_service
+except ImportError:
+    def _get_activity():
+        return None
 
 try:
     from prometheus_client import Counter, Gauge  # type: ignore
@@ -71,7 +87,7 @@ def _metric_inc(metric: Optional[Counter], amount: float = 1.0) -> None:
 
     try:
         metric.inc(amount)
-    except Exception:  # pragma: no cover - defensive guard
+    except (RuntimeError, TypeError, ValueError):  # pragma: no cover - defensive guard
         logging.getLogger(__name__).debug("Failed to increment metric", exc_info=True)
 
 
@@ -83,7 +99,7 @@ def _metric_set(metric: Optional[Gauge], value: float) -> None:
 
     try:
         metric.set(value)
-    except Exception:  # pragma: no cover - defensive guard
+    except (RuntimeError, TypeError, ValueError):  # pragma: no cover - defensive guard
         logging.getLogger(__name__).debug("Failed to set metric", exc_info=True)
 
 # Configure structured logging
@@ -93,44 +109,6 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger(__name__)
-
-@dataclass
-class TradeLog:
-    """Comprehensive trade log entry with all required fields"""
-    timestamp: str
-    action: str  # 'BUY' or 'SELL'
-    symbol: str
-    quantity: float
-    price: float
-    status: str  # 'filled', 'partially_filled', 'failed'
-    error_notes: str = ""
-    order_id: str = ""
-    pnl: float = 0.0
-    execution_time_ms: int = 0
-    
-    def to_console_string(self) -> str:
-        """Format for clear console output"""
-        status_emoji = {
-            "filled": "✅",
-            "partially_filled": "⚠️",
-            "failed": "❌",
-            "pending": "⏳"
-        }.get(self.status, "❓")
-        
-        action_color = "\033[92m" if self.action == "BUY" else "\033[91m"
-        reset_color = "\033[0m"
-        
-        return (
-            f"{status_emoji} {self.timestamp} | "
-            f"{action_color}{self.action:4s}{reset_color} | "
-            f"{self.symbol:10s} | "
-            f"Qty: {self.quantity:8.4f} | "
-            f"Price: ${self.price:10.2f} | "
-            f"Status: {self.status:15s} | "
-            f"P&L: ${self.pnl:+8.2f} | "
-            f"Exec: {self.execution_time_ms}ms | "
-            f"{self.error_notes}"
-        )
 
 @dataclass
 class CryptoSignal:
@@ -153,12 +131,26 @@ class CryptoVolatilityScanner:
         config: Optional[CryptoScannerConfig] = None,
         enabled_symbols: Optional[List[str]] = None,
     ):
-        self.config = config or CryptoScannerConfig()
-        self.lock = RLock()  # Use RLock to allow reentrant locking
-
-        self.configured_universe = self._merge_symbol_lists([], self.config.universe)
-        self.default_pairs = list(self.configured_universe)
-
+        self.config = config
+        self.lock = threading.Lock()
+        
+        # Use config if available, otherwise defaults
+        self.target_count = config.target_count if config and hasattr(config, 'target_count') else 50
+        self.max_spread = config.max_spread if config and hasattr(config, 'max_spread') else RISK.MAX_SPREAD_DEFAULT
+        self.min_volume = config.min_24h_volume if config and hasattr(config, 'min_24h_volume') else 100000
+        
+        # Define base pairs (high-quality assets)
+        self.default_pairs = [
+            'BTCUSD', 'ETHUSD', 'SOLUSD', 'DOGEUSD', 'LTCUSD', 
+            'AVAXUSD', 'LINKUSD', 'UNIUSD', 'XRPUSD', 'DOTUSD',
+            'MATICUSD', 'ADAUSD', 'ALGOUSD', 'ATOMUSD', 'BCHUSD'
+        ]
+        # The original `self.configured_universe` and `self.default_pairs = list(self.configured_universe)`
+        # lines are replaced by the hardcoded `self.default_pairs` above.
+        # The `self.configured_universe` is no longer explicitly set here,
+        # but `_merge_symbol_lists` will still use `self.default_pairs` as a base.
+        self.configured_universe = self._merge_symbol_lists([], self.config.universe if self.config else []) # Re-added for merge_symbol_lists
+        
         initial_overrides = enabled_symbols or []
         merged_symbols = self._merge_symbol_lists(self.configured_universe, initial_overrides)
 
@@ -167,9 +159,10 @@ class CryptoVolatilityScanner:
         _metric_set(SCANNER_TRACKED_SYMBOLS_GAUGE, float(len(self.high_volume_pairs)))
 
         # Scanner thresholds sourced from configuration
-        self.min_24h_volume = self.config.min_24h_volume
-        self.min_volatility = self.config.min_volatility
-        self.max_spread = self.config.max_spread
+        # These now use the new config-driven defaults or the hardcoded ones
+        self.min_24h_volume = self.min_volume
+        self.min_volatility = self.config.min_volatility if self.config else 0.005 # Default if config is None
+        self.max_spread = self.max_spread
 
         self.price_data: Dict[str, List[float]] = {}
         self.volatility_data: Dict[str, float] = {}
@@ -341,12 +334,15 @@ class CryptoVolatilityScanner:
             logger.error(f"Failed to create data client: {e}")
             # Fallback to simulated volatility
             for symbol in symbols[:5]:  # Limit to top 5 default symbols
-                volatility_scores[symbol] = np.random.uniform(0.001, 0.01)
+                volatility_scores[symbol] = np.random.uniform(SCANNER.VOLATILITY_MIN, SCANNER.VOLATILITY_MAX)
 
         return volatility_scores
     
-    def select_top_volatile_pairs(self, api, target_count: int = 5) -> List[str]:
+    def select_top_volatile_pairs(self, api, target_count: Optional[int] = None) -> List[str]:
         """Dynamically select the most volatile crypto pairs"""
+        if target_count is None:
+            target_count = self.target_count
+
         try:
             # Fetch all available crypto assets
             all_symbols = self.fetch_all_crypto_assets(api)
@@ -536,13 +532,19 @@ class CryptoVolatilityScanner:
     def scan_for_opportunities(self) -> List[CryptoSignal]:
         """Scan all crypto pairs for day trading opportunities - ULTRA AGGRESSIVE MODE"""
         signals = []
+        signals_rejected = 0
+
+        # Log scan start to activity feed
+        activity = _get_activity()
+        if activity:
+            activity.log_scan_start(len(self.high_volume_pairs))
 
         with self.lock:
             _metric_inc(SCANNER_SCAN_COUNTER)
             _metric_set(SCANNER_LAST_RUN_GAUGE, float(time.time()))
             _metric_set(SCANNER_TRACKED_SYMBOLS_GAUGE, float(len(self.high_volume_pairs)))
             logger.info(f"🔍 Scanning {len(self.high_volume_pairs)} symbols for opportunities...")
-            
+
             symbols_with_data = [s for s in self.high_volume_pairs if s in self.price_data]
             logger.info(f"📊 Scanning {len(symbols_with_data)} symbols with price data")
 
@@ -573,6 +575,28 @@ class CryptoVolatilityScanner:
                         if signal and signal.action == 'buy':
                             signals.append(signal)
                             logger.info(f"  ✅ {symbol}: BUY signal @ ${current_price:.2f} (conf={signal.confidence:.2f})")
+                            # Log accepted signal to activity feed
+                            if activity:
+                                activity.log_signal(
+                                    symbol=symbol,
+                                    action=signal.action,
+                                    confidence=signal.confidence,
+                                    price=current_price,
+                                    reason=f"Strong {signal.action} indicators",
+                                    accepted=True
+                                )
+                        elif signal:
+                            # Signal generated but not buy (sell signals are logged but skipped)
+                            signals_rejected += 1
+                            if activity:
+                                activity.log_signal(
+                                    symbol=symbol,
+                                    action=signal.action,
+                                    confidence=signal.confidence,
+                                    price=current_price,
+                                    reason="Sell signals not executed (no shorting)",
+                                    accepted=False
+                                )
                     except Exception as sig_err:
                         logger.error(f"  ❌ {symbol}: Signal generation error: {sig_err}")
                         
@@ -584,6 +608,11 @@ class CryptoVolatilityScanner:
         # Sort by best opportunities (high volatility + volume surge)
         top_signals = sorted(signals, key=lambda s: s.confidence, reverse=True)[:10]
         _metric_set(SCANNER_SIGNALS_GAUGE, float(len(top_signals)))
+
+        # Log scan completion to activity feed
+        if activity:
+            activity.log_scan_complete(len(top_signals), signals_rejected)
+
         return top_signals
     
     def _generate_signal(self, symbol: str, price: float, volatility: float,
@@ -592,9 +621,15 @@ class CryptoVolatilityScanner:
 
         # Get full indicator set
         indicators = self.get_indicators(symbol)
+        activity = _get_activity()
         if not indicators:
             # No indicators = no trade. Wait for proper data.
             logger.debug(f"    ⏳ {symbol}: Waiting for indicators (need more data)")
+            if activity:
+                activity.log_rejection(symbol, "Insufficient data for indicators", {
+                    'reason': 'need_more_data',
+                    'price': price
+                })
             return None
 
         rsi = indicators.get('rsi', 50)
@@ -606,8 +641,8 @@ class CryptoVolatilityScanner:
         action = 'hold'
         confidence = 0.0
         # Use wider stops to avoid getting stopped out by noise
-        target_profit = 0.015  # 1.5% target profit
-        stop_loss = 0.015      # 1.5% stop loss (matches config)
+        target_profit = RISK.TAKE_PROFIT_DEFAULT  # 1.5% target profit
+        stop_loss = RISK.STOP_LOSS_DEFAULT        # 1.5% stop loss (matches config)
         signal_reasons = []
 
         # ============ BUY SIGNALS (CONSERVATIVE - need strong oversold) ============
@@ -692,8 +727,8 @@ class CryptoVolatilityScanner:
             action = 'buy'
             confidence = min(0.95, 0.5 + (buy_score * 0.1))
             if buy_score >= 5:
-                target_profit = 0.02  # 2% target for very strong signals
-                stop_loss = 0.012    # Tighter stop for strong signals
+                target_profit = RISK.STRONG_SIGNAL_TAKE_PROFIT  # 2% target for very strong signals
+                stop_loss = RISK.STRONG_SIGNAL_STOP_LOSS       # Tighter stop for strong signals
             logger.info(f"    📈 BUY: score={buy_score} | {', '.join(signal_reasons)}")
 
         elif sell_score >= min_score and sell_score > buy_score:
@@ -701,13 +736,28 @@ class CryptoVolatilityScanner:
             confidence = min(0.95, 0.5 + (sell_score * 0.1))
             signal_reasons = sell_reasons
             if sell_score >= 5:
-                target_profit = 0.02
-                stop_loss = 0.012
+                target_profit = RISK.STRONG_SIGNAL_TAKE_PROFIT
+                stop_loss = RISK.STRONG_SIGNAL_STOP_LOSS
             logger.info(f"    📉 SELL: score={sell_score} | {', '.join(sell_reasons)}")
 
         else:
             # No clear signal - DO NOT TRADE
             logger.debug(f"    ⏸️ {symbol}: No signal (buy={buy_score}, sell={sell_score}, need {min_score})")
+            if activity:
+                activity.log_decision(
+                    symbol=symbol,
+                    decision="HOLD",
+                    reason=f"Signal too weak (buy={buy_score}, sell={sell_score}, need {min_score})",
+                    details={
+                        'buy_score': buy_score,
+                        'sell_score': sell_score,
+                        'min_required': min_score,
+                        'rsi': rsi,
+                        'stoch_k': stoch_k,
+                        'ema_cross': ema_cross,
+                        'price': price
+                    }
+                )
             return None
 
         # Create the signal only with sufficient confidence
@@ -724,6 +774,18 @@ class CryptoVolatilityScanner:
                 stop_loss=stop_loss,
                 timestamp=datetime.now()
             )
+
+        # Signal had action but confidence too low
+        if action != 'hold' and confidence < 0.6:
+            if activity:
+                activity.log_signal(
+                    symbol=symbol,
+                    action=action,
+                    confidence=confidence,
+                    price=price,
+                    reason=f"Confidence {confidence:.0%} below 60% threshold",
+                    accepted=False
+                )
 
         return None
     
@@ -763,7 +825,7 @@ class CryptoDayTradingBot:
         self.initial_capital = initial_capital
         self.max_position_size = min(100, initial_capital * 0.03)  # 3% per trade, max $100
         self.max_concurrent_positions = 10  # Limit positions for better management
-        self.min_profit_target = 0.01  # 1% minimum profit target
+        self.min_profit_target = RISK.MIN_PROFIT_TARGET  # 1% minimum profit target
 
         # Trading metrics
         self.active_positions = {}
@@ -793,12 +855,19 @@ class CryptoDayTradingBot:
         self.is_running = False
         self.executor = ThreadPoolExecutor(max_workers=10)  # More workers for parallel operations
 
-        # Configurable thresholds - CONSERVATIVE to avoid churning
-        self.stop_loss_pct = 0.015  # 1.5% stop loss (wider to avoid noise)
-        self.take_profit_pct = 0.015  # 1.5% take profit (realistic target)
-        self.trailing_stop_pct = 0.01  # 1% trailing stop
-        self.max_hold_time_seconds = 1800  # 30 minutes max hold (allow positions to develop)
-        self.min_hold_time_seconds = 120  # 2 minutes minimum hold (avoid churning)
+        # Configurable thresholds - Pulled from config or sensible defaults
+        self.stop_loss_pct = getattr(scanner_config, 'stop_loss', RISK.STOP_LOSS_DEFAULT)
+        self.take_profit_pct = getattr(scanner_config, 'take_profit', RISK.TAKE_PROFIT_DEFAULT)
+        self.trailing_stop_pct = getattr(scanner_config, 'trailing_stop', RISK.TRAILING_STOP_DEFAULT)
+        self.max_hold_time_seconds = getattr(scanner_config, 'max_hold_time', 1800)
+        self.min_hold_time_seconds = getattr(scanner_config, 'min_hold_time', 120)
+        
+        # Override with risk_management if available in config object
+        if hasattr(scanner_config, '_parent') and hasattr(scanner_config._parent, 'risk_management'):
+            rm = scanner_config._parent.risk_management
+            if hasattr(rm, 'stop_loss'): self.stop_loss_pct = rm.stop_loss
+            if hasattr(rm, 'take_profit'): self.take_profit_pct = rm.take_profit
+            if hasattr(rm, 'trailing_stop'): self.trailing_stop_pct = rm.trailing_stop
 
     @property
     def _api(self):
@@ -921,18 +990,33 @@ class CryptoDayTradingBot:
         # Update metrics every 2 minutes
         if current_time % 120 == 0:
             self._update_metrics()
+            
+        # Refresh volatile symbols every hour if market scan is enabled
+        if current_time % 3600 == 0 and getattr(self.scanner.config, 'enable_market_scan', False):
+            logger.info("🔄 Refreshing volatile pairs list...")
+            try:
+                top_pairs = self.scanner.select_top_volatile_pairs(self._api)
+                self.scanner.update_enabled_symbols(top_pairs)
+                logger.info(f"✅ Refreshed top volatile pairs: {len(top_pairs)} symbols")
+            except Exception as e:
+                logger.error(f"Failed to refresh volatile pairs: {e}")
     
     async def _find_entry_opportunities(self):
         """Find new trading opportunities"""
+        activity = _get_activity()
         try:
             logger.info(f"🔎 Entry scan: {len(self.active_positions)}/{self.max_concurrent_positions} positions, daily P&L: ${self.daily_profit:.2f}")
 
             if len(self.active_positions) >= self.max_concurrent_positions:
                 logger.info("⏸️  Max positions reached, skipping entry scan")
+                if activity:
+                    activity.log_activity('info', f"Max positions ({self.max_concurrent_positions}) reached, skipping entry scan")
                 return
 
             if self.daily_profit < -self.max_daily_loss:
                 logger.warning(f"Daily loss limit reached (${self.daily_profit:.2f}), stopping new trades")
+                if activity:
+                    activity.log_activity('warning', f"Daily loss limit reached (${self.daily_profit:.2f}), trading paused")
                 return
 
             # Get trading signals
@@ -942,11 +1026,26 @@ class CryptoDayTradingBot:
 
             for signal in signals[:5]:  # Top 5 opportunities
                 if signal.symbol in self.active_positions:
+                    if activity:
+                        activity.log_decision(
+                            symbol=signal.symbol,
+                            decision="SKIP",
+                            reason="Already have position in this symbol",
+                            details={'confidence': signal.confidence, 'price': signal.price}
+                        )
                     continue
 
                 if signal.confidence > 0.5:  # Lower threshold for more trades
                     logger.info(f"🎯 Executing entry for {signal.symbol} (conf={signal.confidence:.2f})")
                     await self._execute_entry(signal)
+                else:
+                    if activity:
+                        activity.log_decision(
+                            symbol=signal.symbol,
+                            decision="SKIP",
+                            reason=f"Confidence {signal.confidence:.0%} below 50% entry threshold",
+                            details={'confidence': signal.confidence, 'price': signal.price}
+                        )
 
             logger.info("✅ Entry scan complete")
         except Exception as e:
@@ -957,6 +1056,7 @@ class CryptoDayTradingBot:
     async def _execute_entry(self, signal: CryptoSignal):
         """Execute entry trade with comprehensive error handling and logging"""
         start_time = time.time()
+        activity = _get_activity()
         trade_log = TradeLog(
             timestamp=datetime.now().isoformat(),
             action=signal.action.upper(),
@@ -1031,11 +1131,26 @@ class CryptoDayTradingBot:
                 trade_log.status = "filled"
                 trade_log.order_id = order.id if hasattr(order, 'id') else str(order)
                 trade_log.execution_time_ms = int((time.time() - start_time) * 1000)
-                
+
                 logger.info(f"🎯 Opened {signal.action.upper()} position: {signal.symbol} @ {signal.price:.4f}")
+
+                # Log successful trade to activity feed
+                if activity:
+                    activity.log_trade(
+                        symbol=signal.symbol,
+                        side=signal.action,
+                        qty=quantity_float,
+                        price=signal.price,
+                        reason=f"Entry: confidence {signal.confidence:.0%}"
+                    )
             else:
                 trade_log.status = "failed"
                 trade_log.error_notes = "Order placement failed"
+                if activity:
+                    activity.log_rejection(signal.symbol, "Order placement failed", {
+                        'confidence': signal.confidence,
+                        'price': signal.price
+                    })
         
         except APIError as e:
             trade_log.status = "failed"
@@ -1116,6 +1231,7 @@ class CryptoDayTradingBot:
     async def _check_exit_conditions(self):
         """Check exit conditions for all active positions"""
         positions_to_close = []
+        activity = _get_activity()
 
         # Make a copy of items to iterate (avoid dict modification during iteration)
         for symbol, position in list(self.active_positions.items()):
@@ -1146,6 +1262,16 @@ class CryptoDayTradingBot:
                 # Log position status periodically (every ~60 checks = ~1 min)
                 if int(time.time()) % 60 == 0:
                     logger.info(f"📊 {symbol}: Entry ${entry_price:.4f} | Current ${current_price:.4f} | P&L: {pnl_pct:.2%} | Stop: ${position['stop_price']:.4f} | Target: ${position['target_price']:.4f}")
+                    # Log to activity feed
+                    if activity:
+                        activity.log_position_update(
+                            symbol=symbol,
+                            entry_price=entry_price,
+                            current_price=current_price,
+                            pnl_pct=pnl_pct,
+                            stop_price=position['stop_price'],
+                            target_price=position['target_price']
+                        )
 
                 # Profit target hit
                 if ((side == 'buy' and current_price >= position['target_price']) or
@@ -1195,6 +1321,7 @@ class CryptoDayTradingBot:
     async def _execute_exit(self, symbol: str, reason: str, price: float, pnl_pct: float):
         """Execute exit trade with P&L recording"""
         start_time = time.time()
+        activity = _get_activity()
         try:
             position = self.active_positions[symbol]
 
@@ -1229,6 +1356,17 @@ class CryptoDayTradingBot:
                 del self.active_positions[symbol]
 
                 logger.info(f"✅ Closed position: {symbol} | Reason: {reason} | P&L: {pnl_pct:.2%} | Profit: ${profit:.2f}")
+
+                # Log exit trade to activity feed
+                if activity:
+                    activity.log_trade(
+                        symbol=symbol,
+                        side=opposite_side,
+                        qty=position['quantity'],
+                        price=price,
+                        pnl=profit,
+                        reason=f"Exit: {reason}"
+                    )
 
                 # Log the exit trade with actual P&L to TradeStore
                 exit_trade_log = TradeLog(
@@ -1360,65 +1498,6 @@ class CryptoDayTradingBot:
         # Reset on successful operations
         self.reconnect_attempts = 0
     
-    def get_status(self) -> dict:
-        """Get comprehensive bot status for dashboard/API"""
-        positions_status = []
-        total_unrealized_pnl = 0.0
-
-        for symbol, pos in self.active_positions.items():
-            try:
-                # Try to get current price
-                current_price = None
-                try:
-                    alpaca_pos = self._api.get_position(symbol)
-                    current_price = float(alpaca_pos.current_price)
-                    unrealized_pnl = float(alpaca_pos.unrealized_pl)
-                except Exception:
-                    current_price = pos.get('current_price', pos['entry_price'])
-                    entry_val = pos['entry_price'] * pos['quantity']
-                    current_val = current_price * pos['quantity']
-                    unrealized_pnl = current_val - entry_val if pos['side'] == 'buy' else entry_val - current_val
-
-                pnl_pct = (current_price - pos['entry_price']) / pos['entry_price'] if pos['side'] == 'buy' else (pos['entry_price'] - current_price) / pos['entry_price']
-                total_unrealized_pnl += unrealized_pnl
-
-                positions_status.append({
-                    'symbol': symbol,
-                    'side': pos['side'],
-                    'entry_price': pos['entry_price'],
-                    'current_price': current_price,
-                    'quantity': pos['quantity'],
-                    'stop_price': pos['stop_price'],
-                    'target_price': pos['target_price'],
-                    'pnl_pct': round(pnl_pct * 100, 2),
-                    'unrealized_pnl': round(unrealized_pnl, 2),
-                    'entry_time': pos['entry_time'].isoformat() if isinstance(pos['entry_time'], datetime) else str(pos['entry_time']),
-                    'hold_time_seconds': int((datetime.now() - pos['entry_time']).total_seconds()) if isinstance(pos['entry_time'], datetime) else 0,
-                    'synced_from_alpaca': pos.get('synced_from_alpaca', False)
-                })
-            except Exception as e:
-                logger.error(f"Error getting status for {symbol}: {e}")
-
-        return {
-            'is_running': self.is_running,
-            'active_positions_count': len(self.active_positions),
-            'max_concurrent_positions': self.max_concurrent_positions,
-            'daily_trades': self.daily_trades,
-            'total_trades': self.total_trades,
-            'daily_profit': round(self.daily_profit, 2),
-            'total_unrealized_pnl': round(total_unrealized_pnl, 2),
-            'win_rate': round(self.win_rate * 100, 2),
-            'wins': self.wins,
-            'error_count': self.error_count,
-            'thresholds': {
-                'stop_loss_pct': self.stop_loss_pct,
-                'take_profit_pct': self.take_profit_pct,
-                'trailing_stop_pct': self.trailing_stop_pct,
-                'max_hold_time_seconds': self.max_hold_time_seconds
-            },
-            'positions': positions_status
-        }
-
     def _log_trade(self, trade_log: TradeLog):
         """Log trade to console and file with timeline format"""
         # Add to in-memory log
@@ -1464,7 +1543,7 @@ class CryptoDayTradingBot:
                 if symbol in self.scanner.price_data and self.scanner.price_data[symbol]:
                     return self.scanner.price_data[symbol][-1]
             return None
-        except:
+        except (KeyError, IndexError, TypeError):
             return None
     
     def _start_market_data_feed(self):
@@ -1730,7 +1809,7 @@ def create_crypto_day_trader(alpaca_client, config: TradingConfig) -> CryptoDayT
     bot.max_position_size = config.investment_amount * position_ratio
     bot.max_concurrent_positions = config.max_trades_active
     bot.min_profit_target = 0.003
-    bot.max_daily_loss = config.investment_amount * (risk_settings.max_daily_loss or 0.02)
+    bot.max_daily_loss = config.investment_amount * (risk_settings.max_daily_loss or RISK.MAX_DAILY_LOSS)
 
     logger.info(
         "Crypto day trader configured with %d scanner symbols (defaults merged with overrides)",

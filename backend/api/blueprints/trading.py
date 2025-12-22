@@ -8,33 +8,18 @@ from dataclasses import asdict, is_dataclass
 
 from flask import Blueprint, jsonify, request, current_app
 
-from ..utils.decorators import handle_errors, require_auth
+from ..utils.decorators import handle_api_errors, require_auth, require_service
 from ..utils.validators import validate_order
 
 trading_bp = Blueprint('trading', __name__)
 
 
-def _get_trading_service():
-    """Get trading service with null-safety check."""
-    service = current_app.trading_service
-    if not service:
-        return None
-    return service
-
-
-def _service_unavailable_response():
-    """Standard response when trading service is unavailable."""
-    return jsonify({'error': 'Trading service not initialized'}), 503
-
 @trading_bp.route('/start', methods=['POST'])
-@handle_errors
+@handle_api_errors()
 @require_auth
-def start_trading():
+@require_service('trading_service', 'Trading service not initialized')
+def start_trading(service):
     """Start automated trading"""
-    service = _get_trading_service()
-    if not service:
-        return _service_unavailable_response()
-
     config = request.get_json(silent=True) or {}
 
     # Start trading with optional config overrides
@@ -47,14 +32,11 @@ def start_trading():
     })
 
 @trading_bp.route('/stop', methods=['POST'])
-@handle_errors
+@handle_api_errors()
 @require_auth
-def stop_trading():
+@require_service('trading_service', 'Trading service not initialized')
+def stop_trading(service):
     """Stop automated trading"""
-    service = _get_trading_service()
-    if not service:
-        return _service_unavailable_response()
-
     # Optional: close all positions
     data = request.get_json(silent=True) or {}
     close_positions = data.get('close_positions', False)
@@ -67,15 +49,12 @@ def stop_trading():
     })
 
 @trading_bp.route('/buy', methods=['POST'])
-@handle_errors
+@handle_api_errors()
 @require_auth
 @validate_order
-def place_buy_order():
+@require_service('trading_service', 'Trading service not initialized')
+def place_buy_order(service):
     """Place a buy order"""
-    service = _get_trading_service()
-    if not service:
-        return _service_unavailable_response()
-
     data = request.get_json()
 
     order = service.place_order({
@@ -92,15 +71,12 @@ def place_buy_order():
     })
 
 @trading_bp.route('/sell', methods=['POST'])
-@handle_errors
+@handle_api_errors()
 @require_auth
 @validate_order
-def place_sell_order():
+@require_service('trading_service', 'Trading service not initialized')
+def place_sell_order(service):
     """Place a sell order"""
-    service = _get_trading_service()
-    if not service:
-        return _service_unavailable_response()
-
     data = request.get_json()
 
     order = service.place_order({
@@ -117,14 +93,11 @@ def place_sell_order():
     })
 
 @trading_bp.route('/close/<symbol>', methods=['POST'])
-@handle_errors
+@handle_api_errors()
 @require_auth
-def close_position(symbol):
+@require_service('trading_service', 'Trading service not initialized')
+def close_position(service, symbol):
     """Close a specific position"""
-    service = _get_trading_service()
-    if not service:
-        return _service_unavailable_response()
-
     result = service.close_position(symbol)
 
     return jsonify({
@@ -134,14 +107,11 @@ def close_position(symbol):
     })
 
 @trading_bp.route('/close-all', methods=['POST'])
-@handle_errors
+@handle_api_errors()
 @require_auth
-def close_all_positions():
+@require_service('trading_service', 'Trading service not initialized')
+def close_all_positions(service):
     """Close all positions"""
-    service = _get_trading_service()
-    if not service:
-        return _service_unavailable_response()
-
     results = service.close_all_positions()
 
     return jsonify({
@@ -151,13 +121,10 @@ def close_all_positions():
     })
 
 @trading_bp.route('/set-multiplier', methods=['POST'])
-@handle_errors
-def set_multiplier():
+@handle_api_errors()
+@require_service('trading_service', 'Trading service not initialized')
+def set_multiplier(service):
     """Set position size multiplier for next trades"""
-    service = _get_trading_service()
-    if not service:
-        return _service_unavailable_response()
-
     data = request.get_json(silent=True) or {}
     multiplier = data.get('multiplier', 1)
 
@@ -181,26 +148,26 @@ def set_multiplier():
     })
 
 
-@trading_bp.route('/strategy', methods=['GET', 'POST'])
-@handle_errors
-def strategy_config():
-    """Get or update strategy configuration"""
-    if request.method == 'GET':
-        config = current_app.config['TRADING_CONFIG']
-        indicators = getattr(config, 'indicators', None)
-        indicator_payload = asdict(indicators) if is_dataclass(indicators) else (indicators or {})
+@trading_bp.route('/strategy', methods=['GET'])
+@handle_api_errors()
+def get_strategy_config():
+    """Get strategy configuration"""
+    config = current_app.config['TRADING_CONFIG']
+    indicators = getattr(config, 'indicators', None)
+    indicator_payload = asdict(indicators) if is_dataclass(indicators) else (indicators or {})
 
-        return jsonify({
-            'active_strategy': getattr(config, 'strategy', None),
-            'available_strategies': ['stoch_rsi', 'ma_crossover', 'crypto_scalping'],
-            'parameters': indicator_payload
-        })
+    return jsonify({
+        'active_strategy': getattr(config, 'strategy', None),
+        'available_strategies': ['stoch_rsi', 'ma_crossover', 'crypto_scalping'],
+        'parameters': indicator_payload
+    })
 
-    # POST - Update strategy
-    service = _get_trading_service()
-    if not service:
-        return _service_unavailable_response()
 
+@trading_bp.route('/strategy', methods=['POST'])
+@handle_api_errors()
+@require_service('trading_service', 'Trading service not initialized')
+def update_strategy_config(service):
+    """Update strategy configuration"""
     data = request.get_json(silent=True) or {}
     result = service.update_strategy(data.get('strategy'), data.get('parameters')) or {}
 

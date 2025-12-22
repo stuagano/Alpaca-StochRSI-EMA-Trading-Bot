@@ -13,91 +13,7 @@ from dataclasses import dataclass
 import asyncio
 from config.unified_config import TradingConfig
 from core.signal_filters import ensure_signal_filters, minimum_strength_percent
-# Removed backend dependency - using local position manager stub
-class PositionManager:
-    """Simple position manager stub to replace backend dependency"""
-    def __init__(self, api, config):
-        self.api = api
-        self.config = config
-        self.positions = {}
-
-    async def add_position(self, symbol, qty, side, entry_price, strategy):
-        """Add a position to tracking"""
-        entry_time = datetime.utcnow()
-        self.positions[symbol] = {
-            'symbol': symbol,
-            'qty': qty,
-            'side': side,
-            'entry_price': entry_price,
-            'strategy': strategy,
-            'entry_time': entry_time,
-            'current_price': entry_price,
-            'market_value': entry_price * qty,
-            'unrealized_pnl': 0.0,
-            'unrealized_pnl_pct': 0.0,
-            'stop_loss': None,
-            'take_profit': None,
-            'risk_amount': None,
-            'is_profitable': False,
-            'risk_reward_ratio': None
-        }
-        return True
-
-    async def update_position_details(self, symbol, **updates):
-        """Update tracked position fields."""
-        if symbol in self.positions:
-            self.positions[symbol].update(updates)
-        return True
-
-    async def get_all_positions(self):
-        """Get all tracked positions"""
-        return list(self.positions.values())
-
-    async def get_portfolio_metrics(self):
-        """Get portfolio metrics"""
-        class MockMetrics:
-            def __init__(self, total_positions: int):
-                self.total_positions = total_positions
-                self.long_positions = 0
-                self.short_positions = 0
-                self.total_market_value = 0
-                self.total_unrealized_pnl = 0
-                self.total_unrealized_pnl_pct = 0
-                self.largest_position = 0
-                self.portfolio_concentration = 0
-                self.win_rate = 0
-                self.avg_hold_time = __import__('datetime').timedelta(hours=0)
-        return MockMetrics(len(self.positions))
-
-    async def check_stop_losses(self):
-        """Check for stop loss triggers"""
-        return []
-
-    async def check_take_profits(self):
-        """Check for take profit triggers"""
-        return []
-
-    async def get_risk_report(self):
-        """Get risk report"""
-        return {'status': 'ok', 'warnings': []}
-
-    async def update_position_levels(self, symbol, stop_loss=None, take_profit=None):
-        """Update position levels"""
-        return True
-
-    async def close_position(self, symbol, exit_price, reason):
-        """Close a position"""
-        if symbol in self.positions:
-            del self.positions[symbol]
-        return True
-
-class PosManagerPosition:
-    """Position class stub"""
-    def __init__(self, symbol, qty, side, entry_price):
-        self.symbol = symbol
-        self.qty = qty
-        self.side = side
-        self.entry_price = entry_price
+from core.database_position_manager import DatabasePositionManager
 
 logger = logging.getLogger(__name__)
 
@@ -139,8 +55,8 @@ class TradingExecutor:
         self.active_orders: Dict[str, Dict] = {}
         self.order_history: List[Dict] = []
         
-        # Initialize position manager
-        self.position_manager = PositionManager(api, config)
+        # Initialize production-ready position manager
+        self.position_manager = DatabasePositionManager(api, config)
         
         # Configuration
         self.max_positions = config.max_trades_active

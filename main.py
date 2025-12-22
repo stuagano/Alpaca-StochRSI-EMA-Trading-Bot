@@ -20,27 +20,36 @@ from core.service_registry import get_service_registry, setup_core_services, cle
 from config.unified_config import get_config
 from config.environment import get_environment_config
 from trading_bot import TradingBot
+from trading_executor import TradingExecutor
+from signal_processor import SignalProcessor
 from strategies.stoch_rsi_strategy import StochRSIStrategy
 from strategies.ma_crossover_strategy import MACrossoverStrategy
 from strategies.crypto_scalping_strategy import CryptoDayTradingBot, create_crypto_day_trader
 from utils.logging_config import setup_logging
 from utils.alpaca import load_alpaca_credentials
+from services.swarm_learning_service import get_learning_service, start_learning_service
 
-ALPACA_IMPORT_ERROR: Exception | None
+ALPACA_IMPORT_ERROR: Optional[Exception]
 
-# Import Alpaca client
+# Import Alpaca client - prefer legacy SDK for compatibility with existing strategy code
+try:
+    import alpaca_trade_api as tradeapi
+    ALPACA_IMPORT_ERROR = None
+except ImportError as e:
+    logging.error("Failed to import alpaca_trade_api: %s", e)
+    logging.error("Install alpaca_trade_api with 'pip install alpaca-trade-api' to enable live trading.")
+    tradeapi = None  # type: ignore[assignment]
+    ALPACA_IMPORT_ERROR = e
+
+# Also try importing new SDK for potential future use
 try:
     from alpaca.trading.client import TradingClient
     from alpaca.trading.requests import GetAssetsRequest
     from alpaca.data.historical import CryptoHistoricalDataClient
-    ALPACA_IMPORT_ERROR = None
-except ImportError as e:
-    logging.error("Failed to import Alpaca modules: %s", e)
-    logging.error("Install alpaca-py with 'pip install alpaca-py' to enable live trading.")
+except ImportError:
     TradingClient = None  # type: ignore[assignment]
     GetAssetsRequest = None  # type: ignore[assignment]
     CryptoHistoricalDataClient = None  # type: ignore[assignment]
-    ALPACA_IMPORT_ERROR = e
 
 logger = logging.getLogger(__name__)
 
@@ -70,14 +79,7 @@ def _enable_metrics_if_configured() -> None:
     _METRICS_INITIALISED = True
 
 
-def get_strategy(strategy_name: str, config):
-    """Factory function to create strategy instances."""
-    if strategy_name == 'StochRSI':
-        return StochRSIStrategy(config)
-    elif strategy_name == 'MACrossover':
-        return MACrossoverStrategy(config)
-    else:
-        raise ValueError(f"Unknown strategy: {strategy_name}")
+from strategies import get_strategy
 
 
 def setup_signal_handlers(bot: Optional[Union[TradingBot, CryptoDayTradingBot]] = None):
@@ -103,22 +105,30 @@ def setup_signal_handlers(bot: Optional[Union[TradingBot, CryptoDayTradingBot]] 
 
 
 def create_alpaca_client(config):
-    """Create Alpaca trading client from configuration."""
-    if TradingClient is None:  # pragma: no cover - optional dependency fallback
+    """Create Alpaca trading client from configuration using legacy SDK.
+
+    Uses alpaca_trade_api (legacy SDK) for compatibility with strategy code
+    that expects list_positions(), get_crypto_bars(), etc.
+    """
+    if tradeapi is None:  # pragma: no cover - optional dependency fallback
         raise RuntimeError(
-            "alpaca-py is not installed; unable to create Alpaca client"
+            "alpaca_trade_api is not installed; unable to create Alpaca client"
         ) from ALPACA_IMPORT_ERROR
 
     try:
         creds = load_alpaca_credentials(config)
 
-        trading_client = TradingClient(
-            api_key=creds.key_id,
-            secret_key=creds.secret_key,
-            paper=creds.is_paper  # Always use paper trading for crypto scalping
+        # Use legacy REST API for full compatibility with existing strategy code
+        trading_client = tradeapi.REST(
+            creds.key_id,
+            creds.secret_key,
+            creds.base_url,
+            api_version='v2'
         )
 
-        logger.info("Alpaca trading client initialized successfully")
+        # Verify connection
+        account = trading_client.get_account()
+        logger.info(f"Alpaca trading client initialized successfully (Account status: {account.status})")
         return trading_client
 
     except Exception as e:
@@ -158,6 +168,11 @@ async def main():
             else:
                 logger.info("No symbols configured, will use dynamic selection")
 
+            # Start the swarm learning service for self-healing and pattern learning
+            logger.info("🧠 Starting swarm learning service...")
+            learning_service = await start_learning_service()
+            logger.info("Swarm learning service active - trades will feed into pattern optimization")
+
             # Start the crypto scalping bot
             logger.info("🎯 Starting crypto scalping execution...")
             await bot.start_trading()
@@ -167,15 +182,13 @@ async def main():
 
             env_config = get_environment_config()
             logger.info("Runtime environment: %s", env_config.name.value)
-            if not env_config.enable_order_execution:
-                logger.warning(
-                    "Order execution is disabled for this environment. Set TRADING_ENABLE_EXECUTION=1"
-                    " if you intend to place live orders."
-                )
+            
+            # Load credentials for services
+            creds = load_alpaca_credentials(config)
 
-            # Setup core services
-            logger.info("Initializing service registry...")
-            setup_core_services()
+            # Setup core services with real credentials
+            logger.info("Initializing service registry with production services...")
+            setup_core_services(api_key=creds.key_id, secret_key=creds.secret_key)
 
             # Get service registry
             registry = get_service_registry()
@@ -191,23 +204,36 @@ async def main():
             strategy = get_strategy(config.strategy, config)
             logger.info(f"Strategy initialized: {config.strategy}")
 
-            # Create trading bot
-            bot = TradingBot(data_manager, strategy)
-            logger.info("Trading bot initialized")
+            # Initialize Executor and SignalProcessor
+            # Use same REST client as other components
+            alpaca_api = tradeapi.REST(creds.key_id, creds.secret_key, creds.base_url)
+            executor = TradingExecutor(alpaca_api, config)
+            processor = SignalProcessor(executor, config)
+
+            # Create trading bot with dependency injection
+            bot = TradingBot(
+                config=config,
+                strategy=strategy,
+                signal_processor=processor,
+                data_manager=data_manager
+            )
+            logger.info("Modular TradingBot initialized with dependency injection")
 
             # Setup signal handlers for graceful shutdown
             setup_signal_handlers(bot)
 
             # Log system health
             health_report = registry.get_health_report()
-            if METRIC_READY_SERVICES and METRIC_TOTAL_SERVICES:
-                METRIC_READY_SERVICES.set(health_report.get('ready_services', 0))
-                METRIC_TOTAL_SERVICES.set(health_report.get('total_services', 0))
             logger.info(f"System health check: {health_report['ready_services']}/{health_report['total_services']} services ready")
+
+            # Start the swarm learning service for self-healing and pattern learning
+            logger.info("🧠 Starting swarm learning service...")
+            learning_service = await start_learning_service()
+            logger.info("Swarm learning service active - trades will feed into pattern optimization")
 
             # Start the bot
             logger.info("Starting trading bot execution...")
-            bot.run()
+            await bot.run()
 
     except KeyboardInterrupt:
         logger.info("Keyboard interrupt received, shutting down...")
