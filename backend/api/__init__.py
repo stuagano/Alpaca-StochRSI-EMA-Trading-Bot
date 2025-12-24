@@ -56,12 +56,14 @@ def create_app(config_name='development'):
         websocket_bp,
         activity_bp
     )
+    from .blueprints.health import health_bp
 
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(trading_bp, url_prefix='/api/v1/trading')
     app.register_blueprint(api_bp, url_prefix='/api/v1')
     app.register_blueprint(pnl_bp, url_prefix='/api/v1/pnl')
     app.register_blueprint(activity_bp, url_prefix='/api/v1/activity')
+    app.register_blueprint(health_bp)
 
     # Register WebSocket handlers
     from .blueprints.websocket_events import register_socketio_handlers

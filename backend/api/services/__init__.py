@@ -10,6 +10,9 @@ from core.service_registry import get_service_registry
 from utils.trade_store import TradeStore
 from core.alpaca_data_service import AlpacaDataService
 from core.scanner_service import ScannerService
+from core.resilient_client import ResilientAlpacaClient, create_resilient_client
+from core.position_reconciler import PositionReconciler
+from core.resilience import get_resilience_status
 
 logger = logging.getLogger(__name__)
 
@@ -222,10 +225,18 @@ def init_services(app) -> None:
     registry = get_service_registry()
     app.service_registry = registry
 
-    # Initialise Alpaca client
+    # Initialise Alpaca client with resilience wrapper
+    resilient_client = None
     try:
         credentials = load_alpaca_credentials(trading_config)
         alpaca_client = AlpacaClient(credentials)
+
+        # Wrap with resilient client for retry, circuit breaker, rate limiting
+        if alpaca_client and alpaca_client.api:
+            resilient_client = create_resilient_client(alpaca_client.api)
+            registry.register("resilient_client", resilient_client)
+            logger.info("ResilientAlpacaClient wrapper registered")
+
         registry.register("alpaca_client", alpaca_client)
         logger.info("Alpaca client initialised successfully")
     except Exception as exc:
@@ -233,6 +244,7 @@ def init_services(app) -> None:
         logger.warning("Running without Alpaca API - some features will be unavailable")
         alpaca_client = None
     app.alpaca_client = alpaca_client
+    app.resilient_client = resilient_client
 
     # Initialise data manager for market data
     data_manager = None
@@ -270,6 +282,30 @@ def init_services(app) -> None:
     registry.register("trading_config", trading_config)
     registry.register("db_path", db_path)
 
+    # Initialize position reconciler for state synchronization
+    if resilient_client and trading_service:
+        try:
+            # Get local position manager from trading service if available
+            local_manager = getattr(trading_service, 'position_manager', None)
+            if local_manager is None and hasattr(trading_service, 'trading_bot'):
+                bot = trading_service.trading_bot
+                local_manager = getattr(bot, 'position_manager', None)
+
+            if local_manager:
+                reconciler = PositionReconciler(
+                    alpaca_client=resilient_client,
+                    local_position_manager=local_manager,
+                    reconcile_interval=60,  # Sync every 60 seconds
+                    auto_resolve=True,
+                )
+                reconciler.start()
+                registry.register("position_reconciler", reconciler)
+                logger.info("PositionReconciler started with 60s interval")
+            else:
+                logger.info("No position manager found, skipping reconciler")
+        except Exception as exc:
+            logger.warning("Failed to initialize PositionReconciler: %s", exc)
+
     # Initialize and register centralized ScannerService
     try:
         scanner_config = getattr(trading_config, 'crypto_scanner', None)
@@ -283,4 +319,11 @@ def init_services(app) -> None:
     logger.info("Services initialised and registered with ServiceRegistry")
 
 
-__all__ = ["init_services", "TradingService", "PnLService", "AlpacaClient"]
+__all__ = [
+    "init_services",
+    "TradingService",
+    "PnLService",
+    "AlpacaClient",
+    "ResilientAlpacaClient",
+    "get_resilience_status",
+]
