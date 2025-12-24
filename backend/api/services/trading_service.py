@@ -168,23 +168,37 @@ class TradingService:
 
     def calculate_signals(self, symbols: Optional[List[str]] = None) -> List[Dict]:
         """
-        Calculate trading signals for symbols - uses CACHED DATA to avoid API rate limits
+        Calculate trading signals for symbols - uses SHARED SCANNER from ServiceRegistry
 
         Args:
             symbols: List of symbols to analyze
         """
+        # PRIORITY: Use centralized ScannerService from registry (single source of truth)
+        scanner = None
+        try:
+            registry = get_service_registry()
+            scanner = registry.get('scanner_service')
+            logger.debug("Using shared ScannerService from registry")
+        except ValueError:
+            # Fallback: Get scanner from trading bot's strategy
+            if self.trading_bot:
+                if hasattr(self.trading_bot, 'scanner'):
+                    scanner = self.trading_bot.scanner
+                elif hasattr(self.trading_bot, 'strategy') and hasattr(self.trading_bot.strategy, 'scanner'):
+                    scanner = self.trading_bot.strategy.scanner
+            logger.debug("Falling back to trading bot scanner")
+
         logger.debug(
             "Calculating signals: has_bot=%s, has_scanner=%s, symbols=%s",
             self.trading_bot is not None,
-            self.trading_bot.scanner is not None if self.trading_bot and hasattr(self.trading_bot, 'scanner') else False,
+            scanner is not None,
             symbols
         )
         signals = []
 
         # FIRST: Try to get signals from the trading bot's scanner (cached data)
-        if self.trading_bot and hasattr(self.trading_bot, 'scanner'):
+        if scanner:
             try:
-                scanner = self.trading_bot.scanner
                 if hasattr(scanner, 'price_data') and scanner.price_data:
                     logger.debug(
                         "Using cached scanner data: %d symbols",
@@ -311,13 +325,25 @@ class TradingService:
             # Initialize modular components
             strategy_name = getattr(self.config, 'strategy', 'stoch_rsi')
             logger.info(f"Initializing modular TradingBot with strategy: {strategy_name}")
-            
-            # 1. Get Strategy from factory
-            strategy = get_strategy(strategy_name, self.config)
-            
-            # 2. Get Data Manager from registry (setup in main.py or setup_core_services)
+
+            # 2. Get services from registry (setup in init_services)
             registry = get_service_registry()
             data_manager = registry.get('data_manager')
+
+            # Get shared scanner service if available
+            scanner_service = None
+            try:
+                scanner_service = registry.get('scanner_service')
+                logger.info("Using shared ScannerService for strategy")
+            except ValueError:
+                logger.debug("ScannerService not available, strategy will create its own")
+
+            # 1. Get Strategy from factory (with shared scanner)
+            strategy = get_strategy(
+                strategy_name,
+                self.config,
+                scanner_service=scanner_service
+            )
             
             # 3. Create Executor and Processor
             self.trading_executor = TradingExecutor(self.api, self.config)
@@ -432,9 +458,20 @@ class TradingService:
         if override:
             return list(override)
 
+        # PRIORITY: Use centralized ScannerService from registry
+        try:
+            registry = get_service_registry()
+            scanner_service = registry.get('scanner_service')
+            symbols = scanner_service.get_enabled_symbols()
+            if symbols:
+                logger.debug("Using %d symbols from shared ScannerService", len(symbols))
+                return symbols
+        except ValueError:
+            pass  # ScannerService not registered
+
         # Check if scanner is enabled in config
         crypto_scanner_cfg = getattr(self.config, 'crypto_scanner', None)
-        
+
         if crypto_scanner_cfg and getattr(crypto_scanner_cfg, 'enable_market_scan', False):
             # Use cached symbols if available and recent (5 mins)
             if self._scanned_symbols_cache and \
@@ -443,16 +480,21 @@ class TradingService:
                 return self._scanned_symbols_cache
 
             try:
-                # Initialize scanner if needed
-                if not self.scanner:
+                # Use shared scanner service if available, otherwise create local instance
+                scanner = None
+                try:
+                    registry = get_service_registry()
+                    scanner = registry.get('scanner_service')
+                except ValueError:
                     from strategies.crypto_scalping_strategy import CryptoVolatilityScanner
-                    self.scanner = CryptoVolatilityScanner(
-                        config=crypto_scanner_cfg
-                    )
-                
+                    scanner = CryptoVolatilityScanner(config=crypto_scanner_cfg)
+
                 logger.info("Scanning market for top volatile pairs...")
                 # Allow scanner to fetch all assets and select top 20
-                top_pairs = self.scanner.select_top_volatile_pairs(self.api, target_count=20)
+                if hasattr(scanner, 'select_top_volatile_pairs'):
+                    top_pairs = scanner.select_top_volatile_pairs(self.api, target_count=20)
+                else:
+                    top_pairs = scanner.get_enabled_symbols()[:20]
 
                 # Normalize symbols to BASE/QUOTE format (e.g. BTCUSD -> BTC/USD)
                 formatted_pairs = []
@@ -468,7 +510,7 @@ class TradingService:
                             formatted_pairs.append(symbol)
                     else:
                         formatted_pairs.append(symbol)
-                
+
                 self._scanned_symbols_cache = formatted_pairs
                 self._last_scan_time = datetime.now()
                 return formatted_pairs

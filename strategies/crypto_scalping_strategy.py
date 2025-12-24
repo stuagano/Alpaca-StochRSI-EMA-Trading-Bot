@@ -805,13 +805,16 @@ class CryptoVolatilityScanner:
                 self.volume_data[symbol] = self.volume_data[symbol][-1000:]
 
 class CryptoDayTradingBot:
+    """High-frequency crypto day trading bot with comprehensive error handling"""
+
+    name = "CryptoDayTradingBot"  # Required for TradingBot integration
+
     CASH_SAFETY_BUFFER = Decimal('0.995')
     DEFAULT_TICK_SIZE = Decimal('0.000001')
     TICK_SIZE_BY_SYMBOL = {
         'BTC': Decimal('0.000001'),  # 1e-6 BTC
         'ETH': Decimal('0.0001'),    # 1e-4 ETH
     }
-    """High-frequency crypto day trading bot with comprehensive error handling"""
     
     def __init__(
         self,
@@ -819,9 +822,16 @@ class CryptoDayTradingBot:
         initial_capital: float = 10000,
         scanner_config: Optional[CryptoScannerConfig] = None,
         enabled_symbols: Optional[List[str]] = None,
+        scanner: Optional[Any] = None,
     ):
         self.alpaca = alpaca_client
-        self.scanner = CryptoVolatilityScanner(scanner_config, enabled_symbols=enabled_symbols)
+        # Use injected scanner if provided, otherwise create local instance
+        if scanner is not None:
+            self.scanner = scanner
+            logger.info("CryptoDayTradingBot using injected shared scanner")
+        else:
+            self.scanner = CryptoVolatilityScanner(scanner_config, enabled_symbols=enabled_symbols)
+            logger.info("CryptoDayTradingBot created local scanner instance")
         self.initial_capital = initial_capital
         self.max_position_size = min(100, initial_capital * 0.03)  # 3% per trade, max $100
         self.max_concurrent_positions = 10  # Limit positions for better management
@@ -868,6 +878,95 @@ class CryptoDayTradingBot:
             if hasattr(rm, 'stop_loss'): self.stop_loss_pct = rm.stop_loss
             if hasattr(rm, 'take_profit'): self.take_profit_pct = rm.take_profit
             if hasattr(rm, 'trailing_stop'): self.trailing_stop_pct = rm.trailing_stop
+
+    def generate_signals(self, df: pd.DataFrame) -> List[Dict[str, Any]]:
+        """
+        Generate trading signals from OHLCV DataFrame.
+        Required by the Strategy interface for TradingBot integration.
+
+        Args:
+            df: DataFrame with columns: open, high, low, close, volume, symbol
+
+        Returns:
+            List of signal dictionaries with keys: symbol, action, confidence, price, etc.
+        """
+        signals = []
+
+        if df.empty:
+            return signals
+
+        # Extract symbol from DataFrame
+        symbol = df['symbol'].iloc[-1] if 'symbol' in df.columns else 'UNKNOWN'
+
+        # Get current price and volume
+        current_price = float(df['close'].iloc[-1])
+        current_volume = float(df['volume'].iloc[-1]) if 'volume' in df.columns else 0
+
+        # Feed FULL DataFrame to scanner for indicator calculation (need 26+ points)
+        # Check if we need to bulk load (scanner doesn't have enough data)
+        with self.scanner.lock:
+            current_data_len = len(self.scanner.price_data.get(symbol, []))
+
+        if current_data_len < 26 and len(df) > 1:
+            # Bulk load all historical data from DataFrame
+            for idx in range(len(df)):
+                row_price = float(df['close'].iloc[idx])
+                row_volume = float(df['volume'].iloc[idx]) if 'volume' in df.columns else 0
+                self.scanner.update_market_data(symbol, row_price, row_volume)
+            logger.debug(f"Bulk loaded {len(df)} bars for {symbol} into scanner")
+        else:
+            # Just update with latest price
+            self.scanner.update_market_data(symbol, current_price, current_volume)
+
+        # Calculate volatility from recent price data
+        if len(df) >= 10:
+            returns = df['close'].pct_change().dropna()
+            volatility = float(returns.std()) if len(returns) > 0 else 0.01
+        else:
+            volatility = 0.01
+
+        # Check for volume surge
+        avg_volume = df['volume'].rolling(20).mean().iloc[-1] if len(df) >= 20 else current_volume
+        volume_surge = current_volume > (avg_volume * 1.5) if avg_volume > 0 else False
+
+        # Calculate momentum
+        momentum = self.scanner.calculate_momentum(list(df['close'])) if hasattr(self.scanner, 'calculate_momentum') else 0.5
+
+        # Generate signal using internal method
+        crypto_signal = self.scanner._generate_signal(
+            symbol=symbol,
+            price=current_price,
+            volatility=volatility,
+            volume_surge=volume_surge,
+            momentum=momentum
+        )
+
+        if crypto_signal and crypto_signal.action in ('buy', 'sell'):
+            # DEBUG: Log signal attributes
+            logger.info(f"DEBUG: crypto_signal type={type(crypto_signal).__name__}, attrs={dir(crypto_signal)}")
+            # Construct reason from signal attributes
+            reason_parts = []
+            if crypto_signal.action == 'buy':
+                reason_parts.append(f"momentum={crypto_signal.momentum:.2f}")
+            else:
+                reason_parts.append(f"overbought conditions")
+            if crypto_signal.volume_surge:
+                reason_parts.append("volume surge detected")
+            reason_parts.append(f"confidence={crypto_signal.confidence:.1%}")
+            reason = ", ".join(reason_parts)
+
+            signals.append({
+                'symbol': symbol,
+                'action': crypto_signal.action.upper(),
+                'confidence': crypto_signal.confidence,
+                'price': current_price,
+                'timestamp': datetime.now().isoformat(),
+                'reason': reason,
+                'target_profit': crypto_signal.target_profit,
+                'stop_loss': crypto_signal.stop_loss,
+            })
+
+        return signals
 
     @property
     def _api(self):

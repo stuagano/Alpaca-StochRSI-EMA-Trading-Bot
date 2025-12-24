@@ -6,8 +6,10 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from utils.alpaca import load_alpaca_credentials
-from core.service_registry import ServiceRegistry
+from core.service_registry import get_service_registry
 from utils.trade_store import TradeStore
+from core.alpaca_data_service import AlpacaDataService
+from core.scanner_service import ScannerService
 
 logger = logging.getLogger(__name__)
 
@@ -216,8 +218,8 @@ def init_services(app) -> None:
     TradeStore.configure(db_path)
     logger.info("TradeStore configured with database: %s", db_path)
 
-    # Create service registry (mandatory)
-    registry = ServiceRegistry()
+    # Use global service registry singleton (mandatory)
+    registry = get_service_registry()
     app.service_registry = registry
 
     # Initialise Alpaca client
@@ -231,6 +233,22 @@ def init_services(app) -> None:
         logger.warning("Running without Alpaca API - some features will be unavailable")
         alpaca_client = None
     app.alpaca_client = alpaca_client
+
+    # Initialise data manager for market data
+    data_manager = None
+    if alpaca_client:
+        try:
+            # AlpacaCredentials uses 'key_id' not 'api_key'
+            data_manager = AlpacaDataService(
+                api_key=getattr(credentials, 'key_id', ''),
+                secret_key=getattr(credentials, 'secret_key', ''),
+                base_url=getattr(credentials, 'base_url', 'https://paper-api.alpaca.markets')
+            )
+            registry.register("data_manager", data_manager)
+            logger.info("AlpacaDataService registered as data_manager")
+        except Exception as exc:
+            logger.warning("Failed to initialise data_manager: %s", exc)
+    app.data_manager = data_manager
 
     # Initialise trading service
     trading_service = (
@@ -251,6 +269,16 @@ def init_services(app) -> None:
     # Register config in registry for easy access
     registry.register("trading_config", trading_config)
     registry.register("db_path", db_path)
+
+    # Initialize and register centralized ScannerService
+    try:
+        scanner_config = getattr(trading_config, 'crypto_scanner', None)
+        symbols = getattr(trading_config, 'symbols', None)
+        scanner_service = ScannerService(config=scanner_config, enabled_symbols=symbols)
+        registry.register("scanner_service", scanner_service)
+        logger.info("ScannerService initialized with %d symbols", len(scanner_service.get_enabled_symbols()))
+    except Exception as exc:
+        logger.warning("Failed to initialize ScannerService: %s", exc)
 
     logger.info("Services initialised and registered with ServiceRegistry")
 
