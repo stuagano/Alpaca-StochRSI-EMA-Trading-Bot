@@ -50,6 +50,8 @@ def require_service(service_name: str, error_message: Optional[str] = None):
 
 
 def handle_api_errors(
+    f: Optional[Callable] = None,
+    *,
     default_status: int = 500,
     default_message: str = 'Internal server error',
     log_level: str = 'error'
@@ -58,37 +60,48 @@ def handle_api_errors(
     Decorator that provides consistent error handling for API routes.
 
     Eliminates the repeated try/except pattern in routes.
+    Works both with and without arguments.
 
     Args:
+        f: The function to decorate (when used without parentheses)
         default_status: Default HTTP status code for errors
         default_message: Default error message
         log_level: Logging level ('error', 'warning', 'info')
 
     Usage:
         @bp.route('/data')
-        @handle_api_errors(default_status=500)
+        @handle_api_errors  # Works without parentheses
         def get_data():
             return jsonify(risky_operation())
+
+        @bp.route('/other')
+        @handle_api_errors(default_status=503)  # Works with arguments
+        def get_other():
+            return jsonify(other_operation())
     """
-    def decorator(f: Callable) -> Callable:
-        @functools.wraps(f)
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
         def wrapper(*args, **kwargs):
             try:
-                return f(*args, **kwargs)
+                return func(*args, **kwargs)
             except ValueError as e:
-                logger.warning(f"Validation error in {f.__name__}: {e}")
+                logger.warning(f"Validation error in {func.__name__}: {e}")
                 return jsonify({'error': str(e)}), 400
             except PermissionError as e:
-                logger.warning(f"Permission denied in {f.__name__}: {e}")
+                logger.warning(f"Permission denied in {func.__name__}: {e}")
                 return jsonify({'error': 'Permission denied'}), 403
             except FileNotFoundError as e:
-                logger.warning(f"Resource not found in {f.__name__}: {e}")
+                logger.warning(f"Resource not found in {func.__name__}: {e}")
                 return jsonify({'error': 'Resource not found'}), 404
             except Exception as e:
                 log_func = getattr(logger, log_level, logger.error)
-                log_func(f"Error in {f.__name__}: {e}", exc_info=True)
+                log_func(f"Error in {func.__name__}: {e}", exc_info=True)
                 return jsonify({'error': default_message}), default_status
         return wrapper
+
+    # Support both @handle_api_errors and @handle_api_errors()
+    if f is not None:
+        return decorator(f)
     return decorator
 
 

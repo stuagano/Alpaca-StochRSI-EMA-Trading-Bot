@@ -18,9 +18,27 @@ class DatabasePositionManager:
         
         # We still keep a small memory cache for fast access
         self.active_positions: Dict[str, Dict] = {}
-        
-        # Try to recover any active positions from the API on startup
-        asyncio.create_task(self._sync_with_alpaca())
+
+        # Try to recover any active positions from the API on startup (synchronous)
+        self._sync_with_alpaca_sync()
+
+    def _sync_with_alpaca_sync(self):
+        """Sync local state with Alpaca active positions (synchronous version)."""
+        try:
+            positions = self.api.list_positions()
+            for pos in positions:
+                self.active_positions[pos.symbol] = {
+                    'symbol': pos.symbol,
+                    'qty': float(pos.qty),
+                    'side': 'long' if pos.side == 'long' else 'short',
+                    'entry_price': float(pos.avg_entry_price),
+                    'current_price': float(pos.current_price),
+                    'unrealized_pnl': float(pos.unrealized_pl),
+                    'entry_time': datetime.now(),
+                }
+            logger.info(f"Synced {len(self.active_positions)} positions from Alpaca.")
+        except Exception as e:
+            logger.error(f"Failed to sync with Alpaca: {e}")
 
     async def _sync_with_alpaca(self):
         """Sync local state with Alpaca active positions."""

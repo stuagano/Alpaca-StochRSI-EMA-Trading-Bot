@@ -23,16 +23,20 @@ class AlpacaDataService:
             if '/' not in normalized_symbol and normalized_symbol.endswith('USD'):
                 normalized_symbol = f"{normalized_symbol[:-3]}/USD"
 
-            end = datetime.now()
+            end = datetime.now().replace(microsecond=0)
             start = end - timedelta(minutes=lookback_minutes + 15)
-            
+
+            # Format as RFC3339 (Alpaca requires this format without microseconds)
+            start_str = start.strftime('%Y-%m-%dT%H:%M:%SZ')
+            end_str = end.strftime('%Y-%m-%dT%H:%M:%SZ')
+
             # Using legacy get_crypto_bars (or get_bars for newer REST versions)
             # alpaca-trade-api handles the crypto specific endpoint
             bars = self.api.get_crypto_bars(
-                normalized_symbol, 
+                normalized_symbol,
                 tradeapi.rest.TimeFrame.Minute,
-                start=start.isoformat(),
-                end=end.isoformat()
+                start=start_str,
+                end=end_str
             ).df
             
             if bars.empty:
