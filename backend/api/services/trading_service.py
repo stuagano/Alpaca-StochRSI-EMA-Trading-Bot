@@ -19,6 +19,22 @@ from indicator import Indicator
 
 logger = logging.getLogger(__name__)
 
+# WebSocket imports (conditional to avoid import errors)
+try:
+    from backend.api.blueprints.websocket_events import (
+        emit_trade_update,
+        emit_position_update,
+        emit_bot_status_update,
+        emit_signal_update,
+        emit_activity_update,
+    )
+
+    WEBSOCKET_AVAILABLE = True
+except ImportError:
+    WEBSOCKET_AVAILABLE = False
+    logger.warning("WebSocket broadcasting not available")
+
+
 class TradingService:
     """
     Service layer for trading operations
@@ -46,7 +62,7 @@ class TradingService:
         # Trading state
         self.is_trading = False
         self.last_update = datetime.now()
-        
+
         # Scanner state
         self.scanner = None
         self._scanned_symbols_cache = []
@@ -63,50 +79,57 @@ class TradingService:
         """Get system status information"""
         try:
             account = self.api.get_account()
-            market_status = 'OPEN' if account.trading_blocked == False else 'CLOSED'
+            market_status = "OPEN" if account.trading_blocked == False else "CLOSED"
 
             status = {
-                'last_update': self.last_update.isoformat(),
-                'market_status': market_status,
-                'is_trading': self.is_trading,
-                'services': {
-                    'alpaca': 'connected' if self.api else 'disconnected',
-                    'trading_bot': 'running' if self.is_trading else 'stopped'
-                }
+                "last_update": self.last_update.isoformat(),
+                "market_status": market_status,
+                "is_trading": self.is_trading,
+                "services": {
+                    "alpaca": "connected" if self.api else "disconnected",
+                    "trading_bot": "running" if self.is_trading else "stopped",
+                },
             }
-            
+
             # Enrich with detailed bot status if available
-            if self.is_trading and self.trading_bot and hasattr(self.trading_bot, 'get_status'):
-                status['bot_status'] = self.trading_bot.get_status()
-                
+            if (
+                self.is_trading
+                and self.trading_bot
+                and hasattr(self.trading_bot, "get_status")
+            ):
+                status["bot_status"] = self.trading_bot.get_status()
+
             return status
         except Exception as e:
             logger.error(f"Error getting system status: {e}")
             return {
-                'last_update': self.last_update.isoformat(),
-                'market_status': 'UNKNOWN',
-                'is_trading': self.is_trading,
-                'services': {'alpaca': 'error'}
+                "last_update": self.last_update.isoformat(),
+                "market_status": "UNKNOWN",
+                "is_trading": self.is_trading,
+                "services": {"alpaca": "error"},
             }
 
     def get_account_data(self) -> Dict:
         """Get account information - with caching to reduce API calls"""
         # Check cache first
         now = datetime.now()
-        if self._account_cache and (now - self._account_cache_time).total_seconds() < self._cache_duration:
+        if (
+            self._account_cache
+            and (now - self._account_cache_time).total_seconds() < self._cache_duration
+        ):
             return self._account_cache
 
         try:
             account = self.api.get_account()
             self._account_cache = {
-                'status': account.status,
-                'buying_power': float(account.buying_power),
-                'portfolio_value': float(account.portfolio_value),
-                'cash': float(account.cash),
-                'equity': float(account.equity),
-                'pattern_day_trader': account.pattern_day_trader,
-                'trading_blocked': account.trading_blocked,
-                'account_blocked': account.account_blocked
+                "status": account.status,
+                "buying_power": float(account.buying_power),
+                "portfolio_value": float(account.portfolio_value),
+                "cash": float(account.cash),
+                "equity": float(account.equity),
+                "pattern_day_trader": account.pattern_day_trader,
+                "trading_blocked": account.trading_blocked,
+                "account_blocked": account.account_blocked,
             }
             self._account_cache_time = now
             return self._account_cache
@@ -116,18 +139,22 @@ class TradingService:
             if self._account_cache:
                 return self._account_cache
             return {
-                'status': 'ERROR',
-                'buying_power': 0,
-                'portfolio_value': 0,
-                'cash': 0,
-                'equity': 0
+                "status": "ERROR",
+                "buying_power": 0,
+                "portfolio_value": 0,
+                "cash": 0,
+                "equity": 0,
             }
 
     def get_positions(self) -> List[Dict]:
         """Get current crypto positions - with caching to reduce API calls"""
         # Check cache first
         now = datetime.now()
-        if self._positions_cache is not None and (now - self._positions_cache_time).total_seconds() < self._cache_duration:
+        if (
+            self._positions_cache is not None
+            and (now - self._positions_cache_time).total_seconds()
+            < self._cache_duration
+        ):
             return self._positions_cache
 
         try:
@@ -139,20 +166,24 @@ class TradingService:
                     continue
 
                 entry_price = float(pos.avg_entry_price)
-                current_price = float(pos.current_price) if hasattr(pos, 'current_price') else 0
-                position_data.append({
-                    'symbol': pos.symbol,
-                    'qty': float(pos.qty),
-                    'avg_entry_price': entry_price,
-                    'avg_price': entry_price,  # Frontend compatibility
-                    'entry_price': entry_price,  # Frontend compatibility
-                    'current_price': current_price,
-                    'market_value': float(pos.market_value),
-                    'unrealized_pl': float(pos.unrealized_pl),
-                    'unrealized_plpc': float(pos.unrealized_plpc) * 100,
-                    'side': pos.side,
-                    'asset_class': 'crypto'
-                })
+                current_price = (
+                    float(pos.current_price) if hasattr(pos, "current_price") else 0
+                )
+                position_data.append(
+                    {
+                        "symbol": pos.symbol,
+                        "qty": float(pos.qty),
+                        "avg_entry_price": entry_price,
+                        "avg_price": entry_price,  # Frontend compatibility
+                        "entry_price": entry_price,  # Frontend compatibility
+                        "current_price": current_price,
+                        "market_value": float(pos.market_value),
+                        "unrealized_pl": float(pos.unrealized_pl),
+                        "unrealized_plpc": float(pos.unrealized_plpc) * 100,
+                        "side": pos.side,
+                        "asset_class": "crypto",
+                    }
+                )
 
             self._positions_cache = position_data
             self._positions_cache_time = now
@@ -177,14 +208,16 @@ class TradingService:
         scanner = None
         try:
             registry = get_service_registry()
-            scanner = registry.get('scanner_service')
+            scanner = registry.get("scanner_service")
             logger.debug("Using shared ScannerService from registry")
         except ValueError:
             # Fallback: Get scanner from trading bot's strategy
             if self.trading_bot:
-                if hasattr(self.trading_bot, 'scanner'):
+                if hasattr(self.trading_bot, "scanner"):
                     scanner = self.trading_bot.scanner
-                elif hasattr(self.trading_bot, 'strategy') and hasattr(self.trading_bot.strategy, 'scanner'):
+                elif hasattr(self.trading_bot, "strategy") and hasattr(
+                    self.trading_bot.strategy, "scanner"
+                ):
                     scanner = self.trading_bot.strategy.scanner
             logger.debug("Falling back to trading bot scanner")
 
@@ -192,17 +225,17 @@ class TradingService:
             "Calculating signals: has_bot=%s, has_scanner=%s, symbols=%s",
             self.trading_bot is not None,
             scanner is not None,
-            symbols
+            symbols,
         )
         signals = []
 
         # FIRST: Try to get signals from the trading bot's scanner (cached data)
         if scanner:
             try:
-                if hasattr(scanner, 'price_data') and scanner.price_data:
+                if hasattr(scanner, "price_data") and scanner.price_data:
                     logger.debug(
                         "Using cached scanner data: %d symbols",
-                        len(scanner.price_data) if scanner.price_data else 0
+                        len(scanner.price_data) if scanner.price_data else 0,
                     )
 
                     for symbol, prices in scanner.price_data.items():
@@ -215,43 +248,57 @@ class TradingService:
                             current_volume = volumes[-1] if volumes else 0
 
                             # Get indicators from scanner
-                            indicators = scanner.get_indicators(symbol) if hasattr(scanner, 'get_indicators') else {}
+                            indicators = (
+                                scanner.get_indicators(symbol)
+                                if hasattr(scanner, "get_indicators")
+                                else {}
+                            )
 
-                            rsi = indicators.get('rsi', 50)
-                            stoch_k = indicators.get('stoch_k', 50)
-                            stoch_d = indicators.get('stoch_d', 50)
+                            rsi = indicators.get("rsi", 50)
+                            stoch_k = indicators.get("stoch_k", 50)
+                            stoch_d = indicators.get("stoch_d", 50)
 
                             # Calculate momentum for action
-                            momentum = scanner.calculate_momentum(prices) if hasattr(scanner, 'calculate_momentum') else 0.5
+                            momentum = (
+                                scanner.calculate_momentum(prices)
+                                if hasattr(scanner, "calculate_momentum")
+                                else 0.5
+                            )
 
                             # Determine action
                             if rsi < 35 or stoch_k < 30:
-                                action = 'BUY'
+                                action = "BUY"
                             elif rsi > 65 or stoch_k > 70:
-                                action = 'SELL'
+                                action = "SELL"
                             else:
-                                action = 'HOLD'
+                                action = "HOLD"
 
-                            signal_strength = self._calculate_signal_strength(rsi, stoch_k, stoch_d)
+                            signal_strength = self._calculate_signal_strength(
+                                rsi, stoch_k, stoch_d
+                            )
 
-                            signals.append({
-                                'symbol': symbol,
-                                'action': action,
-                                'rsi': round(float(rsi), 2),
-                                'stoch_k': round(float(stoch_k), 2),
-                                'stoch_d': round(float(stoch_d), 2),
-                                'price': round(float(current_price), 4),
-                                'volume': int(current_volume),
-                                'strength': signal_strength,
-                                'momentum': round(float(momentum), 3),
-                                'timestamp': datetime.now().isoformat(),
-                                'source': 'cached'
-                            })
+                            signals.append(
+                                {
+                                    "symbol": symbol,
+                                    "action": action,
+                                    "rsi": round(float(rsi), 2),
+                                    "stoch_k": round(float(stoch_k), 2),
+                                    "stoch_d": round(float(stoch_d), 2),
+                                    "price": round(float(current_price), 4),
+                                    "volume": int(current_volume),
+                                    "strength": signal_strength,
+                                    "momentum": round(float(momentum), 3),
+                                    "timestamp": datetime.now().isoformat(),
+                                    "source": "cached",
+                                }
+                            )
                         except Exception as e:
                             logger.debug(f"Error processing cached {symbol}: {e}")
 
                     if signals:
-                        logger.info(f"Returning {len(signals)} signals from cached data (0 API calls)")
+                        logger.info(
+                            f"Returning {len(signals)} signals from cached data (0 API calls)"
+                        )
                         return signals
 
             except Exception as e:
@@ -259,51 +306,60 @@ class TradingService:
 
         # FALLBACK: Return empty list instead of making API calls
         # This preserves rate limit budget for trading operations
-        logger.info("No cached signals available - returning empty (rate limit protection)")
+        logger.info(
+            "No cached signals available - returning empty (rate limit protection)"
+        )
         return []
 
     def place_order(self, order_params: Dict) -> Dict:
         """Place an order"""
         try:
             order = self.api.submit_order(
-                symbol=order_params['symbol'],
-                qty=order_params['qty'],
-                side=order_params['side'],
-                type=order_params.get('type', 'market'),
-                time_in_force=order_params.get('time_in_force', 'gtc'),
-                limit_price=order_params.get('limit_price'),
-                stop_price=order_params.get('stop_price')
+                symbol=order_params["symbol"],
+                qty=order_params["qty"],
+                side=order_params["side"],
+                type=order_params.get("type", "market"),
+                time_in_force=order_params.get("time_in_force", "gtc"),
+                limit_price=order_params.get("limit_price"),
+                stop_price=order_params.get("stop_price"),
             )
 
-            return {
-                'id': order.id,
-                'symbol': order.symbol,
-                'qty': order.qty,
-                'side': order.side,
-                'type': order.type,
-                'status': order.status,
-                'submitted_at': order.submitted_at
+            order_data = {
+                "id": order.id,
+                "symbol": order.symbol,
+                "qty": order.qty,
+                "side": order.side,
+                "type": order.type,
+                "status": order.status,
+                "submitted_at": order.submitted_at,
+                "price": order.limit_price or "market",
             }
+
+            # Broadcast trade update via WebSocket
+            if WEBSOCKET_AVAILABLE:
+                emit_trade_update(order_data)
+
+            return order_data
 
         except Exception as e:
             logger.error(f"Error placing order: {e}")
             raise
 
-    def get_orders(self, status: str = 'all', limit: int = 50) -> List[Dict]:
+    def get_orders(self, status: str = "all", limit: int = 50) -> List[Dict]:
         """Get orders"""
         try:
             orders = self.api.list_orders(status=status, limit=limit)
             return [
                 {
-                    'id': order.id,
-                    'symbol': order.symbol,
-                    'qty': order.qty,
-                    'side': order.side,
-                    'type': order.type,
-                    'status': order.status,
-                    'submitted_at': order.submitted_at,
-                    'filled_at': order.filled_at,
-                    'filled_qty': order.filled_qty
+                    "id": order.id,
+                    "symbol": order.symbol,
+                    "qty": order.qty,
+                    "side": order.side,
+                    "type": order.type,
+                    "status": order.status,
+                    "submitted_at": order.submitted_at,
+                    "filled_at": order.filled_at,
+                    "filled_qty": order.filled_qty,
                 }
                 for order in orders
             ]
@@ -314,7 +370,7 @@ class TradingService:
     def start_trading(self, config_overrides: Optional[Dict] = None) -> Dict:
         """Start automated trading"""
         if self.is_trading:
-            return {'status': 'already_running', 'config': self._config_snapshot()}
+            return {"status": "already_running", "config": self._config_snapshot()}
 
         try:
             # Apply config overrides if provided
@@ -323,43 +379,46 @@ class TradingService:
                 pass
 
             # Initialize modular components
-            strategy_name = getattr(self.config, 'strategy', 'stoch_rsi')
-            logger.info(f"Initializing modular TradingBot with strategy: {strategy_name}")
+            strategy_name = getattr(self.config, "strategy", "stoch_rsi")
+            logger.info(
+                f"Initializing modular TradingBot with strategy: {strategy_name}"
+            )
 
             # 2. Get services from registry (setup in init_services)
             registry = get_service_registry()
-            data_manager = registry.get('data_manager')
+            data_manager = registry.get("data_manager")
 
             # Get shared scanner service if available
             scanner_service = None
             try:
-                scanner_service = registry.get('scanner_service')
+                scanner_service = registry.get("scanner_service")
                 logger.info("Using shared ScannerService for strategy")
             except ValueError:
-                logger.debug("ScannerService not available, strategy will create its own")
+                logger.debug(
+                    "ScannerService not available, strategy will create its own"
+                )
 
             # 1. Get Strategy from factory (with shared scanner)
             strategy = get_strategy(
-                strategy_name,
-                self.config,
-                scanner_service=scanner_service
+                strategy_name, self.config, scanner_service=scanner_service
             )
-            
+
             # 3. Create Executor and Processor
             self.trading_executor = TradingExecutor(self.api, self.config)
             self.signal_processor = SignalProcessor(self.trading_executor, self.config)
-            
+
             # 4. Create the modular TradingBot
             self.trading_bot = TradingBot(
                 config=self.config,
                 strategy=strategy,
                 signal_processor=self.signal_processor,
-                data_manager=data_manager
+                data_manager=data_manager,
             )
 
             # Start bot in a background thread
             import threading
             import asyncio
+
             def run_async_bot():
                 try:
                     # Modular TradingBot.run() is an async loop
@@ -370,14 +429,14 @@ class TradingService:
 
             self._bot_thread = threading.Thread(target=run_async_bot, daemon=True)
             self._bot_thread.start()
-            
+
             # Start trading
             self.is_trading = True
             logger.info(f"Modular TradingBot ({strategy_name}) started successfully")
             return {
-                'status': 'started',
-                'config': self._config_snapshot(),
-                'strategy': strategy_name
+                "status": "started",
+                "config": self._config_snapshot(),
+                "strategy": strategy_name,
             }
 
         except Exception as e:
@@ -388,7 +447,7 @@ class TradingService:
     def stop_trading(self, close_positions: bool = False) -> Dict:
         """Stop automated trading"""
         if not self.is_trading:
-            return {'status': 'not_running', 'positions_closed': 0}
+            return {"status": "not_running", "positions_closed": 0}
 
         try:
             positions_closed = 0
@@ -397,18 +456,15 @@ class TradingService:
                 results = self.close_all_positions()
                 positions_closed = len(results)
 
-            if hasattr(self.trading_bot, 'stop'):
+            if hasattr(self.trading_bot, "stop"):
                 self.trading_bot.stop()
-                
+
             self.is_trading = False
             self.trading_bot = None
             self.trading_executor = None
 
             logger.info(f"Trading bot stopped. Positions closed: {positions_closed}")
-            return {
-                'status': 'stopped',
-                'positions_closed': positions_closed
-            }
+            return {"status": "stopped", "positions_closed": positions_closed}
 
         except Exception as e:
             logger.error(f"Error stopping trading: {e}")
@@ -421,16 +477,16 @@ class TradingService:
             order = self.api.submit_order(
                 symbol=symbol,
                 qty=abs(float(position.qty)),
-                side='sell' if position.side == 'long' else 'buy',
-                type='market',
-                time_in_force='gtc'
+                side="sell" if position.side == "long" else "buy",
+                type="market",
+                time_in_force="gtc",
             )
 
             return {
-                'order_id': order.id,
-                'symbol': symbol,
-                'qty': order.qty,
-                'side': order.side
+                "order_id": order.id,
+                "symbol": symbol,
+                "qty": order.qty,
+                "side": order.side,
             }
 
         except Exception as e:
@@ -461,21 +517,27 @@ class TradingService:
         # PRIORITY: Use centralized ScannerService from registry
         try:
             registry = get_service_registry()
-            scanner_service = registry.get('scanner_service')
+            scanner_service = registry.get("scanner_service")
             symbols = scanner_service.get_enabled_symbols()
             if symbols:
-                logger.debug("Using %d symbols from shared ScannerService", len(symbols))
+                logger.debug(
+                    "Using %d symbols from shared ScannerService", len(symbols)
+                )
                 return symbols
         except ValueError:
             pass  # ScannerService not registered
 
         # Check if scanner is enabled in config
-        crypto_scanner_cfg = getattr(self.config, 'crypto_scanner', None)
+        crypto_scanner_cfg = getattr(self.config, "crypto_scanner", None)
 
-        if crypto_scanner_cfg and getattr(crypto_scanner_cfg, 'enable_market_scan', False):
+        if crypto_scanner_cfg and getattr(
+            crypto_scanner_cfg, "enable_market_scan", False
+        ):
             # Use cached symbols if available and recent (5 mins)
-            if self._scanned_symbols_cache and \
-               (datetime.now() - self._last_scan_time).total_seconds() < 300:
+            if (
+                self._scanned_symbols_cache
+                and (datetime.now() - self._last_scan_time).total_seconds() < 300
+            ):
                 logger.info("Using cached scanned symbols")
                 return self._scanned_symbols_cache
 
@@ -484,15 +546,20 @@ class TradingService:
                 scanner = None
                 try:
                     registry = get_service_registry()
-                    scanner = registry.get('scanner_service')
+                    scanner = registry.get("scanner_service")
                 except ValueError:
-                    from strategies.crypto_scalping_strategy import CryptoVolatilityScanner
+                    from strategies.crypto_scalping_strategy import (
+                        CryptoVolatilityScanner,
+                    )
+
                     scanner = CryptoVolatilityScanner(config=crypto_scanner_cfg)
 
                 logger.info("Scanning market for top volatile pairs...")
                 # Allow scanner to fetch all assets and select top 20
-                if hasattr(scanner, 'select_top_volatile_pairs'):
-                    top_pairs = scanner.select_top_volatile_pairs(self.api, target_count=20)
+                if hasattr(scanner, "select_top_volatile_pairs"):
+                    top_pairs = scanner.select_top_volatile_pairs(
+                        self.api, target_count=20
+                    )
                 else:
                     top_pairs = scanner.get_enabled_symbols()[:20]
 
@@ -515,73 +582,77 @@ class TradingService:
                 self._last_scan_time = datetime.now()
                 return formatted_pairs
             except Exception as e:
-                logger.error(f"Scanner failed, falling back to configured symbols: {e}", exc_info=True)
+                logger.error(
+                    f"Scanner failed, falling back to configured symbols: {e}",
+                    exc_info=True,
+                )
 
-        symbols = getattr(self.config, 'symbols', None)
+        symbols = getattr(self.config, "symbols", None)
         if symbols:
             return list(symbols)
 
-        trading_cfg = getattr(self.config, 'trading', None)
+        trading_cfg = getattr(self.config, "trading", None)
         if trading_cfg is not None:
-            cfg_symbols = getattr(trading_cfg, 'symbols', None)
+            cfg_symbols = getattr(trading_cfg, "symbols", None)
             if cfg_symbols:
                 return list(cfg_symbols)
 
         return []
 
     def _resolve_timeframe(self) -> str:
-        timeframe = getattr(self.config, 'timeframe', None)
+        timeframe = getattr(self.config, "timeframe", None)
         if timeframe:
             return timeframe
 
-        trading_cfg = getattr(self.config, 'trading', None)
+        trading_cfg = getattr(self.config, "trading", None)
         if trading_cfg is not None:
-            cfg_timeframe = getattr(trading_cfg, 'timeframe', None)
+            cfg_timeframe = getattr(trading_cfg, "timeframe", None)
             if cfg_timeframe:
                 return cfg_timeframe
 
-        return '1Min'
+        return "1Min"
 
     def _config_snapshot(self) -> Dict[str, Any]:
         cfg = self.config
         if is_dataclass(cfg):
             return asdict(cfg)
-        if hasattr(cfg, '__dict__'):
+        if hasattr(cfg, "__dict__"):
             snapshot = {}
             for key, value in cfg.__dict__.items():
-                if key.startswith('_'):
+                if key.startswith("_"):
                     continue
                 snapshot[key] = value
             return snapshot
         return {}
 
-    def update_strategy(self, strategy_name: str, parameters: Optional[Dict] = None) -> Dict:
+    def update_strategy(
+        self, strategy_name: str, parameters: Optional[Dict] = None
+    ) -> Dict:
         """Update trading strategy"""
         # TODO: Implement strategy update logic
-        return {
-            'strategy': strategy_name,
-            'parameters': parameters or {}
-        }
+        return {"strategy": strategy_name, "parameters": parameters or {}}
 
     def _is_crypto(self, symbol: str) -> bool:
         """Check if symbol is cryptocurrency"""
-        crypto_suffixes = ['USD', 'USDT', 'USDC', 'BTC', 'ETH']
+        crypto_suffixes = ["USD", "USDT", "USDC", "BTC", "ETH"]
         return any(symbol.endswith(suffix) for suffix in crypto_suffixes)
 
-    def _calculate_signal_strength(self, rsi: float, stoch_k: float, stoch_d: float) -> str:
+    def _calculate_signal_strength(
+        self, rsi: float, stoch_k: float, stoch_d: float
+    ) -> str:
         """Calculate signal strength"""
         if (rsi < 25 and stoch_k < 20) or (rsi > 75 and stoch_k > 80):
-            return 'Strong'
+            return "Strong"
         elif (rsi < 35 and stoch_k < 30) or (rsi > 65 and stoch_k > 70):
-            return 'Medium'
+            return "Medium"
         else:
-            return 'Weak'
+            return "Weak"
 
     def _determine_action(self, rsi: float, stoch_k: float, stoch_d: float) -> str:
         """Determine trading action"""
         if rsi < 30 and stoch_k < 20 and stoch_k > stoch_d:
-            return 'BUY'
+            return "BUY"
         elif rsi > 70 and stoch_k > 80 and stoch_k < stoch_d:
-            return 'SELL'
+            return "SELL"
         else:
-            return 'HOLD'
+            return "HOLD"

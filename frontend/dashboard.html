@@ -414,6 +414,83 @@
         .signal-badge.accepted { background: #00ff88; color: #000; }
         .signal-badge.rejected { background: #ff4444; color: #fff; }
 
+        /* Signal Analysis Panel */
+        .signal-analysis-item {
+            padding: 8px;
+            background: #1a1a1a;
+            border-radius: 4px;
+            margin-bottom: 6px;
+            border-left: 3px solid #333;
+        }
+
+        .signal-analysis-item.buy { border-left-color: #00ff88; }
+        .signal-analysis-item.sell { border-left-color: #ff4444; }
+        .signal-analysis-item.hold { border-left-color: #666; }
+
+        .signal-analysis-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .signal-analysis-symbol {
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .signal-analysis-action {
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .signal-analysis-action.buy { background: #00ff88; color: #000; }
+        .signal-analysis-action.sell { background: #ff4444; color: #fff; }
+        .signal-analysis-action.hold { background: #444; color: #aaa; }
+
+        .signal-analysis-scores {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 4px;
+            font-size: 11px;
+        }
+
+        .signal-analysis-scores .score {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .signal-analysis-scores .score.buy { color: #00ff88; }
+        .signal-analysis-scores .score.sell { color: #ff4444; }
+
+        .signal-analysis-indicators {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            font-size: 10px;
+            color: #888;
+        }
+
+        .signal-analysis-reason {
+            font-size: 10px;
+            color: #666;
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        .analysis-summary {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px;
+            background: #111;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            font-size: 11px;
+        }
+
         .no-data {
             text-align: center;
             color: #444;
@@ -592,9 +669,9 @@
             </div>
         </div>
 
-        <div class="card">
+        <div class="card span-2">
             <div class="card-header">
-                <span class="card-title">Scanner</span>
+                <span class="card-title">Scanner Status</span>
             </div>
             <div class="scanner-grid">
                 <div><span>Symbols</span><span id="scanner-symbols">-</span></div>
@@ -606,12 +683,20 @@
             </div>
         </div>
 
-        <div class="card">
+        <div class="card span-2">
             <div class="card-header">
-                <span class="card-title">Signal Cache</span>
+                <span class="card-title">Signal Analysis</span>
+                <button class="btn small" onclick="dashboard.loadSignalAnalysis()">Refresh</button>
             </div>
-            <div id="signal-analysis" class="signals-grid">
-                <div class="no-data">No signals</div>
+            <div id="signal-analysis-summary" class="analysis-summary" style="display:none;">
+                <span>Total: <strong id="analysis-count">0</strong></span>
+                <span>Buy: <strong id="analysis-buy-count" class="positive">0</strong></span>
+                <span>Sell: <strong id="analysis-sell-count" class="negative">0</strong></span>
+                <span>Hold: <strong id="analysis-hold-count">0</strong></span>
+                <span>Min Score: <strong id="analysis-min-score">3</strong></span>
+            </div>
+            <div id="signal-analysis" class="signals-grid" style="max-height: 200px;">
+                <div class="no-data">Loading signal analysis...</div>
             </div>
         </div>
 

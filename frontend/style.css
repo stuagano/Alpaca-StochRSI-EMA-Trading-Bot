@@ -489,3 +489,104 @@ header h1 {
 .chart-container canvas {
     max-height: 400px;
 }
+
+/* WebSocket Real-time Updates */
+.new-activity {
+    background: rgba(0, 255, 136, 0.1) !important;
+    border-left: 3px solid #00ff88;
+    animation: slideInRight 0.5s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.websocket-indicator {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    background: rgba(0, 255, 136, 0.1);
+    border: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+.websocket-indicator.connected {
+    background: rgba(0, 255, 136, 0.2);
+    border-color: #00ff88;
+    color: #00ff88;
+}
+
+.websocket-indicator.error {
+    background: rgba(255, 107, 107, 0.2);
+    border-color: #ff6b6b;
+    color: #ff6b6b;
+}
+
+.websocket-indicator.connecting {
+    background: rgba(255, 165, 0, 0.2);
+    border-color: #ffa500;
+    color: #ffa500;
+}
+
+.activity-item {
+    transition: all 0.3s ease;
+}
+
+.activity-item.new-activity:hover {
+    background: rgba(0, 255, 136, 0.15);
+}
+
+/* WebSocket Controls */
+.websocket-controls {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(26, 26, 46, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    gap: 8px;
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+}
+
+.websocket-controls button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.websocket-controls button:hover {
+    opacity: 0.8;
+}
+
+.websocket-controls .connect-btn {
+    background: #00ff88;
+    color: #000;
+}
+
+.websocket-controls .disconnect-btn {
+    background: #ff6b6b;
+    color: #fff;
+}
+
+.websocket-controls .polling-btn {
+    background: #ffa500;
+    color: #000;
+}

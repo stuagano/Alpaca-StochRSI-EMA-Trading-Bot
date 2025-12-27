@@ -7,20 +7,33 @@ class CryptoDashboard {
         this.pnlChart = null;
         this.botStatus = null;
         this.positionMultiplier = 1;
+        
+        // WebSocket connection
+        this.socket = null;
+        this.socketConnected = false;
+        this.useWebSocket = true; // Toggle for WebSocket vs polling
 
         this.init();
     }
 
     init() {
+        // Initialize WebSocket connection first
+        this.initializeWebSocket();
+        
         // Initialize dashboard on page load
         this.updateConnectionStatus('connecting');
         this.initializeChart();
-        this.loadAllData();
-        this.loadBotStatus();
-        this.loadThresholds();
-        this.loadActivity();
-        this.updateChart();
-        this.startAutoRefresh();
+        
+        // Load initial data if WebSocket is not available
+        if (!this.useWebSocket) {
+            this.loadAllData();
+            this.loadBotStatus();
+            this.loadThresholds();
+            this.loadActivity();
+            this.loadSignalAnalysis();
+            this.updateChart();
+            this.startAutoRefresh();
+        }
 
         // Set up event listeners
         this.setupEventListeners();
@@ -29,9 +42,192 @@ class CryptoDashboard {
     setupEventListeners() {
         // Handle window focus to refresh data
         window.addEventListener('focus', () => {
+            if (!this.useWebSocket || !this.socketConnected) {
+                this.loadAllData();
+                this.loadBotStatus();
+            }
+        });
+    }
+
+    // ==================== WEBSOCKET METHODS ====================
+    
+    initializeWebSocket() {
+        if (!this.useWebSocket) {
+            console.log('WebSocket disabled, using HTTP polling');
+            return;
+        }
+
+        try {
+            // Initialize Socket.IO connection
+            this.socket = io({
+                transports: ['websocket', 'polling'], // Fall back to polling if WebSocket fails
+                upgrade: true,
+                rememberUpgrade: true,
+                timeout: 20000,
+                forceNew: false
+            });
+
+            this.setupWebSocketEventHandlers();
+            
+        } catch (error) {
+            console.error('Failed to initialize WebSocket:', error);
+            this.updateConnectionStatus('error');
+            this.fallbackToPolling();
+        }
+    }
+
+    setupWebSocketEventHandlers() {
+        // Connection events
+        this.socket.on('connect', () => {
+            console.log('WebSocket connected');
+            this.socketConnected = true;
+            this.updateConnectionStatus('connected');
+            
+            // Subscribe to real-time updates
+            this.subscribeToUpdates();
+        });
+
+        this.socket.on('disconnect', (reason) => {
+            console.log('WebSocket disconnected:', reason);
+            this.socketConnected = false;
+            this.updateConnectionStatus('error');
+            
+            // Attempt to reconnect if this was an unexpected disconnect
+            if (reason === 'io server disconnect') {
+                // Server disconnected, reconnect manually
+                this.socket.connect();
+            }
+        });
+
+        this.socket.on('connect_error', (error) => {
+            console.error('WebSocket connection error:', error);
+            this.updateConnectionStatus('error');
+            
+            // Fallback to HTTP polling after multiple failed attempts
+            this.fallbackToPolling();
+        });
+
+        this.socket.on('reconnect', (attemptNumber) => {
+            console.log(`WebSocket reconnected after ${attemptNumber} attempts`);
+            this.socketConnected = true;
+            this.updateConnectionStatus('connected');
+            this.subscribeToUpdates();
+        });
+
+        // Real-time data events
+        this.socket.on('connection_status', (data) => {
+            console.log('Connection status:', data);
+        });
+
+        this.socket.on('bot_status_update', (data) => {
+            console.log('Bot status update:', data);
+            if (data.data) {
+                this.updateBotStatus(data.data);
+            }
+        });
+
+        this.socket.on('positions_update', (data) => {
+            console.log('Positions update:', data);
+            if (data.data) {
+                this.updatePositions(data.data);
+                this.updatePerformance(data.data);
+            }
+        });
+
+        this.socket.on('pnl_update', (data) => {
+            console.log('P&L update:', data);
+            if (data.data) {
+                this.updatePnL(data.data);
+            }
+        });
+
+        this.socket.on('signals_update', (data) => {
+            console.log('Signals update:', data);
+            if (data.data) {
+                this.updateSignals(data.data);
+            }
+        });
+
+        this.socket.on('activity_update', (data) => {
+            console.log('Activity update:', data);
+            if (data.data) {
+                this.updateActivityFeed(data.data);
+            }
+        });
+
+        this.socket.on('trade_update', (data) => {
+            console.log('Trade update:', data);
+            if (data.data) {
+                this.handleTradeUpdate(data.data);
+            }
+        });
+
+        this.socket.on('error_update', (data) => {
+            console.error('Error from server:', data);
+            if (data.data) {
+                this.showNotification(data.data.message || 'Server error occurred', 'error');
+            }
+        });
+
+        this.socket.on('subscribed', (data) => {
+            console.log('Subscribed to room:', data);
+        });
+
+        this.socket.on('unsubscribed', (data) => {
+            console.log('Unsubscribed from room:', data);
+        });
+    }
+
+    subscribeToUpdates() {
+        if (!this.socket || !this.socketConnected) return;
+
+        // Subscribe to all real-time update rooms
+        this.socket.emit('subscribe', { room: 'positions' });
+        this.socket.emit('subscribe', { room: 'pnl' });
+        this.socket.emit('subscribe', { room: 'signals' });
+        this.socket.emit('subscribe', { room: 'activity' });
+        
+        console.log('Subscribed to real-time updates');
+    }
+
+    unsubscribeFromUpdates() {
+        if (!this.socket) return;
+
+        this.socket.emit('unsubscribe', { room: 'positions' });
+        this.socket.emit('unsubscribe', { room: 'pnl' });
+        this.socket.emit('unsubscribe', { room: 'signals' });
+        this.socket.emit('unsubscribe', { room: 'activity' });
+    }
+
+    requestManualUpdate(type = 'all') {
+        if (this.socket && this.socketConnected) {
+            this.socket.emit('request_update', { type: type });
+        }
+    }
+
+    fallbackToPolling() {
+        console.log('Falling back to HTTP polling');
+        this.useWebSocket = false;
+        
+        // Start HTTP polling if not already started
+        if (!this.refreshInterval) {
             this.loadAllData();
             this.loadBotStatus();
-        });
+            this.loadThresholds();
+            this.loadActivity();
+            this.loadSignalAnalysis();
+            this.updateChart();
+            this.startAutoRefresh();
+        }
+    }
+
+    disconnectWebSocket() {
+        if (this.socket) {
+            this.unsubscribeFromUpdates();
+            this.socket.disconnect();
+            this.socket = null;
+            this.socketConnected = false;
+        }
     }
 
     updateConnectionStatus(status) {
@@ -426,6 +622,7 @@ class CryptoDashboard {
                 this.loadAllData();
                 this.loadBotStatus();
                 this.loadActivity();
+                this.loadSignalAnalysis();
                 this.updateChart();
             }, 10000); // Refresh every 10 seconds
         }
@@ -548,6 +745,10 @@ class CryptoDashboard {
             console.error('Error loading bot status:', error);
             this.updateBotStatusUI({ status: 'error', bot: null });
         }
+    }
+
+    updateBotStatus(data) {
+        this.updateBotStatusUI(data);
     }
 
     updateBotStatusUI(data) {
@@ -883,6 +1084,246 @@ class CryptoDashboard {
         const nextElem = document.getElementById('next-trade-multiplier');
         if (valElem) valElem.textContent = this.positionMultiplier + 'x';
         if (nextElem) nextElem.textContent = this.positionMultiplier + 'x';
+    }
+
+    // ==================== SIGNAL ANALYSIS METHODS ====================
+
+    async loadSignalAnalysis() {
+        try {
+            const data = await this.fetchData('signalAnalysis');
+            this.renderSignalAnalysis(data);
+        } catch (error) {
+            console.log('Signal analysis not available:', error.message);
+            const container = document.getElementById('signal-analysis');
+            if (container) {
+                container.innerHTML = '<div class="no-data">Signal analysis unavailable</div>';
+            }
+        }
+    }
+
+    renderSignalAnalysis(data) {
+        const container = document.getElementById('signal-analysis');
+        const summaryContainer = document.getElementById('signal-analysis-summary');
+
+        if (!container) return;
+
+        if (!data || !data.signals || data.signals.length === 0) {
+            container.innerHTML = '<div class="no-data">No signal data - scanner may still be initializing</div>';
+            if (summaryContainer) summaryContainer.style.display = 'none';
+            return;
+        }
+
+        const signals = data.signals;
+        const buyCount = signals.filter(s => s.action === 'BUY').length;
+        const sellCount = signals.filter(s => s.action === 'SELL').length;
+        const holdCount = signals.filter(s => s.action === 'HOLD').length;
+
+        // Update summary
+        if (summaryContainer) {
+            summaryContainer.style.display = 'flex';
+            document.getElementById('analysis-count').textContent = signals.length;
+            document.getElementById('analysis-buy-count').textContent = buyCount;
+            document.getElementById('analysis-sell-count').textContent = sellCount;
+            document.getElementById('analysis-hold-count').textContent = holdCount;
+            document.getElementById('analysis-min-score').textContent = data.min_score_required || 3;
+        }
+
+        // Render signals
+        let html = '';
+        signals.forEach(signal => {
+            const actionLower = signal.action.toLowerCase();
+            const wouldTrade = signal.would_trade ? '✓ WILL TRADE' : '✗ NO TRADE';
+            const wouldTradeClass = signal.would_trade ? 'positive' : '';
+
+            html += `
+                <div class="signal-analysis-item ${actionLower}">
+                    <div class="signal-analysis-header">
+                        <span class="signal-analysis-symbol">${signal.symbol}</span>
+                        <span class="signal-analysis-action ${actionLower}">${signal.action}</span>
+                    </div>
+                    <div class="signal-analysis-scores">
+                        <span class="score buy">Buy: ${signal.buy_score}/${signal.min_required}</span>
+                        <span class="score sell">Sell: ${signal.sell_score}/${signal.min_required}</span>
+                        <span class="${wouldTradeClass}" style="font-size: 10px; margin-left: auto;">${wouldTrade}</span>
+                    </div>
+                    <div class="signal-analysis-indicators">
+                        <span>RSI: ${signal.indicators?.rsi?.toFixed(1) || '-'}</span>
+                        <span>StochK: ${signal.indicators?.stoch_k?.toFixed(1) || '-'}</span>
+                        <span>MACD: ${signal.indicators?.macd_histogram?.toFixed(4) || '-'}</span>
+                        <span>EMA: ${signal.indicators?.ema_cross || '-'}</span>
+                        <span>Vol: ${signal.indicators?.volume_surge ? '↑SURGE' : 'normal'}</span>
+                        <span>$${signal.price?.toFixed(4) || '-'}</span>
+                    </div>
+                    <div class="signal-analysis-reason">
+                        ${signal.reasons?.join(' • ') || 'No specific reason'}
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    }
+
+    // ==================== WEBSOCKET UPDATE METHODS ====================
+    
+    updatePnL(pnlData) {
+        // Update P&L display with real-time data
+        if (pnlData.current_pnl !== undefined) {
+            const pnlElement = document.getElementById('bot-unrealized-pnl');
+            if (pnlElement) {
+                pnlElement.textContent = this.formatCurrency(pnlData.current_pnl);
+            }
+        }
+
+        if (pnlData.daily_pnl !== undefined) {
+            const dailyPnlElement = document.querySelector('[data-daily-pnl]');
+            if (dailyPnlElement) {
+                dailyPnlElement.textContent = this.formatCurrency(pnlData.daily_pnl);
+            }
+        }
+
+        // Update chart if available
+        if (this.pnlChart && pnlData.chart_data) {
+            this.updateChartData(pnlData.chart_data);
+        }
+    }
+
+    updateActivityFeed(activities) {
+        const container = document.getElementById('activity-feed');
+        if (!container) return;
+
+        if (!activities || activities.length === 0) {
+            container.innerHTML = '<div class="no-activity">No recent activity</div>';
+            return;
+        }
+
+        // Add new activities at the top
+        const activityHTML = activities.map(entry => {
+            const time = this.formatActivityTime(entry.timestamp || new Date().toISOString());
+            const typeColors = {
+                'scan': '#4ecdc4',
+                'signal': '#00ff88',
+                'decision': '#ffaa00',
+                'trade': '#ff6b6b',
+                'info': '#666',
+                'warning': '#ffaa00'
+            };
+
+            return `
+                <div class="activity-item ${entry.type} new-activity">
+                    <span class="activity-time">${time}</span>
+                    <span class="activity-type" style="color: ${typeColors[entry.type] || '#666'}">${entry.type}</span>
+                    <span>${entry.message}</span>
+                </div>
+            `;
+        }).join('');
+
+        // Prepend new activities and limit total
+        const currentHTML = container.innerHTML;
+        container.innerHTML = activityHTML + currentHTML;
+        
+        // Limit to 50 most recent activities
+        const items = container.querySelectorAll('.activity-item');
+        if (items.length > 50) {
+            for (let i = 50; i < items.length; i++) {
+                items[i].remove();
+            }
+        }
+
+        // Update status
+        const statusEl = document.getElementById('activity-status');
+        if (statusEl) {
+            const currentCount = container.querySelectorAll('.activity-item').length;
+            statusEl.textContent = `${currentCount} entries`;
+        }
+
+        // Remove highlight after animation
+        setTimeout(() => {
+            const newItems = container.querySelectorAll('.new-activity');
+            newItems.forEach(item => item.classList.remove('new-activity'));
+        }, 2000);
+    }
+
+    handleTradeUpdate(tradeData) {
+        console.log('New trade:', tradeData);
+        
+        // Show notification for new trade
+        const message = tradeData.side === 'buy' 
+            ? `Bought ${tradeData.symbol} at ${this.formatPrice(tradeData.price)}`
+            : `Sold ${tradeData.symbol} at ${this.formatPrice(tradeData.price)}`;
+            
+        this.showNotification(message, tradeData.side === 'buy' ? 'success' : 'info');
+
+        // Refresh positions after trade
+        if (this.socket && this.socketConnected) {
+            this.socket.emit('request_update', { type: 'positions' });
+        }
+    }
+
+    formatActivityTime(timestamp) {
+        if (!timestamp) return 'Just now';
+        
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diff = now - date;
+        
+        if (diff < 60000) return 'Just now';
+        if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+        if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+        
+        return date.toLocaleDateString();
+    }
+
+    // ==================== WEBSOCKET UTILITY METHODS ====================
+    
+    updateChartData(chartData) {
+        if (!this.pnlChart || !chartData) return;
+
+        try {
+            // Update chart with new data
+            if (chartData.timestamps && chartData.pnl_values) {
+                this.pnlChart.data.labels = chartData.timestamps.map(ts => 
+                    new Date(ts).toLocaleTimeString()
+                );
+                this.pnlChart.data.datasets[0].data = chartData.pnl_values;
+                
+                if (chartData.cumulative_pnl) {
+                    if (this.pnlChart.data.datasets[1]) {
+                        this.pnlChart.data.datasets[1].data = chartData.cumulative_pnl;
+                    }
+                }
+                
+                this.pnlChart.update('none'); // Update without animation for real-time
+            }
+        } catch (error) {
+            console.error('Error updating chart:', error);
+        }
+    }
+
+    // Override existing methods to use WebSocket when available
+    startAutoRefresh() {
+        // Clear existing interval
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+        }
+
+        // Don't start polling if WebSocket is connected
+        if (this.useWebSocket && this.socketConnected) {
+            console.log('WebSocket active, skipping HTTP polling');
+            return;
+        }
+
+        if (this.autoRefresh) {
+            this.refreshInterval = setInterval(() => {
+                if (!this.useWebSocket || !this.socketConnected) {
+                    this.loadAllData();
+                    this.loadBotStatus();
+                    this.loadActivity();
+                    this.loadSignalAnalysis();
+                    this.updateChart();
+                }
+            }, 10000); // Refresh every 10 seconds
+        }
     }
 }
 

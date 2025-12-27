@@ -94,6 +94,169 @@ def api_signals():
     signals = service.calculate_signals(symbols)
     return jsonify(signals)
 
+@api_bp.route('/signals/analysis')
+@handle_errors
+def api_signals_analysis():
+    """Get detailed signal analysis with scoring breakdown for all symbols"""
+    from datetime import datetime
+    from core.service_registry import get_service_registry
+
+    service = _get_trading_service()
+    if not service:
+        return _service_unavailable_response()
+
+    # Get scanner from registry or trading bot
+    scanner = None
+    try:
+        registry = get_service_registry()
+        scanner = registry.get('scanner_service')
+    except (ValueError, KeyError):
+        if service.trading_bot:
+            if hasattr(service.trading_bot, 'scanner'):
+                scanner = service.trading_bot.scanner
+            elif hasattr(service.trading_bot, 'strategy') and hasattr(service.trading_bot.strategy, 'scanner'):
+                scanner = service.trading_bot.strategy.scanner
+
+    if not scanner:
+        return jsonify({'error': 'Scanner not available', 'signals': []}), 200
+
+    analysis = []
+    min_score = 3  # Same as in strategy
+
+    symbols = list(scanner.price_data.keys()) if hasattr(scanner, 'price_data') else []
+
+    for symbol in symbols:
+        try:
+            indicators = scanner.get_indicators(symbol) if hasattr(scanner, 'get_indicators') else {}
+            if not indicators:
+                continue
+
+            prices = scanner.price_data.get(symbol, [])
+            volumes = scanner.volume_data.get(symbol, [])
+            current_price = prices[-1] if prices else 0
+
+            # Calculate scores (matching strategy logic)
+            rsi = indicators.get('rsi', 50)
+            macd_hist = indicators.get('macd_histogram', 0)
+            stoch_k = indicators.get('stoch_k', 50)
+            ema_cross = indicators.get('ema_cross', 'neutral')
+
+            # Volume surge check
+            volume_surge = False
+            if len(volumes) >= 20:
+                avg_vol = sum(volumes[-20:]) / 20
+                volume_surge = volumes[-1] > avg_vol * 1.5 if avg_vol > 0 else False
+
+            # Calculate buy score
+            buy_score = 0
+            buy_reasons = []
+
+            if rsi < 25:
+                buy_score += 3
+                buy_reasons.append(f"RSI very low ({rsi:.1f})")
+            elif rsi < 30:
+                buy_score += 2
+                buy_reasons.append(f"RSI oversold ({rsi:.1f})")
+            elif rsi < 35:
+                buy_score += 1
+                buy_reasons.append(f"RSI low ({rsi:.1f})")
+
+            if macd_hist > 0:
+                buy_score += 1
+                buy_reasons.append("MACD positive")
+
+            if stoch_k < 20:
+                buy_score += 3
+                buy_reasons.append(f"StochRSI very low ({stoch_k:.1f})")
+            elif stoch_k < 30:
+                buy_score += 2
+                buy_reasons.append(f"StochRSI oversold ({stoch_k:.1f})")
+
+            if ema_cross == 'bullish':
+                buy_score += 2
+                buy_reasons.append("EMA bullish cross")
+
+            if volume_surge:
+                buy_score += 1
+                buy_reasons.append("Volume surge")
+
+            # Calculate sell score
+            sell_score = 0
+            sell_reasons = []
+
+            if rsi > 75:
+                sell_score += 3
+                sell_reasons.append(f"RSI very high ({rsi:.1f})")
+            elif rsi > 70:
+                sell_score += 2
+                sell_reasons.append(f"RSI overbought ({rsi:.1f})")
+            elif rsi > 65:
+                sell_score += 1
+                sell_reasons.append(f"RSI high ({rsi:.1f})")
+
+            if macd_hist < 0:
+                sell_score += 1
+                sell_reasons.append("MACD negative")
+
+            if stoch_k > 80:
+                sell_score += 3
+                sell_reasons.append(f"StochRSI very high ({stoch_k:.1f})")
+            elif stoch_k > 70:
+                sell_score += 2
+                sell_reasons.append(f"StochRSI overbought ({stoch_k:.1f})")
+
+            if ema_cross == 'bearish':
+                sell_score += 2
+                sell_reasons.append("EMA bearish cross")
+
+            if volume_surge:
+                sell_score += 1
+                sell_reasons.append("Volume confirmation")
+
+            # Determine action
+            if buy_score >= min_score and buy_score > sell_score:
+                action = 'BUY'
+                reasons = buy_reasons
+            elif sell_score >= min_score and sell_score > buy_score:
+                action = 'SELL'
+                reasons = sell_reasons
+            else:
+                action = 'HOLD'
+                reasons = [f"Scores too weak/tied (buy={buy_score}, sell={sell_score}, need {min_score})"]
+
+            analysis.append({
+                'symbol': symbol,
+                'action': action,
+                'buy_score': buy_score,
+                'sell_score': sell_score,
+                'min_required': min_score,
+                'price': round(current_price, 4),
+                'indicators': {
+                    'rsi': round(rsi, 2),
+                    'stoch_k': round(stoch_k, 2),
+                    'macd_histogram': round(macd_hist, 4),
+                    'ema_cross': ema_cross,
+                    'volume_surge': volume_surge
+                },
+                'reasons': reasons,
+                'would_trade': action in ('BUY', 'SELL'),
+                'timestamp': datetime.now().isoformat()
+            })
+
+        except Exception as e:
+            current_app.logger.error(f"Error analyzing {symbol}: {e}")
+
+    # Sort by highest combined score
+    analysis.sort(key=lambda x: max(x['buy_score'], x['sell_score']), reverse=True)
+
+    return jsonify({
+        'count': len(analysis),
+        'min_score_required': min_score,
+        'timestamp': datetime.now().isoformat(),
+        'signals': analysis
+    })
+
+
 @api_bp.route('/orders')
 @handle_errors
 def api_orders():

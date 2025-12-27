@@ -94,7 +94,10 @@
         pnlExport: '/api/v1/pnl/export',
 
         // Trade history
-        trades: '/api/v1/pnl/trades'
+        trades: '/api/v1/pnl/trades',
+
+        // Signal analysis (detailed scoring)
+        signalAnalysis: '/api/v1/signals/analysis'
     },
 
     // WebSocket configuration
